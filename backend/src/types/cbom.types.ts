@@ -252,7 +252,29 @@ export interface NetworkScanResponse {
 export interface ScanCodeRequest {
   repoPath: string;
   language?: 'java' | 'python';
+  /** Glob patterns to exclude from scanning (e.g., test directories, spec files) */
+  excludePatterns?: string[];
 }
+
+/** Default patterns to exclude test files */
+export const DEFAULT_EXCLUDE_PATTERNS = [
+  '**/test/**',
+  '**/tests/**',
+  '**/__tests__/**',
+  '**/*.test.ts',
+  '**/*.test.js',
+  '**/*.test.tsx',
+  '**/*.test.jsx',
+  '**/*.spec.ts',
+  '**/*.spec.js',
+  '**/*.spec.tsx',
+  '**/*.spec.jsx',
+  '**/Test.java',
+  '**/*Test.java',
+  '**/*Tests.java',
+  '**/test_*.py',
+  '**/*_test.py',
+];
 
 export interface ScanCodeResponse {
   success: boolean;

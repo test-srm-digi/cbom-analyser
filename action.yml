@@ -26,6 +26,10 @@ inputs:
     description: 'Path within the repository to scan (default: entire repo)'
     required: false
     default: '.'
+  exclude-patterns:
+    description: 'Comma-separated glob patterns to exclude (e.g., "**/test/**,**/*.test.ts"). Use "default" to exclude common test patterns.'
+    required: false
+    default: ''
 
 outputs:
   readiness-score:
@@ -50,3 +54,4 @@ runs:
     - ${{ inputs.output-file }}
     - ${{ inputs.quantum-safe-threshold }}
     - ${{ inputs.scan-path }}
+    - ${{ inputs.exclude-patterns }}

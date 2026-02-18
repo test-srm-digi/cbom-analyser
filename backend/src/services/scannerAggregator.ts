@@ -22,6 +22,34 @@ import { scanNetworkCrypto, networkResultToCBOMAsset } from './networkScanner';
 
 const execAsync = promisify(exec);
 
+// ─── Glob Pattern Matching ───────────────────────────────────────────────────
+
+/**
+ * Convert a glob pattern to a regex.
+ * Supports: ** (any path), * (any chars in segment), ? (single char)
+ */
+function globToRegex(pattern: string): RegExp {
+  const escaped = pattern
+    .replace(/\\/g, '/') // normalize slashes
+    .replace(/[.+^${}()|[\]]/g, '\\$&') // escape regex special chars
+    .replace(/\*\*/g, '{{GLOBSTAR}}') // placeholder for **
+    .replace(/\*/g, '[^/]*') // * matches anything except /
+    .replace(/\?/g, '.') // ? matches single char
+    .replace(/\{\{GLOBSTAR\}\}/g, '.*'); // ** matches anything including /
+  return new RegExp(`^${escaped}$|/${escaped}$|^${escaped}/|/${escaped}/`);
+}
+
+/**
+ * Check if a file path matches any of the exclude patterns.
+ */
+function shouldExcludeFile(filePath: string, excludePatterns: string[]): boolean {
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  return excludePatterns.some(pattern => {
+    const regex = globToRegex(pattern);
+    return regex.test(normalizedPath);
+  });
+}
+
 // ─── CBOM Builder ────────────────────────────────────────────────────────────
 
 /**
@@ -124,7 +152,7 @@ export function parseCBOMFile(jsonContent: string): CBOMDocument {
  * Execute the sonar-cryptography scanner via CLI against a target repo.
  * Note: Requires sonar-scanner to be installed and configured.
  */
-export async function runSonarCryptoScan(repoPath: string): Promise<CBOMDocument> {
+export async function runSonarCryptoScan(repoPath: string, excludePatterns?: string[]): Promise<CBOMDocument> {
   const cbom = createEmptyCBOM(path.basename(repoPath));
 
   try {
@@ -159,7 +187,7 @@ export async function runSonarCryptoScan(repoPath: string): Promise<CBOMDocument
       (error as Error).message
     );
     // Fall back to regex-based scanning
-    return runRegexCryptoScan(repoPath);
+    return runRegexCryptoScan(repoPath, excludePatterns);
   }
 
   return cbom;
@@ -169,7 +197,7 @@ export async function runSonarCryptoScan(repoPath: string): Promise<CBOMDocument
  * Fallback: Regex-based crypto detection for when sonar-scanner is unavailable.
  * Scans Java and Python files for common cryptographic patterns.
  */
-export async function runRegexCryptoScan(repoPath: string): Promise<CBOMDocument> {
+export async function runRegexCryptoScan(repoPath: string, excludePatterns?: string[]): Promise<CBOMDocument> {
   const cbom = createEmptyCBOM(path.basename(repoPath));
 
   const cryptoPatterns: { pattern: RegExp; algorithm: string; primitive: CryptoPrimitive; cryptoFunction: CryptoFunction }[] = [
@@ -267,6 +295,12 @@ export async function runRegexCryptoScan(repoPath: string): Promise<CBOMDocument
     for (const filePath of fileList) {
       // Skip build artifacts and minified files
       if (SKIP_FILE_PATTERNS.some(p => p.test(filePath))) continue;
+
+      // Skip files matching exclude patterns (e.g., test files)
+      const relativePath = path.relative(repoPath, filePath);
+      if (excludePatterns && excludePatterns.length > 0 && shouldExcludeFile(relativePath, excludePatterns)) {
+        continue;
+      }
 
       try {
         const content = fs.readFileSync(filePath, 'utf-8');

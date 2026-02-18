@@ -19,14 +19,14 @@ const router = Router();
  */
 router.post('/scan-code', async (req: Request, res: Response) => {
   try {
-    const { repoPath }: ScanCodeRequest = req.body;
+    const { repoPath, excludePatterns }: ScanCodeRequest = req.body;
 
     if (!repoPath) {
       res.status(400).json({ success: false, error: 'repoPath is required' });
       return;
     }
 
-    const cbom = await runSonarCryptoScan(repoPath);
+    const cbom = await runSonarCryptoScan(repoPath, excludePatterns);
 
     // Store result
     const storeKey = cbom.serialNumber || `scan-${Date.now()}`;
@@ -57,14 +57,14 @@ router.post('/scan-code', async (req: Request, res: Response) => {
  */
 router.post('/scan-code/regex', async (req: Request, res: Response) => {
   try {
-    const { repoPath }: ScanCodeRequest = req.body;
+    const { repoPath, excludePatterns }: ScanCodeRequest = req.body;
 
     if (!repoPath) {
       res.status(400).json({ success: false, error: 'repoPath is required' });
       return;
     }
 
-    const cbom = await runRegexCryptoScan(repoPath);
+    const cbom = await runRegexCryptoScan(repoPath, excludePatterns);
 
     const storeKey = cbom.serialNumber || `regex-scan-${Date.now()}`;
     cbomStore.set(storeKey, cbom);

@@ -8,12 +8,22 @@ set -e
 #   $3 - output-file path
 #   $4 - quantum-safe-threshold (0-100)
 #   $5 - scan-path (path within repo to scan)
+#   $6 - exclude-patterns (comma-separated glob patterns)
 
 FAIL_ON_VULNERABLE="${1:-false}"
 OUTPUT_FORMAT="${2:-summary}"
 OUTPUT_FILE="${3:-cbom-report.json}"
 THRESHOLD="${4:-0}"
 SCAN_PATH="${5:-.}"
+EXCLUDE_PATTERNS="${6:-}"
+
+# Default test file patterns
+DEFAULT_EXCLUDE_PATTERNS='**/test/**,**/tests/**,**/__tests__/**,**/*.test.ts,**/*.test.js,**/*.test.tsx,**/*.test.jsx,**/*.spec.ts,**/*.spec.js,**/*.spec.tsx,**/*.spec.jsx,**/Test.java,**/*Test.java,**/*Tests.java,**/test_*.py,**/*_test.py'
+
+# If "default" is specified, use default exclusions
+if [ "$EXCLUDE_PATTERNS" = "default" ]; then
+  EXCLUDE_PATTERNS="$DEFAULT_EXCLUDE_PATTERNS"
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -39,6 +49,9 @@ fi
 echo -e "${BLUE}📂 Scanning: ${FULL_SCAN_PATH}${NC}"
 echo -e "${BLUE}📊 Output format: ${OUTPUT_FORMAT}${NC}"
 echo -e "${BLUE}📄 Output file: ${OUTPUT_FILE}${NC}"
+if [ -n "$EXCLUDE_PATTERNS" ]; then
+  echo -e "${BLUE}🚫 Excluding: ${EXCLUDE_PATTERNS}${NC}"
+fi
 echo ""
 
 # Start the backend server in background
@@ -65,9 +78,19 @@ echo ""
 echo -e "${YELLOW}🔍 Scanning for cryptographic assets...${NC}"
 echo ""
 
+# Build the request JSON with optional excludePatterns
+if [ -n "$EXCLUDE_PATTERNS" ]; then
+  # Convert comma-separated patterns to JSON array
+  EXCLUDE_JSON=$(echo "$EXCLUDE_PATTERNS" | tr ',' '\n' | jq -R . | jq -s .)
+  REQUEST_BODY=$(jq -n --arg path "$FULL_SCAN_PATH" --argjson exclude "$EXCLUDE_JSON" \
+    '{repoPath: $path, excludePatterns: $exclude}')
+else
+  REQUEST_BODY="{\"repoPath\": \"${FULL_SCAN_PATH}\"}"
+fi
+
 SCAN_RESULT=$(curl -s -X POST http://localhost:3001/api/scan-code \
   -H "Content-Type: application/json" \
-  -d "{\"repoPath\": \"${FULL_SCAN_PATH}\"}")
+  -d "$REQUEST_BODY")
 
 # Stop the server
 kill $SERVER_PID 2>/dev/null || true

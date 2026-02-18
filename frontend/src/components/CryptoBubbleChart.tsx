@@ -39,6 +39,41 @@ function computeBubbleData(assets: CryptoAsset[]) {
     .sort((a, b) => b.count - a.count);
 }
 
+interface BubbleTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: { name: string; count: number; color: string } }>;
+}
+
+function BubbleTooltip({ active, payload }: BubbleTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null;
+  
+  const data = payload[0].payload;
+  return (
+    <div
+      style={{
+        backgroundColor: '#e6edf3',
+        border: '1px solid #30363d',
+        borderRadius: '8px',
+        padding: '8px 12px',
+        color: '#161b22',
+      }}
+    >
+      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            backgroundColor: data.color,
+          }}
+        />
+        {data.name}
+      </div>
+      <div style={{ fontSize: 12, marginTop: 2 }}>Count: {data.count}</div>
+    </div>
+  );
+}
+
 export default function CryptoBubbleChart({ assets }: CryptoBubbleChartProps) {
   const data = computeBubbleData(assets);
 
@@ -53,18 +88,7 @@ export default function CryptoBubbleChart({ assets }: CryptoBubbleChartProps) {
             <XAxis type="number" dataKey="x" hide domain={[0, 120]} />
             <YAxis type="number" dataKey="y" hide domain={[0, 80]} />
             <ZAxis type="number" dataKey="z" range={[100, 2000]} />
-            <Tooltip
-              cursor={false}
-              contentStyle={{
-                backgroundColor: '#e6edf3',
-                border: '1px solid #30363d',
-                borderRadius: '8px',
-                color: '#161b22',
-              }}
-              formatter={(_: unknown, __: string, entry: { payload?: { name: string; count: number } }) => {
-                return [`Count: ${entry.payload?.count ?? ''}`, entry.payload?.name ?? ''];
-              }}
-            />
+            <Tooltip cursor={false} content={<BubbleTooltip />} />
             <Scatter data={data} shape="circle">
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.7} />

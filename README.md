@@ -213,6 +213,35 @@ jobs:
 | `output-file` | Path to save the CBOM report | `cbom-report.json` |
 | `quantum-safe-threshold` | Minimum readiness score (0-100) to pass | `0` |
 | `scan-path` | Path within repo to scan | `.` |
+| `exclude-patterns` | Comma-separated glob patterns to exclude (see below) | *(none)* |
+
+#### Excluding Files (e.g., Test Files)
+
+Use `exclude-patterns` to skip files matching glob patterns:
+
+```yaml
+- name: Run CBOM Analyser
+  uses: test-srm-digi/cbom-analyser@v1
+  with:
+    # Use "default" to exclude common test patterns
+    exclude-patterns: 'default'
+```
+
+Or specify custom patterns:
+
+```yaml
+- name: Run CBOM Analyser
+  uses: test-srm-digi/cbom-analyser@v1
+  with:
+    # Custom comma-separated patterns
+    exclude-patterns: '**/test/**,**/*.test.ts,**/*Test.java,**/mock/**'
+```
+
+**Default patterns** (when using `exclude-patterns: 'default'`):
+- `**/test/**`, `**/tests/**`, `**/__tests__/**`
+- `**/*.test.ts`, `**/*.test.js`, `**/*.spec.ts`, `**/*.spec.js`
+- `**/*Test.java`, `**/*Tests.java`
+- `**/test_*.py`, `**/*_test.py`
 
 ### Action Outputs
 
