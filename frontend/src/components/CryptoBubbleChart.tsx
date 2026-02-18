@@ -56,10 +56,10 @@ export default function CryptoBubbleChart({ assets }: CryptoBubbleChartProps) {
             <Tooltip
               cursor={false}
               contentStyle={{
-                backgroundColor: '#161b22',
+                backgroundColor: '#e6edf3',
                 border: '1px solid #30363d',
                 borderRadius: '8px',
-                color: '#e6edf3',
+                color: '#161b22',
               }}
               formatter={(_: unknown, __: string, entry: { payload?: { name: string; count: number } }) => {
                 return [`Count: ${entry.payload?.count ?? ''}`, entry.payload?.name ?? ''];

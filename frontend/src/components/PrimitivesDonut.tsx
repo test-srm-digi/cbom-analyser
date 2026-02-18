@@ -78,10 +78,10 @@ export default function PrimitivesDonut({ assets }: PrimitivesDonutProps) {
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: '#161b22',
+                  backgroundColor: '#e6edf3',
                 border: '1px solid #30363d',
                 borderRadius: '8px',
-                color: '#e6edf3',
+                color: '#161b22',
               }}
               formatter={(value: number, name: string) => [value, getPrimitiveLabel(name)]}
             />
