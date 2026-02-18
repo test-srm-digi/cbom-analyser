@@ -21,6 +21,12 @@ quantumguard-cbom-hub/
 │   │   ├── types/        # Shared CBOM types
 │   │   └── App.tsx
 │   └── Dockerfile
+├── .github/
+│   └── workflows/
+│       └── ci.yml        # CI pipeline
+├── action.yml            # GitHub Action definition
+├── Dockerfile.action     # Docker image for GitHub Action
+├── entrypoint.sh         # Action entrypoint script
 ├── docker-compose.yml
 └── sample-data/      # Example CBOM JSONs
 ```
@@ -71,61 +77,114 @@ on:
 
 jobs:
   cbom-scan:
+    name: Scan for Quantum Vulnerabilities
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Run CBOM Analyser
+        id: cbom
         uses: test-srm-digi/cbom-analyser@v1
         with:
           output-format: summary
           output-file: cbom-report.json
+
+      - name: Display Results
+        run: |
+          echo "🎯 Quantum Readiness Score: ${{ steps.cbom.outputs.readiness-score }}%"
+          echo "📦 Total Assets: ${{ steps.cbom.outputs.total-assets }}"
+          echo "✅ Quantum-Safe: ${{ steps.cbom.outputs.quantum-safe-assets }}"
+          echo "⚠️ Vulnerable: ${{ steps.cbom.outputs.vulnerable-assets }}"
 ```
 
 ### Advanced Usage
 
 ```yaml
-- name: Run CBOM Analyser
-  id: cbom
-  uses: test-srm-digi/cbom-analyser@v1
-  with:
-    # Fail the workflow if non-quantum-safe algorithms are found
-    fail-on-vulnerable: 'true'
-    
-    # Output format: json, sarif, or summary
-    output-format: sarif
-    
-    # Where to save the CBOM report
-    output-file: cbom-report.sarif
-    
-    # Minimum quantum readiness score (0-100) required to pass
-    quantum-safe-threshold: '50'
-    
-    # Scan a specific path within the repo
-    scan-path: 'src'
+name: CBOM Security Scan
 
-# Use the outputs in subsequent steps
-- name: Check Results
-  run: |
-    echo "Readiness Score: ${{ steps.cbom.outputs.readiness-score }}%"
-    echo "Total Assets: ${{ steps.cbom.outputs.total-assets }}"
-    echo "Vulnerable: ${{ steps.cbom.outputs.vulnerable-assets }}"
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly scan
+
+jobs:
+  cbom-scan:
+    name: PQC Compliance Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run CBOM Analyser
+        id: cbom
+        uses: test-srm-digi/cbom-analyser@v1
+        with:
+          # Fail the workflow if non-quantum-safe algorithms are found
+          fail-on-vulnerable: 'true'
+          
+          # Output format: json, sarif, or summary
+          output-format: sarif
+          
+          # Where to save the CBOM report
+          output-file: cbom-results.sarif
+          
+          # Minimum quantum readiness score (0-100) required to pass
+          quantum-safe-threshold: '50'
+          
+          # Scan a specific path within the repo
+          scan-path: 'src'
+
+      - name: Upload CBOM Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbom-report
+          path: cbom-results.sarif
+
+      - name: Check Results
+        run: |
+          echo "🎯 Readiness Score: ${{ steps.cbom.outputs.readiness-score }}%"
+          echo "📦 Total Assets: ${{ steps.cbom.outputs.total-assets }}"
+          echo "⚠️ Vulnerable: ${{ steps.cbom.outputs.vulnerable-assets }}"
 ```
 
 ### Upload to GitHub Security Tab
 
-```yaml
-- name: Run CBOM Analyser (SARIF)
-  uses: test-srm-digi/cbom-analyser@v1
-  with:
-    output-format: sarif
-    output-file: cbom-results.sarif
+Integrate with GitHub's Security tab for vulnerability tracking:
 
-- name: Upload SARIF to GitHub Security
-  uses: github/codeql-action/upload-sarif@v3
-  with:
-    sarif_file: cbom-results.sarif
-    category: cbom-analysis
+```yaml
+name: CBOM Security Analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  cbom-security:
+    name: CBOM Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run CBOM Analyser (SARIF)
+        uses: test-srm-digi/cbom-analyser@v1
+        with:
+          output-format: sarif
+          output-file: cbom-results.sarif
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: cbom-results.sarif
+          category: cbom-quantum-analysis
 ```
 
 ### Action Inputs
