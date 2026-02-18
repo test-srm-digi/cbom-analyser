@@ -86,11 +86,19 @@ READINESS_SCORE=$(echo "$SCAN_RESULT" | jq -r '.readinessScore.score')
 VULNERABLE_ASSETS=$(echo "$SCAN_RESULT" | jq '[.cbom.cryptoAssets[] | select(.quantumSafety == "vulnerable" or .quantumSafety == "unknown")] | length')
 QUANTUM_SAFE_ASSETS=$(echo "$SCAN_RESULT" | jq '[.cbom.cryptoAssets[] | select(.quantumSafety == "safe")] | length')
 
+# Always generate cbom.json for artifact download
+CBOM_JSON_PATH="${GITHUB_WORKSPACE}/cbom.json"
+echo "$SCAN_RESULT" | jq '.cbom' > "$CBOM_JSON_PATH"
+echo -e "${GREEN}✓ Generated: cbom.json${NC}"
+
 # Save output based on format
 OUTPUT_PATH="${GITHUB_WORKSPACE}/${OUTPUT_FILE}"
 case "$OUTPUT_FORMAT" in
   json)
-    echo "$SCAN_RESULT" | jq '.cbom' > "$OUTPUT_PATH"
+    # If output file is different from cbom.json, also save there
+    if [ "$OUTPUT_FILE" != "cbom.json" ]; then
+      echo "$SCAN_RESULT" | jq '.cbom' > "$OUTPUT_PATH"
+    fi
     ;;
   sarif)
     # Convert to SARIF format for GitHub Security tab
@@ -190,6 +198,7 @@ echo "total-assets=${TOTAL_ASSETS}" >> $GITHUB_OUTPUT
 echo "vulnerable-assets=${VULNERABLE_ASSETS}" >> $GITHUB_OUTPUT
 echo "quantum-safe-assets=${QUANTUM_SAFE_ASSETS}" >> $GITHUB_OUTPUT
 echo "cbom-file=${OUTPUT_FILE}" >> $GITHUB_OUTPUT
+echo "cbom-json-file=cbom.json" >> $GITHUB_OUTPUT
 
 # Create job summary
 cat >> $GITHUB_STEP_SUMMARY << EOF

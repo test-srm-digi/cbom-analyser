@@ -87,8 +87,8 @@ jobs:
         id: cbom
         uses: test-srm-digi/cbom-analyser@v1
         with:
-          output-format: summary
-          output-file: cbom-report.json
+          output-format: json
+          output-file: cbom.json
 
       - name: Display Results
         run: |
@@ -96,7 +96,16 @@ jobs:
           echo "📦 Total Assets: ${{ steps.cbom.outputs.total-assets }}"
           echo "✅ Quantum-Safe: ${{ steps.cbom.outputs.quantum-safe-assets }}"
           echo "⚠️ Vulnerable: ${{ steps.cbom.outputs.vulnerable-assets }}"
+
+      - name: Upload CBOM File
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbom-report
+          path: cbom.json
+          retention-days: 30
 ```
+
+> 📥 **Download**: After the workflow runs, go to **Actions** → select the workflow run → **Artifacts** section → click **cbom-report** to download.
 
 ### Advanced Usage
 
@@ -138,11 +147,19 @@ jobs:
           # Scan a specific path within the repo
           scan-path: 'src'
 
-      - name: Upload CBOM Report
+      - name: Upload CBOM Report (SARIF)
         uses: actions/upload-artifact@v4
         with:
-          name: cbom-report
+          name: cbom-sarif-report
           path: cbom-results.sarif
+          retention-days: 30
+
+      - name: Upload CBOM File (JSON)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbom-json-report
+          path: cbom.json
+          retention-days: 30
 
       - name: Check Results
         run: |
@@ -205,7 +222,30 @@ jobs:
 | `total-assets` | Total cryptographic assets found |
 | `vulnerable-assets` | Number of non-quantum-safe assets |
 | `quantum-safe-assets` | Number of quantum-safe assets |
-| `cbom-file` | Path to the generated CBOM file |
+| `cbom-file` | Path to the generated CBOM file (user-specified format) |
+| `cbom-json-file` | Path to always-generated `cbom.json` (for artifact download) |
+
+### Downloading CBOM Artifacts
+
+The action **always generates `cbom.json`** regardless of the output format you choose. This file is automatically available for artifact upload:
+
+```yaml
+      - name: Upload CBOM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbom-report
+          path: cbom.json
+          retention-days: 30
+```
+
+**How to download:**
+
+1. Go to **Actions** tab in your GitHub repository
+2. Click on the workflow run you want to inspect
+3. Scroll to the **Artifacts** section at the bottom
+4. Click **cbom-report** to download the ZIP containing `cbom.json`
+
+![Download Artifact](https://docs.github.com/assets/cb-79866/mw-1440/images/help/repository/artifact-drop-down.webp)
 
 ## CycloneDX 1.6 CBOM Standard
 

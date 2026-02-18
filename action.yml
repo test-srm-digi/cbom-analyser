@@ -37,7 +37,9 @@ outputs:
   quantum-safe-assets:
     description: 'Number of quantum-safe assets'
   cbom-file:
-    description: 'Path to the generated CBOM JSON file'
+    description: 'Path to the generated CBOM output file (user-specified format)'
+  cbom-json-file:
+    description: 'Path to the always-generated cbom.json file (for artifact download)'
 
 runs:
   using: 'docker'
