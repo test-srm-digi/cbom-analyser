@@ -1,0 +1,30 @@
+# Dockerfile for GitHub Action
+FROM node:20-alpine
+
+# Install dependencies for scanning
+RUN apk add --no-cache \
+  bash \
+  curl \
+  jq \
+  git \
+  findutils \
+  grep
+
+WORKDIR /app
+
+# Copy backend code
+COPY backend/package*.json ./
+RUN npm install --production
+
+COPY backend/ .
+RUN npm run build
+
+# Copy entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Health check endpoint
+HEALTHCHECK --interval=5s --timeout=3s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3001/api/health || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]

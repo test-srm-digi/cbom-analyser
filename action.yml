@@ -1,0 +1,50 @@
+name: 'CBOM Analyser - Quantum Readiness Scanner'
+description: 'Scan your repository for cryptographic assets and assess Post-Quantum Cryptography (PQC) readiness'
+author: 'QuantumGuard'
+branding:
+  icon: 'shield'
+  color: 'purple'
+
+inputs:
+  fail-on-vulnerable:
+    description: 'Fail the workflow if non-quantum-safe algorithms are detected'
+    required: false
+    default: 'false'
+  output-format:
+    description: 'Output format: json, sarif, or summary'
+    required: false
+    default: 'summary'
+  output-file:
+    description: 'Path to save the CBOM output file'
+    required: false
+    default: 'cbom-report.json'
+  quantum-safe-threshold:
+    description: 'Minimum quantum readiness score (0-100) to pass'
+    required: false
+    default: '0'
+  scan-path:
+    description: 'Path within the repository to scan (default: entire repo)'
+    required: false
+    default: '.'
+
+outputs:
+  readiness-score:
+    description: 'Quantum readiness score (0-100)'
+  total-assets:
+    description: 'Total cryptographic assets found'
+  vulnerable-assets:
+    description: 'Number of non-quantum-safe assets'
+  quantum-safe-assets:
+    description: 'Number of quantum-safe assets'
+  cbom-file:
+    description: 'Path to the generated CBOM JSON file'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile.action'
+  args:
+    - ${{ inputs.fail-on-vulnerable }}
+    - ${{ inputs.output-format }}
+    - ${{ inputs.output-file }}
+    - ${{ inputs.quantum-safe-threshold }}
+    - ${{ inputs.scan-path }}

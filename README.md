@@ -52,6 +52,102 @@ npm run dev
 - Backend: http://localhost:3001
 - Frontend: http://localhost:5173
 
+## 🚀 Use as GitHub Action
+
+Add CBOM Analyser to your repository's CI/CD pipeline to automatically scan for post-quantum cryptography readiness on every push or pull request.
+
+### Basic Usage
+
+Create `.github/workflows/cbom-scan.yml` in your repository:
+
+```yaml
+name: CBOM Quantum Readiness Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  cbom-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run CBOM Analyser
+        uses: test-srm-digi/cbom-analyser@v1
+        with:
+          output-format: summary
+          output-file: cbom-report.json
+```
+
+### Advanced Usage
+
+```yaml
+- name: Run CBOM Analyser
+  id: cbom
+  uses: test-srm-digi/cbom-analyser@v1
+  with:
+    # Fail the workflow if non-quantum-safe algorithms are found
+    fail-on-vulnerable: 'true'
+    
+    # Output format: json, sarif, or summary
+    output-format: sarif
+    
+    # Where to save the CBOM report
+    output-file: cbom-report.sarif
+    
+    # Minimum quantum readiness score (0-100) required to pass
+    quantum-safe-threshold: '50'
+    
+    # Scan a specific path within the repo
+    scan-path: 'src'
+
+# Use the outputs in subsequent steps
+- name: Check Results
+  run: |
+    echo "Readiness Score: ${{ steps.cbom.outputs.readiness-score }}%"
+    echo "Total Assets: ${{ steps.cbom.outputs.total-assets }}"
+    echo "Vulnerable: ${{ steps.cbom.outputs.vulnerable-assets }}"
+```
+
+### Upload to GitHub Security Tab
+
+```yaml
+- name: Run CBOM Analyser (SARIF)
+  uses: test-srm-digi/cbom-analyser@v1
+  with:
+    output-format: sarif
+    output-file: cbom-results.sarif
+
+- name: Upload SARIF to GitHub Security
+  uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: cbom-results.sarif
+    category: cbom-analysis
+```
+
+### Action Inputs
+
+| Input | Description | Default |
+|-------|-------------|---------|
+| `fail-on-vulnerable` | Fail workflow if non-quantum-safe crypto found | `false` |
+| `output-format` | Output format: `json`, `sarif`, or `summary` | `summary` |
+| `output-file` | Path to save the CBOM report | `cbom-report.json` |
+| `quantum-safe-threshold` | Minimum readiness score (0-100) to pass | `0` |
+| `scan-path` | Path within repo to scan | `.` |
+
+### Action Outputs
+
+| Output | Description |
+|--------|-------------|
+| `readiness-score` | Quantum readiness score (0-100) |
+| `total-assets` | Total cryptographic assets found |
+| `vulnerable-assets` | Number of non-quantum-safe assets |
+| `quantum-safe-assets` | Number of quantum-safe assets |
+| `cbom-file` | Path to the generated CBOM file |
+
 ## CycloneDX 1.6 CBOM Standard
 
 This tool generates and consumes CBOMs following the [CycloneDX 1.6 specification](https://cyclonedx.org/) with cryptographic extensions, enabling:
