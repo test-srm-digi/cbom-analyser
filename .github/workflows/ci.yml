@@ -89,14 +89,33 @@ jobs:
           sleep 5
           curl -s -X POST http://localhost:3001/api/scan-code \
             -H "Content-Type: application/json" \
-            -d '{"repoPath": "${{ github.workspace }}"}' | \
-            python3 -c "
-          import json, sys
-          data = json.load(sys.stdin)
+            -d '{"repoPath": "${{ github.workspace }}"}' > scan-result.json
+          
+          # Display summary
+          python3 -c "
+          import json
+          with open('scan-result.json') as f:
+            data = json.load(f)
           print(f'✅ Success: {data.get(\"success\")}')
           print(f'📦 Assets: {len(data.get(\"cbom\",{}).get(\"cryptoAssets\",[]))}')
           print(f'🎯 Score: {data.get(\"readinessScore\",{}).get(\"score\")}%')
           "
+          
+          # Extract CBOM to cbom.json
+          python3 -c "
+          import json
+          with open('scan-result.json') as f:
+            data = json.load(f)
+          with open('${{ github.workspace }}/cbom.json', 'w') as f:
+            json.dump(data.get('cbom', {}), f, indent=2)
+          "
+
+      - name: Upload CBOM Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbom-report
+          path: cbom.json
+          retention-days: 30
 
   docker:
     name: Docker Build
