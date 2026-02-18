@@ -1,0 +1,778 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:sample-spring-petclinic-cbom-002",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-02-18T09:00:00Z",
+    "tools": [
+      {
+        "vendor": "QuantumGuard",
+        "name": "cbom-analyser",
+        "version": "0.1.0"
+      }
+    ],
+    "component": {
+      "name": "spring-projects/spring-petclinic",
+      "version": "3.4.0",
+      "type": "application",
+      "group": "github.com"
+    }
+  },
+  "components": [],
+  "cryptoAssets": [
+    {
+      "id": "sha256-pc-001",
+      "name": "SHA-256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "SecurityConfig.java",
+        "lineNumber": 47,
+        "className": "SecurityConfig",
+        "methodName": "passwordEncoder"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "sha256-pc-002",
+      "name": "SHA-256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "CsrfTokenRepository.java",
+        "lineNumber": 33,
+        "className": "CsrfTokenRepository",
+        "methodName": "generateToken"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "sha384-pc-001",
+      "name": "SHA-384",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "TokenService.java",
+        "lineNumber": 81,
+        "className": "TokenService",
+        "methodName": "hashRefreshToken"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "sha512-pc-001",
+      "name": "SHA-512",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "AuditLogService.java",
+        "lineNumber": 102,
+        "className": "AuditLogService",
+        "methodName": "computeIntegrityHash"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "sha1-pc-001",
+      "name": "SHA-1",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "LegacyMigrationHelper.java",
+        "lineNumber": 29,
+        "className": "LegacyMigrationHelper",
+        "methodName": "verifyOldHash"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "SHA-256 or SHA-3-256",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "md5-pc-001",
+      "name": "MD5",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Digest"]
+        }
+      },
+      "location": {
+        "fileName": "GravatarService.java",
+        "lineNumber": 17,
+        "className": "GravatarService",
+        "methodName": "emailToGravatarUrl"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "SHA-256",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "bcrypt-pc-001",
+      "name": "BCrypt",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "SecurityConfig.java",
+        "lineNumber": 51,
+        "className": "SecurityConfig",
+        "methodName": "passwordEncoder"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "rsa2048-pc-001",
+      "name": "RSA-2048",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "pke",
+          "cryptoFunctions": ["Keygen", "Sign", "Verify"]
+        }
+      },
+      "location": {
+        "fileName": "JwtKeyProvider.java",
+        "lineNumber": 63,
+        "className": "JwtKeyProvider",
+        "methodName": "generateRsaKeyPair"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 2048,
+      "recommendedPQC": "ML-KEM (Kyber-768)",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "rsa4096-pc-001",
+      "name": "RSA-4096",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "pke",
+          "cryptoFunctions": ["Keygen", "Encrypt", "Decrypt"]
+        }
+      },
+      "location": {
+        "fileName": "EncryptionKeyStore.java",
+        "lineNumber": 88,
+        "className": "EncryptionKeyStore",
+        "methodName": "loadMasterKey"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 4096,
+      "recommendedPQC": "ML-KEM (Kyber-1024)",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "ec-p256-pc-001",
+      "name": "EC-P256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "signature",
+          "curve": "P-256",
+          "cryptoFunctions": ["Sign", "Verify"]
+        }
+      },
+      "location": {
+        "fileName": "OAuth2TokenSigner.java",
+        "lineNumber": 44,
+        "className": "OAuth2TokenSigner",
+        "methodName": "signAccessToken"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "ML-DSA (Dilithium-2)",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "ec-p384-pc-001",
+      "name": "EC-P384",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "signature",
+          "curve": "P-384",
+          "cryptoFunctions": ["Sign", "Verify"]
+        }
+      },
+      "location": {
+        "fileName": "MutualTlsConfig.java",
+        "lineNumber": 72,
+        "className": "MutualTlsConfig",
+        "methodName": "buildKeyManager"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "ML-DSA (Dilithium-3)",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "ed25519-pc-001",
+      "name": "Ed25519",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "signature",
+          "curve": "Curve25519",
+          "cryptoFunctions": ["Sign", "Verify"]
+        }
+      },
+      "location": {
+        "fileName": "WebAuthnService.java",
+        "lineNumber": 130,
+        "className": "WebAuthnService",
+        "methodName": "verifyAssertion"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "ML-DSA (Dilithium-2)",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "aes256gcm-pc-001",
+      "name": "AES-256-GCM",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "ae",
+          "mode": "GCM",
+          "cryptoFunctions": ["Encrypt", "Decrypt"]
+        }
+      },
+      "location": {
+        "fileName": "PropertyEncryptor.java",
+        "lineNumber": 36,
+        "className": "PropertyEncryptor",
+        "methodName": "encrypt"
+      },
+      "quantumSafety": "quantum-safe",
+      "keyLength": 256,
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "aes256gcm-pc-002",
+      "name": "AES-256-GCM",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "ae",
+          "mode": "GCM",
+          "cryptoFunctions": ["Encrypt", "Decrypt"]
+        }
+      },
+      "location": {
+        "fileName": "SessionCookieEncryptor.java",
+        "lineNumber": 58,
+        "className": "SessionCookieEncryptor",
+        "methodName": "sealCookie"
+      },
+      "quantumSafety": "quantum-safe",
+      "keyLength": 256,
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "aes128cbc-pc-001",
+      "name": "AES-128-CBC",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "block-cipher",
+          "mode": "CBC",
+          "padding": "PKCS5Padding",
+          "cryptoFunctions": ["Encrypt", "Decrypt"]
+        }
+      },
+      "location": {
+        "fileName": "LegacyMigrationHelper.java",
+        "lineNumber": 67,
+        "className": "LegacyMigrationHelper",
+        "methodName": "decryptOldData"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 128,
+      "recommendedPQC": "AES-256-GCM",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "chacha20-pc-001",
+      "name": "ChaCha20-Poly1305",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "ae",
+          "cryptoFunctions": ["Encrypt", "Decrypt"]
+        }
+      },
+      "location": {
+        "fileName": "StreamEncryptionService.java",
+        "lineNumber": 25,
+        "className": "StreamEncryptionService",
+        "methodName": "encryptStream"
+      },
+      "quantumSafety": "quantum-safe",
+      "keyLength": 256,
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "hmac256-pc-001",
+      "name": "HMAC-SHA256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "mac",
+          "cryptoFunctions": ["Tag"]
+        }
+      },
+      "location": {
+        "fileName": "CsrfTokenRepository.java",
+        "lineNumber": 49,
+        "className": "CsrfTokenRepository",
+        "methodName": "signToken"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "hmac256-pc-002",
+      "name": "HMAC-SHA256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "mac",
+          "cryptoFunctions": ["Tag"]
+        }
+      },
+      "location": {
+        "fileName": "WebhookSignatureService.java",
+        "lineNumber": 31,
+        "className": "WebhookSignatureService",
+        "methodName": "computeHmac"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "hmac512-pc-001",
+      "name": "HMAC-SHA512",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "mac",
+          "cryptoFunctions": ["Tag"]
+        }
+      },
+      "location": {
+        "fileName": "JwtMacSigner.java",
+        "lineNumber": 22,
+        "className": "JwtMacSigner",
+        "methodName": "sign"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "pbkdf2-pc-001",
+      "name": "PBKDF2-HMAC-SHA256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-derivation",
+          "cryptoFunctions": ["Keygen"]
+        }
+      },
+      "location": {
+        "fileName": "ApiKeyService.java",
+        "lineNumber": 55,
+        "className": "ApiKeyService",
+        "methodName": "deriveKey"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "hkdf-pc-001",
+      "name": "HKDF-SHA256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-derivation",
+          "cryptoFunctions": ["Keygen"]
+        }
+      },
+      "location": {
+        "fileName": "EncryptionKeyStore.java",
+        "lineNumber": 112,
+        "className": "EncryptionKeyStore",
+        "methodName": "deriveSubKey"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "ecdh-pc-001",
+      "name": "ECDH-P256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-agreement",
+          "curve": "P-256",
+          "cryptoFunctions": ["Key Exchange"]
+        }
+      },
+      "location": {
+        "fileName": "JweEncryptionService.java",
+        "lineNumber": 78,
+        "className": "JweEncryptionService",
+        "methodName": "performKeyAgreement"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "ML-KEM (Kyber-768)",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "dh2048-pc-001",
+      "name": "DH-2048",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-agreement",
+          "cryptoFunctions": ["Key Exchange"]
+        }
+      },
+      "location": {
+        "fileName": "LegacyKeyExchange.java",
+        "lineNumber": 39,
+        "className": "LegacyKeyExchange",
+        "methodName": "negotiateSharedSecret"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 2048,
+      "recommendedPQC": "ML-KEM (Kyber-768)",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "tls13-pc-001",
+      "name": "TLS 1.3",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "protocol",
+        "protocolProperties": {
+          "type": "tls",
+          "version": "1.3",
+          "cipherSuites": [
+            {
+              "name": "TLS_AES_256_GCM_SHA384",
+              "algorithms": ["AES-256-GCM", "SHA-384"]
+            },
+            {
+              "name": "TLS_CHACHA20_POLY1305_SHA256",
+              "algorithms": ["ChaCha20-Poly1305", "SHA-256"]
+            }
+          ]
+        }
+      },
+      "location": {
+        "fileName": "TlsServerConfig.java",
+        "lineNumber": 28,
+        "className": "TlsServerConfig",
+        "methodName": "configureSslContext"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "TLS 1.3 with PQ hybrid key exchange",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "tls12-pc-001",
+      "name": "TLS 1.2",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "protocol",
+        "protocolProperties": {
+          "type": "tls",
+          "version": "1.2",
+          "cipherSuites": [
+            {
+              "name": "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+              "algorithms": ["ECDHE", "RSA", "AES-256-GCM", "SHA-384"]
+            },
+            {
+              "name": "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+              "algorithms": ["ECDHE", "RSA", "AES-128-GCM", "SHA-256"]
+            }
+          ]
+        }
+      },
+      "location": {
+        "fileName": "HttpClientConfig.java",
+        "lineNumber": 55,
+        "className": "HttpClientConfig",
+        "methodName": "buildRestTemplate"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "Migrate to TLS 1.3 with PQ hybrid",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "x509-pc-001",
+      "name": "X.509-RSA-2048",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "certificate",
+        "algorithmProperties": {
+          "primitive": "pke",
+          "cryptoFunctions": ["Sign", "Verify"]
+        }
+      },
+      "location": {
+        "fileName": "application.yml",
+        "lineNumber": 18
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 2048,
+      "recommendedPQC": "X.509 with ML-DSA",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "x509-pc-002",
+      "name": "X.509-EC-P256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "certificate",
+        "algorithmProperties": {
+          "primitive": "signature",
+          "curve": "P-256",
+          "cryptoFunctions": ["Sign", "Verify"]
+        }
+      },
+      "location": {
+        "fileName": "MutualTlsConfig.java",
+        "lineNumber": 91,
+        "className": "MutualTlsConfig",
+        "methodName": "loadClientCert"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "X.509 with ML-DSA",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "secrand-pc-001",
+      "name": "SecureRandom (SHA1PRNG)",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "other",
+          "cryptoFunctions": ["Other"]
+        }
+      },
+      "location": {
+        "fileName": "TokenGenerator.java",
+        "lineNumber": 15,
+        "className": "TokenGenerator",
+        "methodName": "generateOpaqueToken"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "secrand-pc-002",
+      "name": "SecureRandom (NativePRNG)",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "other",
+          "cryptoFunctions": ["Other"]
+        }
+      },
+      "location": {
+        "fileName": "SessionIdGenerator.java",
+        "lineNumber": 22,
+        "className": "SessionIdGenerator",
+        "methodName": "nextId"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "des-pc-001",
+      "name": "3DES",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "block-cipher",
+          "mode": "CBC",
+          "padding": "PKCS5Padding",
+          "cryptoFunctions": ["Encrypt", "Decrypt"]
+        }
+      },
+      "location": {
+        "fileName": "LegacyMigrationHelper.java",
+        "lineNumber": 105,
+        "className": "LegacyMigrationHelper",
+        "methodName": "decryptTripleDes"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 168,
+      "recommendedPQC": "AES-256-GCM",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "dsa-pc-001",
+      "name": "DSA-1024",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "signature",
+          "cryptoFunctions": ["Sign", "Verify"]
+        }
+      },
+      "location": {
+        "fileName": "LegacyMigrationHelper.java",
+        "lineNumber": 140,
+        "className": "LegacyMigrationHelper",
+        "methodName": "verifyLegacySignature"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 1024,
+      "recommendedPQC": "ML-DSA (Dilithium-2)",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "sha3-pc-001",
+      "name": "SHA3-256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "IntegrityVerifier.java",
+        "lineNumber": 38,
+        "className": "IntegrityVerifier",
+        "methodName": "hashDocument"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "mlkem-pc-001",
+      "name": "ML-KEM-768 (Kyber)",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-encapsulation",
+          "cryptoFunctions": ["Key Exchange", "Encrypt"]
+        }
+      },
+      "location": {
+        "fileName": "PqcExperimentalService.java",
+        "lineNumber": 22,
+        "className": "PqcExperimentalService",
+        "methodName": "encapsulate"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "mldsa-pc-001",
+      "name": "ML-DSA-65 (Dilithium)",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "signature",
+          "cryptoFunctions": ["Sign", "Verify"]
+        }
+      },
+      "location": {
+        "fileName": "PqcExperimentalService.java",
+        "lineNumber": 55,
+        "className": "PqcExperimentalService",
+        "methodName": "signWithDilithium"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "org.bouncycastle:bcprov-jdk18on:1.78",
+      "dependsOn": ["RSA", "ECC", "AES", "SHA-256", "ML-KEM", "ML-DSA"]
+    },
+    {
+      "ref": "org.springframework.security:spring-security-crypto:6.4.0",
+      "dependsOn": ["BCrypt", "PBKDF2", "AES"]
+    },
+    {
+      "ref": "javax.crypto",
+      "dependsOn": ["AES", "HMAC", "3DES"]
+    },
+    {
+      "ref": "org.bouncycastle:bcpqc-jdk18on:1.78",
+      "dependsOn": ["ML-KEM", "ML-DSA"]
+    }
+  ]
+}

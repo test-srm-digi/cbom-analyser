@@ -1,0 +1,188 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:sample-keycloak-cbom-001",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2025-12-01T10:30:00Z",
+    "tools": [
+      {
+        "vendor": "CBOMkit",
+        "name": "sonar-cryptography",
+        "version": "1.4.0"
+      }
+    ],
+    "component": {
+      "name": "keycloak/keycloak",
+      "version": "main",
+      "type": "application",
+      "group": "github.com"
+    }
+  },
+  "components": [],
+  "cryptoAssets": [
+    {
+      "id": "sha256-001",
+      "name": "SHA-256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "AbstractIdentityProvider.java",
+        "lineNumber": 118
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "sha256-002",
+      "name": "SHA-256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "KeycloakModelUtils.java",
+        "lineNumber": 150
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "rsa-001",
+      "name": "RSA-2048",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "pke",
+          "cryptoFunctions": ["Keygen", "Encrypt"]
+        }
+      },
+      "location": {
+        "fileName": "RSAKeyProvider.java",
+        "lineNumber": 78
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 2048,
+      "recommendedPQC": "ML-KEM (Kyber-768)",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "ed25519-001",
+      "name": "Ed25519",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "signature",
+          "cryptoFunctions": ["Sign", "Verify"]
+        }
+      },
+      "location": {
+        "fileName": "Ed25519KeyPairProvider.java",
+        "lineNumber": 42
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "ML-DSA (Dilithium)",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "aes256-001",
+      "name": "AES-256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "block-cipher",
+          "mode": "GCM",
+          "cryptoFunctions": ["Encrypt", "Decrypt"]
+        }
+      },
+      "location": {
+        "fileName": "ContentEncryptionProvider.java",
+        "lineNumber": 92
+      },
+      "quantumSafety": "quantum-safe",
+      "keyLength": 256,
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "aes128-001",
+      "name": "AES-128",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "block-cipher",
+          "mode": "GCM",
+          "cryptoFunctions": ["Encrypt"]
+        }
+      },
+      "location": {
+        "fileName": "AesKeyWrap.java",
+        "lineNumber": 44
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 128,
+      "recommendedPQC": "AES-256",
+      "complianceStatus": "not-compliant"
+    },
+    {
+      "id": "hmac-001",
+      "name": "HMACSHA256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "mac",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "HmacKeyProvider.java",
+        "lineNumber": 56
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant"
+    },
+    {
+      "id": "sha1-001",
+      "name": "SHA-1",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "LegacyHashProvider.java",
+        "lineNumber": 45
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "SHA-3-256 or SHA-256",
+      "complianceStatus": "not-compliant"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "org.bouncycastle:bcprov-jdk18on",
+      "dependsOn": ["RSA", "ECC", "AES", "SHA-256"]
+    },
+    {
+      "ref": "javax.crypto",
+      "dependsOn": ["AES", "HMAC"]
+    }
+  ]
+}
