@@ -12,12 +12,16 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-# Copy backend code
+# Copy backend package files and install ALL dependencies (including devDeps for tsc)
 COPY backend/package*.json ./
-RUN npm install --production
+RUN npm install
 
+# Copy backend source and build
 COPY backend/ .
 RUN npm run build
+
+# Prune dev dependencies after build to reduce image size
+RUN npm prune --production
 
 # Copy entrypoint
 COPY entrypoint.sh /entrypoint.sh
