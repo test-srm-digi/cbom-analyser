@@ -44,13 +44,17 @@ Use QuantumGuard as a GitHub Action to scan your repository and generate a CBOM 
 name: CBOM Scan
 on: [push, pull_request]
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   cbom-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Run CBOM Scanner
-        uses: your-org/cbom-analyser@v1
+        uses: ./.github/actions/cbom-analyser
         with:
           scan-path: '.'
           output-format: 'json'
@@ -66,6 +70,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   cbom-analysis:
     runs-on: ubuntu-latest
@@ -74,7 +82,7 @@ jobs:
 
       - name: Run QuantumGuard CBOM Scanner
         id: cbom
-        uses: your-org/cbom-analyser@v1
+        uses: ./.github/actions/cbom-analyser
         with:
           scan-path: '.'
           output-format: 'sarif'
@@ -99,7 +107,7 @@ jobs:
 
 ```yaml
 - name: CBOM Scan with SARIF
-  uses: your-org/cbom-analyser@v1
+  uses: ./.github/actions/cbom-analyser
   with:
     output-format: 'sarif'
 
@@ -108,6 +116,8 @@ jobs:
   with:
     sarif_file: cbom.sarif
 ```
+
+> **Note:** The `permissions` block with `security-events: write` is required for SARIF uploads to the GitHub Security tab.
 
 ### Inputs
 
@@ -136,17 +146,17 @@ Use `exclude-patterns` to skip test files, mocks, or other directories:
 
 ```yaml
 # Use default exclusions (test files, mocks, fixtures, etc.)
-- uses: your-org/cbom-analyser@v1
+- uses: ./.github/actions/cbom-analyser
   with:
     exclude-patterns: 'default'
 
 # Custom exclusions
-- uses: your-org/cbom-analyser@v1
+- uses: ./.github/actions/cbom-analyser
   with:
     exclude-patterns: '**/test/**,**/*.test.ts,**/mock/**'
 
 # Combine default + custom
-- uses: your-org/cbom-analyser@v1
+- uses: ./.github/actions/cbom-analyser
   with:
     exclude-patterns: 'default,**/legacy/**,**/vendor/**'
 ```
