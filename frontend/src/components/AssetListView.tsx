@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ExternalLink, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { ExternalLink, ChevronLeft, ChevronRight, SlidersHorizontal, Github, GitBranch, FolderOpen } from 'lucide-react';
 import { CryptoAsset, QuantumSafetyStatus, ComplianceStatus } from '../types';
 
 interface AssetListViewProps {
@@ -41,12 +41,27 @@ function getStatusDash(status?: QuantumSafetyStatus): string {
   }
 }
 
+function buildGitHubFileUrl(repoUrl: string, branch: string, basePath: string, fileName: string, lineNumber?: number): string {
+  const base = repoUrl.replace(/\/$/, '');
+  const prefix = basePath.replace(/^\//, '').replace(/\/$/, '');
+  const filePart = fileName.replace(/^\//, '');
+  const fullPath = prefix ? `${prefix}/${filePart}` : filePart;
+  const url = `${base}/blob/${branch}/${fullPath}`;
+  return lineNumber ? `${url}#L${lineNumber}` : url;
+}
+
 export default function AssetListView({ assets }: AssetListViewProps) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [sortField, setSortField] = useState<'name' | 'primitive' | 'location'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [filterText, setFilterText] = useState('');
+  const [repoUrl, setRepoUrl] = useState('');
+  const [branch, setBranch] = useState('main');
+  const [customBranch, setCustomBranch] = useState('');
+  const [basePath, setBasePath] = useState('');
+
+  const effectiveBranch = branch === 'custom' ? customBranch : branch;
 
   const filtered = useMemo(() => {
     let list = [...assets];
@@ -93,6 +108,53 @@ export default function AssetListView({ assets }: AssetListViewProps) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-qg-border">
         <h3 className="text-sm font-semibold text-gray-200">List of all assets</h3>
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-qg-dark border border-qg-border rounded px-2.5 py-1.5">
+            <div className="flex items-center gap-1.5" title="GitHub repository URL">
+              <Github className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="https://github.com/owner/repo"
+                value={repoUrl}
+                onChange={e => setRepoUrl(e.target.value.trim())}
+                className="bg-transparent text-xs text-gray-300 w-48 focus:outline-none placeholder:text-gray-600"
+              />
+            </div>
+            <span className="text-gray-700">|</span>
+            <div className="flex items-center gap-1.5" title="Branch name">
+              <GitBranch className="w-3 h-3 text-gray-500 flex-shrink-0" />
+              <select
+                value={branch}
+                onChange={e => setBranch(e.target.value)}
+                className="bg-transparent text-xs text-gray-400 focus:outline-none cursor-pointer appearance-none pr-1"
+              >
+                <option value="main">main</option>
+                <option value="master">master</option>
+                <option value="develop">develop</option>
+                <option value="custom">custom...</option>
+              </select>
+              {branch === 'custom' && (
+                <input
+                  type="text"
+                  placeholder="branch-name"
+                  value={customBranch}
+                  onChange={e => setCustomBranch(e.target.value.trim())}
+                  className="bg-transparent text-xs text-gray-300 w-20 focus:outline-none placeholder:text-gray-600"
+                  autoFocus
+                />
+              )}
+            </div>
+            <span className="text-gray-700">|</span>
+            <div className="flex items-center gap-1.5" title="Base path prefix (e.g. ui/ or src/) — leave empty if scanning from repo root">
+              <FolderOpen className="w-3 h-3 text-gray-500 flex-shrink-0" />
+              <input
+                type="text"
+                value={basePath}
+                onChange={e => setBasePath(e.target.value.trim())}
+                className="bg-transparent text-xs text-gray-400 w-14 focus:outline-none"
+                placeholder="/"
+              />
+            </div>
+          </div>
           <input
             type="text"
             placeholder="Filter assets..."
@@ -175,9 +237,20 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                   )}
                 </td>
 
-                {/* Action */}
+                {/* Action — link to file on GitHub */}
                 <td className="px-4 py-3">
-                  <ExternalLink className="w-3.5 h-3.5 text-gray-500 hover:text-qg-accent cursor-pointer" />
+                  {repoUrl && asset.location?.fileName ? (
+                    <a
+                      href={buildGitHubFileUrl(repoUrl, effectiveBranch, basePath, asset.location.fileName, asset.location.lineNumber)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="View on GitHub"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-qg-accent hover:text-white cursor-pointer" />
+                    </a>
+                  ) : (
+                    <ExternalLink className="w-3.5 h-3.5 text-gray-600 cursor-not-allowed" />
+                  )}
                 </td>
               </tr>
             ))}
