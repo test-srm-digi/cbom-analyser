@@ -36,79 +36,13 @@ Open [http://localhost:5173](http://localhost:5173) — upload a CBOM JSON or cl
 
 ## GitHub Actions Integration
 
-Use QuantumGuard as a GitHub Action to scan your repository and generate a CBOM on every push or PR.
+Add a single workflow file to **any repository** to scan it for cryptographic assets and generate a CBOM.
 
-### Setup — Adding the Action to Your Repository
+### Setup
 
-The CBOM scanner runs as a **Docker-based GitHub Action**. You need to copy the action files into your target repository before using it.
-
-**Step 1:** In your target repository, create the action directory:
-
-```bash
-mkdir -p .github/actions/cbom-analyser
-```
-
-**Step 2:** Copy these 3 files from the [cbom-analyser repo](https://github.com/test-srm-digi/cbom-analyser) into `.github/actions/cbom-analyser/`:
-
-| File | What it does |
-|------|-------------|
-| `action.yml` | Defines the action inputs, outputs, and Docker config |
-| `Dockerfile.action` | Builds the Node.js scanner image |
-| `entrypoint.sh` | Runs the scan and produces output |
-
-You also need the `backend/` and `frontend/` source directories alongside these files for the Docker build. The simplest approach is to copy the entire cbom-analyser project:
-
-```bash
-# From your target repo root
-git clone https://github.com/test-srm-digi/cbom-analyser.git /tmp/cbom-analyser
-
-# Copy action files
-cp /tmp/cbom-analyser/action.yml       .github/actions/cbom-analyser/
-cp /tmp/cbom-analyser/Dockerfile.action .github/actions/cbom-analyser/
-cp /tmp/cbom-analyser/entrypoint.sh     .github/actions/cbom-analyser/
-
-# Copy source code needed by the Docker build
-cp -r /tmp/cbom-analyser/backend        .github/actions/cbom-analyser/
-cp -r /tmp/cbom-analyser/frontend       .github/actions/cbom-analyser/
-cp /tmp/cbom-analyser/package.json      .github/actions/cbom-analyser/
-cp /tmp/cbom-analyser/package-lock.json .github/actions/cbom-analyser/
-cp /tmp/cbom-analyser/tsconfig.json     .github/actions/cbom-analyser/
-
-# Clean up
-rm -rf /tmp/cbom-analyser
-```
-
-**Step 3:** Your repository structure should now look like:
-
-```
-your-project/
-├── .github/
-│   ├── actions/
-│   │   └── cbom-analyser/
-│   │       ├── action.yml
-│   │       ├── Dockerfile.action
-│   │       ├── entrypoint.sh
-│   │       ├── package.json
-│   │       ├── package-lock.json
-│   │       ├── tsconfig.json
-│   │       ├── backend/
-│   │       └── frontend/
-│   └── workflows/
-│       └── cbom-scan.yml          ← your workflow file
-├── src/
-│   └── ... (your project code)
-└── ...
-```
-
-**Step 4:** Create your workflow file (see examples below).
-
-> **Tip:** Make sure `entrypoint.sh` has execute permission. If you get a "permission denied" error, run: `chmod +x .github/actions/cbom-analyser/entrypoint.sh` and commit.
-
----
+Create `.github/workflows/cbom-scan.yml` in your repository — that's it. No other files needed.
 
 ### Basic Usage
-
-Create `.github/workflows/cbom-scan.yml`:
 
 ```yaml
 name: CBOM Scan
@@ -116,21 +50,27 @@ on: [push, pull_request]
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   cbom-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Run CBOM Scanner
-        uses: ./.github/actions/cbom-analyser
+        uses: test-srm-digi/cbom-analyser@main
         with:
           scan-path: '.'
           output-format: 'json'
+
+      - name: Upload CBOM Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbom-report
+          path: cbom.json
 ```
 
-### Advanced Usage with All Options
+### Advanced Usage
 
 ```yaml
 name: CBOM Security Scan
@@ -142,7 +82,7 @@ on:
 
 permissions:
   contents: read
-  security-events: write
+  security-events: write  # Required for SARIF upload
 
 jobs:
   cbom-analysis:
@@ -152,7 +92,7 @@ jobs:
 
       - name: Run QuantumGuard CBOM Scanner
         id: cbom
-        uses: ./.github/actions/cbom-analyser
+        uses: test-srm-digi/cbom-analyser@main
         with:
           scan-path: '.'
           output-format: 'sarif'
@@ -177,7 +117,7 @@ jobs:
 
 ```yaml
 - name: CBOM Scan with SARIF
-  uses: ./.github/actions/cbom-analyser
+  uses: test-srm-digi/cbom-analyser@main
   with:
     output-format: 'sarif'
 
@@ -187,7 +127,7 @@ jobs:
     sarif_file: cbom.sarif
 ```
 
-> **Note:** The `permissions` block with `security-events: write` is required for SARIF uploads to the GitHub Security tab.
+> **Note:** Add `security-events: write` to `permissions` when uploading SARIF results.
 
 ### Inputs
 
@@ -217,17 +157,17 @@ Use `exclude-patterns` to skip test files, mocks, or other directories:
 
 ```yaml
 # Use default exclusions (test files, mocks, fixtures, etc.)
-- uses: ./.github/actions/cbom-analyser
+- uses: test-srm-digi/cbom-analyser@main
   with:
     exclude-patterns: 'default'
 
 # Custom exclusions
-- uses: ./.github/actions/cbom-analyser
+- uses: test-srm-digi/cbom-analyser@main
   with:
     exclude-patterns: '**/test/**,**/*.test.ts,**/mock/**'
 
 # Combine default + custom
-- uses: ./.github/actions/cbom-analyser
+- uses: test-srm-digi/cbom-analyser@main
   with:
     exclude-patterns: 'default,**/legacy/**,**/vendor/**'
 ```
