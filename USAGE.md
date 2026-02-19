@@ -20,7 +20,7 @@
 
 ```bash
 # Clone
-git clone https://github.com/your-org/cbom-analyser.git
+git clone https://github.com/test-srm-digi/cbom-analyser.git
 cd cbom-analyser
 
 # Install dependencies
@@ -38,7 +38,77 @@ Open [http://localhost:5173](http://localhost:5173) — upload a CBOM JSON or cl
 
 Use QuantumGuard as a GitHub Action to scan your repository and generate a CBOM on every push or PR.
 
+### Setup — Adding the Action to Your Repository
+
+The CBOM scanner runs as a **Docker-based GitHub Action**. You need to copy the action files into your target repository before using it.
+
+**Step 1:** In your target repository, create the action directory:
+
+```bash
+mkdir -p .github/actions/cbom-analyser
+```
+
+**Step 2:** Copy these 3 files from the [cbom-analyser repo](https://github.com/test-srm-digi/cbom-analyser) into `.github/actions/cbom-analyser/`:
+
+| File | What it does |
+|------|-------------|
+| `action.yml` | Defines the action inputs, outputs, and Docker config |
+| `Dockerfile.action` | Builds the Node.js scanner image |
+| `entrypoint.sh` | Runs the scan and produces output |
+
+You also need the `backend/` and `frontend/` source directories alongside these files for the Docker build. The simplest approach is to copy the entire cbom-analyser project:
+
+```bash
+# From your target repo root
+git clone https://github.com/test-srm-digi/cbom-analyser.git /tmp/cbom-analyser
+
+# Copy action files
+cp /tmp/cbom-analyser/action.yml       .github/actions/cbom-analyser/
+cp /tmp/cbom-analyser/Dockerfile.action .github/actions/cbom-analyser/
+cp /tmp/cbom-analyser/entrypoint.sh     .github/actions/cbom-analyser/
+
+# Copy source code needed by the Docker build
+cp -r /tmp/cbom-analyser/backend        .github/actions/cbom-analyser/
+cp -r /tmp/cbom-analyser/frontend       .github/actions/cbom-analyser/
+cp /tmp/cbom-analyser/package.json      .github/actions/cbom-analyser/
+cp /tmp/cbom-analyser/package-lock.json .github/actions/cbom-analyser/
+cp /tmp/cbom-analyser/tsconfig.json     .github/actions/cbom-analyser/
+
+# Clean up
+rm -rf /tmp/cbom-analyser
+```
+
+**Step 3:** Your repository structure should now look like:
+
+```
+your-project/
+├── .github/
+│   ├── actions/
+│   │   └── cbom-analyser/
+│   │       ├── action.yml
+│   │       ├── Dockerfile.action
+│   │       ├── entrypoint.sh
+│   │       ├── package.json
+│   │       ├── package-lock.json
+│   │       ├── tsconfig.json
+│   │       ├── backend/
+│   │       └── frontend/
+│   └── workflows/
+│       └── cbom-scan.yml          ← your workflow file
+├── src/
+│   └── ... (your project code)
+└── ...
+```
+
+**Step 4:** Create your workflow file (see examples below).
+
+> **Tip:** Make sure `entrypoint.sh` has execute permission. If you get a "permission denied" error, run: `chmod +x .github/actions/cbom-analyser/entrypoint.sh` and commit.
+
+---
+
 ### Basic Usage
+
+Create `.github/workflows/cbom-scan.yml`:
 
 ```yaml
 name: CBOM Scan
@@ -87,7 +157,7 @@ jobs:
           scan-path: '.'
           output-format: 'sarif'
           fail-on-vulnerable: 'true'
-          severity-threshold: 'high'
+          quantum-safe-threshold: '50'
           exclude-patterns: 'default'
 
       - name: Upload CBOM Report
@@ -124,21 +194,22 @@ jobs:
 | Input | Description | Default |
 |-------|-------------|---------|
 | `scan-path` | Path to scan (relative to repo root) | `.` |
-| `output-format` | Output format: `json`, `sarif`, `both` | `json` |
+| `output-format` | Output format: `json`, `sarif`, or `summary` | `summary` |
+| `output-file` | Path to save the CBOM output file | `cbom-report.json` |
 | `fail-on-vulnerable` | Fail if non-quantum-safe algorithms found | `false` |
-| `severity-threshold` | Minimum severity to fail: `low`, `medium`, `high`, `critical` | `high` |
+| `quantum-safe-threshold` | Minimum quantum readiness score (0-100) to pass | `0` |
 | `exclude-patterns` | Comma-separated glob patterns to exclude, or `default` | (none) |
 
 ### Outputs
 
 | Output | Description |
 |--------|-------------|
-| `cbom-path` | Path to generated CBOM JSON file |
-| `sarif-path` | Path to SARIF file (if output-format includes sarif) |
-| `total-assets` | Total cryptographic assets found |
-| `vulnerable-count` | Count of non-quantum-safe assets |
 | `readiness-score` | Quantum readiness score (0-100) |
-| `is-compliant` | Whether CBOM passes NIST PQC compliance |
+| `total-assets` | Total cryptographic assets found |
+| `vulnerable-assets` | Number of non-quantum-safe assets |
+| `quantum-safe-assets` | Number of quantum-safe assets |
+| `cbom-file` | Path to the generated CBOM output file (user-specified format) |
+| `cbom-json-file` | Path to the always-generated `cbom.json` file (for artifact download) |
 
 ### Excluding Files from Scans
 
@@ -162,11 +233,11 @@ Use `exclude-patterns` to skip test files, mocks, or other directories:
 ```
 
 **Default Exclusion Patterns:**
-- `**/*test*/**`, `**/*Test*/**`, `**/*spec*/**`, `**/*Spec*/**`
-- `**/__tests__/**`, `**/__mocks__/**`
-- `**/*.test.*`, `**/*.spec.*`, `**/*Test.*`, `**/*Spec.*`
-- `**/test/**`, `**/tests/**`, `**/testing/**`
-- `**/mock/**`, `**/mocks/**`, `**/fixtures/**`
+- `**/test/**`, `**/tests/**`, `**/__tests__/**`
+- `**/*.test.ts`, `**/*.test.js`, `**/*.test.tsx`, `**/*.test.jsx`
+- `**/*.spec.ts`, `**/*.spec.js`, `**/*.spec.tsx`, `**/*.spec.jsx`
+- `**/Test.java`, `**/*Test.java`, `**/*Tests.java`
+- `**/test_*.py`, `**/*_test.py`
 
 ### Downloading CBOM Artifacts
 
