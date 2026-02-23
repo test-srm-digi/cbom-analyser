@@ -88,4 +88,34 @@ router.post('/scan-code/regex', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/ai-suggest
+ * Get AI-powered suggested fix for a cryptographic asset via Bedrock.
+ */
+router.post('/ai-suggest', async (req: Request, res: Response) => {
+  try {
+    const { algorithmName, primitive, keyLength, fileName, lineNumber, quantumSafety, recommendedPQC } = req.body;
+
+    if (!algorithmName) {
+      res.status(400).json({ success: false, error: 'algorithmName is required' });
+      return;
+    }
+
+    const { getAISuggestion } = await import('../services/bedrockService');
+    const suggestion = await getAISuggestion({
+      algorithmName,
+      primitive,
+      keyLength,
+      fileName,
+      lineNumber,
+      quantumSafety,
+      recommendedPQC,
+    });
+
+    res.json({ success: true, ...suggestion });
+  } catch (error) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
 export default router;

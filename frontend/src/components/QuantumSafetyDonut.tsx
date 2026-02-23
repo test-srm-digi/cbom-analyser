@@ -8,18 +8,20 @@ interface QuantumSafetyDonutProps {
 const COLORS: Record<string, string> = {
   'Quantum Safe': '#3fb950',
   'Not Quantum Safe': '#f85149',
+  'Conditional': '#22d3ee',
   'Unknown': '#8b949e',
-  'Not Applicable': '#6e7681',
 };
 
 function computeData(assets: CryptoAsset[]): DonutChartData[] {
   const quantumSafe = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.QUANTUM_SAFE).length;
   const notQuantumSafe = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE).length;
+  const conditional = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.CONDITIONAL).length;
   const unknown = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.UNKNOWN).length;
 
   return [
     { name: 'Quantum Safe', value: quantumSafe, color: COLORS['Quantum Safe'] },
     { name: 'Not Quantum Safe', value: notQuantumSafe, color: COLORS['Not Quantum Safe'] },
+    { name: 'Conditional', value: conditional, color: COLORS['Conditional'] },
     { name: 'Unknown', value: unknown, color: COLORS['Unknown'] },
   ].filter(d => d.value > 0);
 }

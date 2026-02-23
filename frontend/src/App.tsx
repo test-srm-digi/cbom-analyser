@@ -141,6 +141,7 @@ export default function App() {
       totalAssets: total,
       quantumSafe: safe,
       notQuantumSafe: notSafe,
+      conditional: 0,
       unknown,
     });
     setCompliance({
@@ -199,6 +200,7 @@ export default function App() {
       totalAssets: total,
       quantumSafe: safe,
       notQuantumSafe: notSafe,
+      conditional: 0,
       unknown,
     });
     setCompliance(prev => prev ? {
@@ -215,7 +217,7 @@ export default function App() {
     <div className="min-h-screen bg-qg-dark">
       {/* Header */}
       <header className="border-b border-qg-border">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="mx-auto px-16 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Shield className="w-7 h-7 text-qg-accent" />
             <div>
@@ -229,7 +231,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+      <main className="mx-auto px-16 py-6 space-y-6">
         {/* Upload Section */}
         {!cbom && (
           <div className="space-y-4">
@@ -247,7 +249,7 @@ export default function App() {
         )}
 
         {error && (
-          <div className="bg-qg-red/10 border border-qg-red/30 rounded-lg px-4 py-3 text-qg-red text-sm">
+          <div className="bg-qg-red/10 border border-qg-red/30 rounded-lg px-16 py-3 text-qg-red text-sm">
             {error}
           </div>
         )}
@@ -289,7 +291,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="border-t border-qg-border mt-12 py-6">
-        <div className="max-w-7xl mx-auto px-4 text-center text-xs text-gray-600">
+        <div className="mx-auto px-16 text-center text-xs text-gray-600">
           <p>QuantumGuard CBOM Hub — Cryptographic Bill of Materials Analyzer</p>
           <p className="mt-1">CycloneDX 1.6 Standard · NIST PQC Compliance</p>
         </div>

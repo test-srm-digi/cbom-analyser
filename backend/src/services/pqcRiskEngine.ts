@@ -178,6 +178,74 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     notes: 'NIST selected PQC signature scheme',
   },
 
+  // PRNGs / CSPRNGs — Not directly quantum-vulnerable, but context-dependent
+  'SecureRandom': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Java CSPRNG utility — not an algorithm itself. Quantum safety depends on the underlying provider (SHA1PRNG, NativePRNG, DRBG). Review provider configuration.',
+  },
+  'DRBG': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'NIST SP 800-90A DRBG — symmetric-based, no direct quantum vulnerability. Ensure 256-bit seed/state for post-quantum margin.',
+  },
+  'HMAC-DRBG': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'HMAC-based DRBG — no direct quantum vulnerability. Verify underlying HMAC uses SHA-256+ for post-quantum security.',
+  },
+  'CTR-DRBG': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Counter-mode DRBG — no direct quantum vulnerability. Ensure AES-256 block cipher for post-quantum margin.',
+  },
+  'SHA1PRNG': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Sun SHA1PRNG — PRNG seeded from OS entropy, not the same as SHA-1 hashing. Not quantum-vulnerable but consider migrating to DRBG for modern compliance.',
+  },
+  'NativePRNG': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'OS-native PRNG (/dev/urandom) — no quantum vulnerability. Quality depends on OS entropy source.',
+  },
+
+  // Crypto API wrappers — not algorithms themselves, safety depends on usage
+  'WebCrypto': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'W3C Web Cryptography API (crypto.subtle) — a browser API wrapper, not an algorithm. Quantum safety depends on which algorithms are used through it (e.g. RSA → vulnerable, AES-256 → safe). Audit actual algorithm parameters.',
+  },
+  'KeyPairGenerator': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Java JCE KeyPairGenerator utility — not an algorithm itself. Quantum safety depends on the algorithm parameter (e.g. RSA → vulnerable, EC → vulnerable). Check getInstance() argument.',
+  },
+  'JCE-Signature-Registration': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'JCE Signature provider registration — indicates a custom/BouncyCastle provider. Quantum safety depends on the registered algorithm. Review provider source.',
+  },
+  'JCE-KeyPairGen-Registration': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'JCE KeyPairGenerator provider registration — indicates a custom/BouncyCastle provider. Quantum safety depends on the registered key generation algorithm.',
+  },
+  'JCE-Digest-Registration': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'JCE MessageDigest provider registration — indicates a custom/BouncyCastle digest provider. Most hash algorithms are not directly quantum-vulnerable at 256-bit+.',
+  },
+  'BouncyCastle-Provider': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'BouncyCastle JCE/JCA security provider — not an algorithm itself. Provides both quantum-safe (AES, SHA-256, ML-KEM, ML-DSA) and vulnerable (RSA, EC) implementations. Audit which algorithms are used through this provider.',
+  },
+  'PBKDF2': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Password-Based Key Derivation Function 2 (RFC 8018) — HMAC-based, not directly broken by quantum computers. Grover\'s gives quadratic speedup; use sufficient iteration count (≥600k) and derive 256-bit keys for post-quantum margin.',
+  },
+  'KeyFactory': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Java JCE KeyFactory utility — converts key specs/encodings, not an algorithm itself. Quantum safety depends on the key type (RSA/EC → vulnerable, AES → safe). Check getInstance() argument.',
+  },
+  'Digital-Signature': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Generic digital signature operation (Signature.getInstance) — not a specific algorithm. Quantum safety depends on the signature scheme (RSA/ECDSA → vulnerable, ML-DSA/SLH-DSA → safe). Audit the algorithm parameter.',
+  },
+  'SecretKeyFactory': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Java JCE SecretKeyFactory utility — generates symmetric/KDF secret keys. Quantum safety depends on the algorithm (PBKDF2/AES → conditional, DES → insecure). Check getInstance() argument.',
+  },
+
   // TLS protocols
   'TLSv1.0': {
     quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
@@ -248,7 +316,9 @@ export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
       ? ComplianceStatus.COMPLIANT
       : profile.quantumSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE
         ? ComplianceStatus.NOT_COMPLIANT
-        : ComplianceStatus.UNKNOWN,
+        : profile.quantumSafety === QuantumSafetyStatus.CONDITIONAL
+          ? ComplianceStatus.COMPLIANT   // Conditional assets are compliant but flagged for review
+          : ComplianceStatus.UNKNOWN,
   };
 }
 
@@ -259,17 +329,18 @@ export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
 export function calculateReadinessScore(assets: CryptoAsset[]): QuantumReadinessScore {
   const total = assets.length;
   if (total === 0) {
-    return { score: 100, totalAssets: 0, quantumSafe: 0, notQuantumSafe: 0, unknown: 0 };
+    return { score: 100, totalAssets: 0, quantumSafe: 0, notQuantumSafe: 0, conditional: 0, unknown: 0 };
   }
 
   const quantumSafe = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.QUANTUM_SAFE).length;
   const notQuantumSafe = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE).length;
+  const conditional = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.CONDITIONAL).length;
   const unknown = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.UNKNOWN).length;
 
-  // Score: safe assets count fully, unknown count as half
-  const score = Math.round(((quantumSafe + unknown * 0.5) / total) * 100);
+  // Score: safe=1, conditional=0.75 (likely safe, needs review), unknown=0.5, vulnerable=0
+  const score = Math.round(((quantumSafe + conditional * 0.75 + unknown * 0.5) / total) * 100);
 
-  return { score, totalAssets: total, quantumSafe, notQuantumSafe, unknown };
+  return { score, totalAssets: total, quantumSafe, notQuantumSafe, conditional, unknown };
 }
 
 /**

@@ -67,6 +67,11 @@ export default function ReadinessScoreCard({ score }: ReadinessScoreCardProps) {
             <span className="text-white font-semibold">{score.notQuantumSafe}</span>
           </div>
           <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: '#22d3ee' }} />
+            <span className="text-gray-400">Conditional:</span>
+            <span className="text-white font-semibold">{score.conditional}</span>
+          </div>
+          <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-gray-600" />
             <span className="text-gray-400">Unknown:</span>
             <span className="text-white font-semibold">{score.unknown}</span>

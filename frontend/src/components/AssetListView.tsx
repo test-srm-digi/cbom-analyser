@@ -1,9 +1,22 @@
-import { useState, useMemo } from 'react';
-import { ExternalLink, ChevronLeft, ChevronRight, SlidersHorizontal, Github, GitBranch, FolderOpen } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import {
+  ExternalLink, ChevronLeft, ChevronRight, SlidersHorizontal,
+  Github, GitBranch, FolderOpen, Sparkles, Loader2,
+  X, Copy, Check, Zap, ShieldCheck, ChevronDown, ChevronUp,
+} from 'lucide-react';
 import { CryptoAsset, QuantumSafetyStatus, ComplianceStatus } from '../types';
 
 interface AssetListViewProps {
   assets: CryptoAsset[];
+}
+
+interface SuggestionState {
+  fix?: string;
+  codeSnippet?: string;
+  confidence?: string;
+  loading: boolean;
+  error?: string;
+  collapsed?: boolean;
 }
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50];
@@ -29,6 +42,7 @@ function getStatusColor(status?: QuantumSafetyStatus): string {
   switch (status) {
     case QuantumSafetyStatus.QUANTUM_SAFE: return 'text-qg-green';
     case QuantumSafetyStatus.NOT_QUANTUM_SAFE: return 'text-qg-red';
+    case QuantumSafetyStatus.CONDITIONAL: return 'text-cyan-400';
     default: return 'text-gray-500';
   }
 }
@@ -37,8 +51,25 @@ function getStatusDash(status?: QuantumSafetyStatus): string {
   switch (status) {
     case QuantumSafetyStatus.QUANTUM_SAFE: return '●●●';
     case QuantumSafetyStatus.NOT_QUANTUM_SAFE: return '— —';
+    case QuantumSafetyStatus.CONDITIONAL: return '◐◐◐';
     default: return '· · ·';
   }
+}
+
+function confidenceBadge(level?: string) {
+  if (!level) return null;
+  const styles: Record<string, string> = {
+    high: 'bg-green-500/15 text-green-400 ring-green-500/30',
+    medium: 'bg-yellow-500/15 text-yellow-400 ring-yellow-500/30',
+    low: 'bg-gray-500/15 text-gray-400 ring-gray-500/30',
+  };
+  const cls = styles[level] || styles.low;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ring-1 ${cls}`}>
+      <ShieldCheck className="w-2.5 h-2.5" />
+      {level}
+    </span>
+  );
 }
 
 function buildGitHubFileUrl(repoUrl: string, branch: string, basePath: string, fileName: string, lineNumber?: number): string {
@@ -60,8 +91,69 @@ export default function AssetListView({ assets }: AssetListViewProps) {
   const [branch, setBranch] = useState('main');
   const [customBranch, setCustomBranch] = useState('');
   const [basePath, setBasePath] = useState('');
+  const [suggestions, setSuggestions] = useState<Record<string, SuggestionState>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const effectiveBranch = branch === 'custom' ? customBranch : branch;
+
+  const fetchSuggestion = useCallback(async (asset: CryptoAsset) => {
+    const key = asset.id;
+    setSuggestions(prev => ({ ...prev, [key]: { loading: true } }));
+    try {
+      const res = await fetch('/api/ai-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          algorithmName: asset.name,
+          primitive: asset.cryptoProperties?.algorithmProperties?.primitive,
+          keyLength: asset.keyLength,
+          fileName: asset.location?.fileName,
+          lineNumber: asset.location?.lineNumber,
+          quantumSafety: asset.quantumSafety,
+          recommendedPQC: asset.recommendedPQC,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSuggestions(prev => ({ ...prev, [key]: { fix: data.suggestedFix, codeSnippet: data.codeSnippet, confidence: data.confidence, loading: false } }));
+      } else {
+        setSuggestions(prev => ({ ...prev, [key]: { loading: false, error: 'No suggestion available' } }));
+      }
+    } catch {
+      setSuggestions(prev => ({ ...prev, [key]: { loading: false, error: 'Failed to fetch' } }));
+    }
+  }, []);
+
+  const fetchAllSuggestions = useCallback(async (assetList: CryptoAsset[]) => {
+    const pending = assetList.filter(a => !suggestions[a.id]?.fix && !suggestions[a.id]?.loading);
+    for (const asset of pending) {
+      fetchSuggestion(asset);
+      // stagger requests slightly
+      await new Promise(r => setTimeout(r, 150));
+    }
+  }, [suggestions, fetchSuggestion]);
+
+  const toggleCollapse = useCallback((id: string) => {
+    setSuggestions(prev => {
+      const s = prev[id];
+      if (!s) return prev;
+      return { ...prev, [id]: { ...s, collapsed: !s.collapsed } };
+    });
+  }, []);
+
+  const dismissSuggestion = useCallback((id: string) => {
+    setSuggestions(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
+
+  const copySnippet = useCallback((id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
+  }, []);
 
   const filtered = useMemo(() => {
     let list = [...assets];
@@ -162,6 +254,14 @@ export default function AssetListView({ assets }: AssetListViewProps) {
             onChange={e => { setFilterText(e.target.value); setPage(1); }}
             className="bg-qg-dark border border-qg-border rounded px-2 py-1 text-xs text-gray-300 w-48 focus:outline-none focus:border-qg-accent"
           />
+          <button
+            onClick={() => fetchAllSuggestions(paged)}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600/80 to-blue-600/80 hover:from-purple-500 hover:to-blue-500 text-white text-[11px] font-medium px-3 py-1.5 rounded-md transition-all shadow-sm hover:shadow-purple-500/20 hover:shadow-md"
+            title="Get AI suggestions for all assets on this page"
+          >
+            <Zap className="w-3 h-3" />
+            Scan Page
+          </button>
           <SlidersHorizontal className="w-4 h-4 text-gray-500" />
         </div>
       </div>
@@ -189,6 +289,14 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                 onClick={() => toggleSort('location')}
               >
                 Location {sortField === 'location' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+              </th>
+              <th className="px-4 py-2 min-w-[260px]">
+                <span className="flex items-center gap-1.5">
+                  <span className="relative flex h-3 w-3">
+                    <Sparkles className="w-3 h-3 text-purple-400" />
+                  </span>
+                  <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent font-semibold">AI Suggested Fix</span>
+                </span>
               </th>
               <th className="px-4 py-2 w-10"></th>
             </tr>
@@ -235,6 +343,99 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                   ) : (
                     <span className="text-gray-600 text-xs">—</span>
                   )}
+                </td>
+
+                {/* Suggested Fix */}
+                <td className="px-4 py-3 min-w-[260px]">
+                  {(() => {
+                    const s = suggestions[asset.id];
+
+                    /* ---------- Loading ---------- */
+                    if (s?.loading) {
+                      return (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="w-3.5 h-3.5 text-purple-400 animate-spin" />
+                          <div className="space-y-1.5 flex-1">
+                            <div className="h-2 w-3/4 rounded bg-purple-500/10 animate-pulse" />
+                            <div className="h-2 w-1/2 rounded bg-purple-500/10 animate-pulse" />
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    /* ---------- Result ---------- */
+                    if (s?.fix) {
+                      return (
+                        <div className="relative border-l-2 border-purple-500/60 pl-3 pr-1 py-0.5 group/card">
+                          {/* Top row: confidence badge + actions */}
+                          <div className="flex items-center justify-between mb-1.5">
+                            {confidenceBadge(s.confidence)}
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                              <button onClick={() => toggleCollapse(asset.id)} className="p-0.5 rounded hover:bg-qg-border/60 text-gray-500 hover:text-gray-300" title={s.collapsed ? 'Expand' : 'Collapse'}>
+                                {s.collapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+                              </button>
+                              <button onClick={() => dismissSuggestion(asset.id)} className="p-0.5 rounded hover:bg-qg-border/60 text-gray-500 hover:text-gray-300" title="Dismiss">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {!s.collapsed && (
+                            <>
+                              <p className="text-[11px] text-gray-300 leading-relaxed mb-1.5">{s.fix}</p>
+                              {s.codeSnippet && (
+                                <div className="relative group/snippet">
+                                  <pre className="text-[10px] leading-relaxed bg-qg-dark/80 border border-qg-border/50 rounded-md px-2.5 py-2 text-green-400 overflow-x-auto max-h-24 font-mono">{s.codeSnippet}</pre>
+                                  <button
+                                    onClick={() => copySnippet(asset.id, s.codeSnippet!)}
+                                    className="absolute top-1.5 right-1.5 p-1 rounded bg-qg-dark/90 border border-qg-border/50 text-gray-500 hover:text-gray-200 opacity-0 group-hover/snippet:opacity-100 transition-opacity"
+                                    title="Copy code"
+                                  >
+                                    {copiedId === asset.id ? <Check className="w-2.5 h-2.5 text-green-400" /> : <Copy className="w-2.5 h-2.5" />}
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {s.collapsed && (
+                            <p className="text-[10px] text-gray-500 truncate">{s.fix}</p>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    /* ---------- Error ---------- */
+                    if (s?.error) {
+                      return (
+                        <button
+                          onClick={() => fetchSuggestion(asset)}
+                          className="flex items-center gap-1.5 text-[11px] text-red-400 hover:text-red-300 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-md px-2.5 py-1.5 transition-colors"
+                        >
+                          <Sparkles className="w-3 h-3" /> Retry
+                        </button>
+                      );
+                    }
+
+                    /* ---------- Idle (show PQC hint + button) ---------- */
+                    return (
+                      <div className="flex flex-col gap-1">
+                        {asset.recommendedPQC && (
+                          <span className="text-[10px] text-gray-500 leading-snug">
+                            Migrate to <span className="text-gray-400 font-medium">{asset.recommendedPQC}</span>
+                          </span>
+                        )}
+                        <button
+                          onClick={() => fetchSuggestion(asset)}
+                          className="group/btn flex items-center gap-1.5 w-fit text-[11px] font-medium bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/40 hover:to-blue-600/40 text-purple-300 hover:text-white border border-purple-500/20 hover:border-purple-500/40 rounded-md px-2.5 py-1 transition-all hover:shadow-sm hover:shadow-purple-500/10"
+                          title="Get AI-powered migration suggestion"
+                        >
+                          <Sparkles className="w-3 h-3 group-hover/btn:animate-pulse" />
+                          AI Fix
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </td>
 
                 {/* Action — link to file on GitHub */}

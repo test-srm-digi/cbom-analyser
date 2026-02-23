@@ -5,6 +5,7 @@
 export enum QuantumSafetyStatus {
   QUANTUM_SAFE = 'quantum-safe',
   NOT_QUANTUM_SAFE = 'not-quantum-safe',
+  CONDITIONAL = 'conditional',
   UNKNOWN = 'unknown',
 }
 
@@ -83,6 +84,7 @@ export interface CryptoAsset {
   quantumSafety: QuantumSafetyStatus;
   keyLength?: number;
   recommendedPQC?: string;
+  suggestedFix?: string;
   complianceStatus?: ComplianceStatus;
   provider?: string;
 }
@@ -116,6 +118,7 @@ export interface QuantumReadinessScore {
   totalAssets: number;
   quantumSafe: number;
   notQuantumSafe: number;
+  conditional: number;
   unknown: number;
 }
 
