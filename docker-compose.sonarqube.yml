@@ -1,0 +1,47 @@
+# SonarQube with IBM sonar-cryptography plugin
+# Usage: docker compose -f docker-compose.sonarqube.yml up -d
+# Access: http://localhost:9090  (admin/admin on first login)
+
+services:
+  sonarqube:
+    image: sonarqube:26.1.0.118079-community
+    container_name: quantumguard-sonarqube
+    ports:
+      - "9090:9000"
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+      SONAR_CE_JAVAOPTS: "-Xmx2g -Xms512m"
+      SONAR_WEB_JAVAOPTS: "-Xmx2g -Xms512m"
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-logs:/opt/sonarqube/logs
+      - ./sonarqube/extensions/plugins:/opt/sonarqube/extensions/plugins
+    depends_on:
+      sonar-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  sonar-db:
+    image: postgres:17-alpine
+    container_name: quantumguard-sonar-db
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonar
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - sonar-postgresql:/var/lib/postgresql
+      - sonar-postgresql-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  sonarqube-data:
+  sonarqube-logs:
+  sonar-postgresql:
+  sonar-postgresql-data:

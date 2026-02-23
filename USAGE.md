@@ -347,13 +347,51 @@ curl -X POST http://localhost:3001/api/scan-code \
 ### Approach 2: IBM sonar-cryptography (Most Accurate for Java)
 
 Uses SonarQube with IBM's cryptography plugin for deep static analysis.
+Generates CycloneDX 1.6 CBOM with precise algorithm detection, key sizes, and OIDs.
+
+**Quick Setup:**
 
 ```bash
-# If sonar-scanner is on $PATH, QuantumGuard uses it automatically
+# 1. Start SonarQube with the crypto plugin (already bundled)
+docker compose -f docker-compose.sonarqube.yml up -d
+
+# 2. Wait for SonarQube to start (~60s), then check:
+curl -s http://localhost:9090/api/system/status
+# Should return: {"status":"UP"}
+
+# 3. Set your SONAR_TOKEN in .env (generate at http://localhost:9090)
+#    Default login: admin / QuantumGuard2024@
+
+# 4. Scan via the API (sonar-scanner must be on $PATH)
 curl -X POST http://localhost:3001/api/scan-code \
   -H "Content-Type: application/json" \
-  -d '{"repoPath": "/tmp/petclinic"}'
+  -d '{"repoPath": "/path/to/your/java-project"}'
 ```
+
+**Manual sonar-scanner run:**
+
+```bash
+# Install sonar-scanner CLI
+brew install sonar-scanner   # macOS
+
+# Create sonar-project.properties in your target project root
+# (see sonar-project.properties.example for a template)
+
+cd /path/to/your/java-project
+sonar-scanner \
+  -Dsonar.host.url=http://localhost:9090 \
+  -Dsonar.token=YOUR_TOKEN \
+  -Dsonar.projectKey=my-project \
+  -Dsonar.sources=src
+
+# The plugin generates cbom.json in the project root
+cat cbom.json | python3 -m json.tool
+```
+
+**Supported languages:**
+- Java (JCA 100%, BouncyCastle 100%)
+- Python (pyca/cryptography 100%)
+- Go (crypto stdlib 100%)
 
 ### Approach 3: Network TLS Scanner (Runtime Crypto Discovery)
 
@@ -473,7 +511,7 @@ This project implements the **CycloneDX 1.6** specification for Cryptographic Bi
 **Resources:**
 - [CycloneDX Specification](https://cyclonedx.org/specification/overview/)
 - [CycloneDX CBOM Guide](https://cyclonedx.org/capabilities/cbom/)
-- [IBM sonar-cryptography](https://github.com/IBM/sonar-cryptography)
+- [IBM sonar-cryptography](https://github.com/cbomkit/sonar-cryptography)
 
 ---
 

@@ -5,3 +5,8 @@ dist/
 .DS_Store
 .scannerwork/
 coverage/
+
+# SonarQube plugin JAR (48MB binary)
+sonarqube/extensions/plugins/*.jar
+sonarqube/data/
+sonarqube/logs/

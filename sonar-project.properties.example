@@ -1,0 +1,29 @@
+# ─── SonarQube + sonar-cryptography ─────────────────────────────────────────
+# Copy this file as `sonar-project.properties` into the ROOT of the project
+# you want to scan, then run:
+#   sonar-scanner
+#
+# Or use the QuantumGuard API:
+#   POST /api/scan-code  { "repoPath": "/path/to/your/project" }
+#
+# Prerequisites:
+#   docker compose -f docker-compose.sonarqube.yml up -d
+#   Set SONAR_TOKEN in .env (generate at http://localhost:9090 → My Account → Security)
+
+sonar.projectKey=my-project
+sonar.projectName=My Project
+sonar.sources=src
+
+# SonarQube server
+sonar.host.url=http://localhost:9090
+# Token is passed via env var SONAR_TOKEN or -Dsonar.token=...
+
+# Optional: exclude test/build directories
+sonar.exclusions=**/test/**,**/build/**,**/dist/**,**/node_modules/**
+
+# Java-specific (if scanning Java)
+sonar.java.binaries=target/classes
+sonar.java.source=11
+
+# Disable SCM for local scans
+sonar.scm.disabled=true

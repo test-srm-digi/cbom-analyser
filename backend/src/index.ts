@@ -1,6 +1,12 @@
 /**
  * QuantumGuard CBOM Hub – Backend Entry Point
  */
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load .env from project root (one level up from backend/)
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
 import express from 'express';
 import cors from 'cors';
 import { cbomRoutes, networkRoutes, scanRoutes } from './routes';

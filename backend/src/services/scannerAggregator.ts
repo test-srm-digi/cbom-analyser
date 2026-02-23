@@ -115,6 +115,29 @@ export function parseCBOMFile(jsonContent: string): CBOMDocument {
     for (const component of data.components) {
       if (component.cryptoProperties || component['crypto-properties']) {
         const cryptoProps = component.cryptoProperties || component['crypto-properties'];
+
+        // Extract location from evidence, converting absolute paths to relative
+        let location: { fileName: string; lineNumber?: number } | undefined;
+        const firstOccurrence = component.evidence?.occurrences?.[0];
+        if (firstOccurrence) {
+          let fileName = firstOccurrence.location || '';
+          // Strip absolute path prefix to make it relative
+          if (fileName.startsWith('/')) {
+            // Try to find src/ or main/ in the path and use from there
+            const srcIdx = fileName.indexOf('/src/');
+            if (srcIdx >= 0) {
+              fileName = fileName.substring(srcIdx + 1);
+            } else {
+              // Fallback: use just the filename
+              fileName = fileName.split('/').slice(-3).join('/');
+            }
+          }
+          location = {
+            fileName,
+            lineNumber: firstOccurrence.line,
+          };
+        }
+
         const asset: CryptoAsset = {
           id: component['bom-ref'] || uuidv4(),
           name: component.name,
@@ -126,12 +149,7 @@ export function parseCBOMFile(jsonContent: string): CBOMDocument {
             algorithmProperties: cryptoProps.algorithmProperties,
             protocolProperties: cryptoProps.protocolProperties,
           },
-          location: component.evidence?.occurrences?.[0]
-            ? {
-                fileName: component.evidence.occurrences[0].location || '',
-                lineNumber: component.evidence.occurrences[0].line,
-              }
-            : undefined,
+          location,
           quantumSafety: QuantumSafetyStatus.UNKNOWN,
         };
         cbom.cryptoAssets.push(enrichAssetWithPQCData(asset));
@@ -150,36 +168,71 @@ export function parseCBOMFile(jsonContent: string): CBOMDocument {
 
 /**
  * Execute the sonar-cryptography scanner via CLI against a target repo.
- * Note: Requires sonar-scanner to be installed and configured.
+ * Requires:
+ *   - sonar-scanner CLI installed (brew install sonar-scanner)
+ *   - SonarQube running with sonar-cryptography plugin
+ *   - SONAR_HOST_URL and SONAR_TOKEN environment variables
+ *
+ * The plugin outputs a CycloneDX 1.6 CBOM as `cbom.json` in the project root.
+ * Falls back to regex-based scanning if sonar-scanner is unavailable.
  */
 export async function runSonarCryptoScan(repoPath: string, excludePatterns?: string[]): Promise<CBOMDocument> {
   const cbom = createEmptyCBOM(path.basename(repoPath));
+
+  const sonarHostUrl = process.env.SONAR_HOST_URL || 'http://localhost:9090';
+  const sonarToken = process.env.SONAR_TOKEN;
 
   try {
     // Check if sonar-scanner is available
     await execAsync('which sonar-scanner');
 
-    // Run sonar-scanner with cryptography plugin
+    if (!sonarToken) {
+      console.warn('SONAR_TOKEN not set — falling back to regex scanner.');
+      return runRegexCryptoScan(repoPath, excludePatterns);
+    }
+
+    const projectKey = `quantumguard-${path.basename(repoPath).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+
+    // Build sonar-scanner arguments
+    const args = [
+      `-Dsonar.projectKey=${projectKey}`,
+      `-Dsonar.projectName="QuantumGuard Scan: ${path.basename(repoPath)}"`,
+      `-Dsonar.sources=.`,
+      `-Dsonar.host.url=${sonarHostUrl}`,
+      `-Dsonar.token=${sonarToken}`,
+      `-Dsonar.scm.disabled=true`,
+      `-Dsonar.qualitygate.wait=true`,
+      `-Dsonar.qualitygate.timeout=300`,
+    ].join(' ');
+
+    console.log(`Running sonar-scanner against ${repoPath} → ${sonarHostUrl}`);
     const { stdout, stderr } = await execAsync(
-      `sonar-scanner \
-        -Dsonar.projectKey=quantumguard-scan \
-        -Dsonar.sources="${repoPath}" \
-        -Dsonar.plugins.downloadOnlyRequired=true`,
-      { cwd: repoPath, timeout: 300000 }
+      `sonar-scanner ${args}`,
+      { cwd: repoPath, timeout: 600000 }
     );
 
     console.log('Sonar scan output:', stdout);
-
     if (stderr) {
       console.warn('Sonar scan warnings:', stderr);
     }
 
-    // Try to parse the output report
-    const reportPath = path.join(repoPath, '.scannerwork', 'cbom-report.json');
-    if (fs.existsSync(reportPath)) {
-      const report = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
-      return parseCBOMFile(JSON.stringify(report));
+    // The sonar-cryptography plugin writes cbom.json in the project root
+    const cbomPaths = [
+      path.join(repoPath, 'cbom.json'),
+      path.join(repoPath, '.scannerwork', 'cbom.json'),
+      path.join(repoPath, '.scannerwork', 'cbom-report.json'),
+    ];
+
+    for (const reportPath of cbomPaths) {
+      if (fs.existsSync(reportPath)) {
+        console.log(`Found CBOM report at: ${reportPath}`);
+        const report = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
+        return parseCBOMFile(JSON.stringify(report));
+      }
     }
+
+    console.warn('No CBOM output file found after sonar scan. Falling back to regex.');
+    return runRegexCryptoScan(repoPath, excludePatterns);
   } catch (error) {
     console.warn(
       'Sonar-cryptography scanner not available or failed. ' +

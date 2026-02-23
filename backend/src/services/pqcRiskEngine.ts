@@ -99,6 +99,25 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
     notes: '128-bit effective security with Grover\'s algorithm',
   },
+  // sonar-cryptography output names
+  'AES128-GCM': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'AES-256-GCM',
+    notes: 'AES-128 in GCM mode — effectively 64-bit security with Grover\'s algorithm',
+  },
+  'AES256': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: '128-bit effective security with Grover\'s algorithm',
+  },
+  'AES256-GCM': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'AES-256 in GCM mode — quantum-resistant',
+  },
+  'AES128': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'AES-256',
+    notes: 'Effectively 64-bit security with Grover\'s algorithm',
+  },
   'KEY:AES': {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
     notes: 'AES key material',
@@ -118,6 +137,19 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
     notes: '128-bit collision resistance with Grover\'s algorithm',
   },
+  // sonar-cryptography uses dash-less names
+  'SHA256': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: '128-bit collision resistance with Grover\'s algorithm',
+  },
+  'SHA384': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Quantum-resistant',
+  },
+  'SHA512': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Quantum-resistant',
+  },
   'SHA-384': {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
     notes: 'Quantum-resistant',
@@ -131,6 +163,17 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     notes: 'Quantum-resistant',
   },
   'HMACSHA256': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+  },
+  // sonar-cryptography hyphenated HMAC names
+  'HMAC-SHA256': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'HMAC with SHA-256 — quantum-resistant',
+  },
+  'HMAC-SHA384': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+  },
+  'HMAC-SHA512': {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
   },
   'HMACSHA384': {
@@ -233,6 +276,14 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     quantumSafety: QuantumSafetyStatus.CONDITIONAL,
     notes: 'Password-Based Key Derivation Function 2 (RFC 8018) — HMAC-based, not directly broken by quantum computers. Grover\'s gives quadratic speedup; use sufficient iteration count (≥600k) and derive 256-bit keys for post-quantum margin.',
   },
+  'PBKDF2-HMAC-SHA256': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'PBKDF2 with HMAC-SHA256 — not directly broken by quantum computers. Use ≥600k iterations and 256-bit key output for post-quantum margin.',
+  },
+  'PBKDF2-HMAC-SHA512': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'PBKDF2 with HMAC-SHA512 — not directly broken by quantum computers.',
+  },
   'KeyFactory': {
     quantumSafety: QuantumSafetyStatus.CONDITIONAL,
     notes: 'Java JCE KeyFactory utility — converts key specs/encodings, not an algorithm itself. Quantum safety depends on the key type (RSA/EC → vulnerable, AES → safe). Check getInstance() argument.',
@@ -276,6 +327,8 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
  */
 export function classifyAlgorithm(algorithmName: string): AlgorithmProfile {
   const normalized = algorithmName.toUpperCase().trim();
+  // Also create a version with dashes removed for fuzzy matching
+  const noDashes = normalized.replace(/-/g, '');
 
   // Exact match
   if (ALGORITHM_DATABASE[algorithmName]) {
@@ -285,6 +338,13 @@ export function classifyAlgorithm(algorithmName: string): AlgorithmProfile {
   // Case-insensitive match
   for (const [key, profile] of Object.entries(ALGORITHM_DATABASE)) {
     if (key.toUpperCase() === normalized) {
+      return profile;
+    }
+  }
+
+  // Dash-insensitive match (e.g., "SHA256" matches "SHA-256", "AES128-GCM" matches "AES-128")
+  for (const [key, profile] of Object.entries(ALGORITHM_DATABASE)) {
+    if (key.toUpperCase().replace(/-/g, '') === noDashes) {
       return profile;
     }
   }
