@@ -16,9 +16,12 @@ import {
   CryptoPrimitive,
   CryptoFunction,
   QuantumSafetyStatus,
+  CryptoDependency,
 } from '../types';
 import { enrichAssetWithPQCData, calculateReadinessScore, checkNISTPQCCompliance } from './pqcRiskEngine';
 import { scanNetworkCrypto, networkResultToCBOMAsset } from './networkScanner';
+import { scanDependencies, cryptoLibToCBOMAssets } from './dependencyScanner';
+import { analyzeAllConditionalAssets } from './pqcParameterAnalyzer';
 
 const execAsync = promisify(exec);
 
@@ -422,16 +425,43 @@ export function mergeCBOMs(baseCBOM: CBOMDocument, ...additionalAssets: CryptoAs
 }
 
 /**
- * Full pipeline: scan code + scan network + merge into unified CBOM.
+ * Full pipeline: scan code + scan dependencies + scan network + analyze conditionals + merge into unified CBOM.
  */
 export async function runFullScan(
   repoPath: string,
   networkHosts?: string[]
 ): Promise<CBOMDocument> {
-  // 1. Code scan
+  // 1. Code scan (sonar or regex fallback)
   const codeCBOM = await runSonarCryptoScan(repoPath);
 
-  // 2. Network scans (if hosts provided)
+  // 2. Dependency scan — find crypto libs in pom.xml, package.json, etc.
+  let depAssets: CryptoAsset[] = [];
+  try {
+    const thirdPartyLibs = await scanDependencies(repoPath);
+    codeCBOM.thirdPartyLibraries = thirdPartyLibs;
+
+    // Convert each library's known algorithms to CryptoAsset entries
+    for (const lib of thirdPartyLibs) {
+      depAssets.push(...cryptoLibToCBOMAssets(lib));
+    }
+
+    // Build dependency graph entries for third-party libs
+    if (!codeCBOM.dependencies) codeCBOM.dependencies = [];
+    for (const lib of thirdPartyLibs) {
+      const depEntry: CryptoDependency = {
+        ref: `${lib.packageManager}:${lib.groupId ? lib.groupId + ':' : ''}${lib.artifactId || lib.name}`,
+        dependsOn: [],
+        provides: lib.cryptoAlgorithms.map(a => `algorithm:${a}`),
+      };
+      codeCBOM.dependencies.push(depEntry);
+    }
+
+    console.log(`Dependency scan found ${thirdPartyLibs.length} crypto libraries with ${depAssets.length} algorithm references`);
+  } catch (err) {
+    console.warn('Dependency scan failed (non-blocking):', (err as Error).message);
+  }
+
+  // 3. Network scans (if hosts provided)
   const networkAssets: CryptoAsset[] = [];
   if (networkHosts && networkHosts.length > 0) {
     for (const host of networkHosts) {
@@ -444,6 +474,11 @@ export async function runFullScan(
     }
   }
 
-  // 3. Merge
-  return mergeCBOMs(codeCBOM, ...networkAssets);
+  // 4. Merge all assets
+  const merged = mergeCBOMs(codeCBOM, ...depAssets, ...networkAssets);
+
+  // 5. Smart PQC parameter analysis — promote/demote CONDITIONAL assets
+  merged.cryptoAssets = analyzeAllConditionalAssets(merged.cryptoAssets, repoPath);
+
+  return merged;
 }

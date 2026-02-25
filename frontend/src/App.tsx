@@ -11,6 +11,7 @@ import {
   CBOMUploader,
   NetworkScanner,
   CBOMHeader,
+  ThirdPartyLibrariesView,
 } from './components';
 import {
   CBOMDocument,
@@ -86,6 +87,7 @@ export default function App() {
           components: data.components || [],
           cryptoAssets: data.cryptoAssets || [],
           dependencies: data.dependencies,
+          thirdPartyLibraries: data.thirdPartyLibraries,
         };
         setCbom(doc);
         setReadinessScore(wrappedScore);
@@ -104,6 +106,7 @@ export default function App() {
       components: data.components || [],
       cryptoAssets: data.cryptoAssets || [],
       dependencies: data.dependencies,
+      thirdPartyLibraries: data.thirdPartyLibraries,
     };
 
     // If no cryptoAssets but has components with crypto-properties, map them
@@ -279,6 +282,11 @@ export default function App() {
 
             {/* Asset List */}
             <AssetListView assets={cbom.cryptoAssets} />
+
+            {/* Third-Party Crypto Libraries */}
+            {cbom.thirdPartyLibraries && cbom.thirdPartyLibraries.length > 0 && (
+              <ThirdPartyLibrariesView libraries={cbom.thirdPartyLibraries} />
+            )}
 
             {/* Upload another */}
             <div className="pt-4 border-t border-qg-border">

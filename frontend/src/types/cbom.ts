@@ -44,6 +44,60 @@ export enum ComplianceStatus {
   UNKNOWN = 'unknown',
 }
 
+/**
+ * CycloneDX 1.6 Asset Types — full taxonomy
+ */
+export enum AssetType {
+  ALGORITHM = 'algorithm',
+  PROTOCOL = 'protocol',
+  CERTIFICATE = 'certificate',
+  RELATED_MATERIAL = 'related-crypto-material',
+  PRIVATE_KEY = 'private-key',
+  PUBLIC_KEY = 'public-key',
+  SECRET_KEY = 'secret-key',
+}
+
+/**
+ * CycloneDX 1.6 Related Crypto Material sub-types
+ */
+export enum RelatedCryptoMaterialType {
+  PUBLIC_KEY = 'public-key',
+  PRIVATE_KEY = 'private-key',
+  SECRET_KEY = 'secret-key',
+  KEY = 'key',
+  SALT = 'salt',
+  CREDENTIAL = 'credential',
+  PASSWORD = 'password',
+  CIPHERTEXT = 'ciphertext',
+  DIGEST = 'digest',
+  SHARED_SECRET = 'shared-secret',
+  TOKEN = 'token',
+  SIGNATURE = 'signature',
+  SEED = 'seed',
+  INITIALIZATION_VECTOR = 'initialization-vector',
+  TAG = 'tag',
+  ADDITIONAL_DATA = 'additional-data',
+  NONCE = 'nonce',
+  OTHER = 'other',
+}
+
+/**
+ * PQC Readiness Verdict — definitive assessment
+ */
+export enum PQCReadinessVerdict {
+  PQC_READY = 'pqc-ready',
+  NOT_PQC_READY = 'not-pqc-ready',
+  REVIEW_NEEDED = 'review-needed',
+}
+
+export interface PQCVerdictDetail {
+  verdict: PQCReadinessVerdict;
+  confidence: number;
+  reasons: string[];
+  parameters?: Record<string, string | number | boolean>;
+  recommendation?: string;
+}
+
 export interface CryptoLocation {
   fileName: string;
   lineNumber?: number;
@@ -87,6 +141,10 @@ export interface CryptoAsset {
   suggestedFix?: string;
   complianceStatus?: ComplianceStatus;
   provider?: string;
+  /** Definitive PQC readiness verdict */
+  pqcVerdict?: PQCVerdictDetail;
+  /** Detection source */
+  detectionSource?: 'sonar' | 'regex' | 'dependency' | 'network';
 }
 
 export interface CBOMComponent {
@@ -102,6 +160,26 @@ export interface CBOMMetadata {
   component?: CBOMComponent;
 }
 
+export interface CryptoDependency {
+  ref: string;
+  dependsOn: string[];
+  provides?: string[];
+}
+
+export interface ThirdPartyCryptoLibrary {
+  name: string;
+  groupId?: string;
+  artifactId?: string;
+  version?: string;
+  packageManager: 'maven' | 'gradle' | 'npm' | 'pip' | 'go';
+  cryptoAlgorithms: string[];
+  quantumSafety: QuantumSafetyStatus;
+  isDirectDependency: boolean;
+  depth: number;
+  dependencyPath?: string[];
+  manifestFile: string;
+}
+
 export interface CBOMDocument {
   bomFormat: string;
   specVersion: string;
@@ -110,7 +188,8 @@ export interface CBOMDocument {
   metadata: CBOMMetadata;
   components: CBOMComponent[];
   cryptoAssets: CryptoAsset[];
-  dependencies?: { ref: string; dependsOn: string[] }[];
+  dependencies?: CryptoDependency[];
+  thirdPartyLibraries?: ThirdPartyCryptoLibrary[];
 }
 
 export interface QuantumReadinessScore {

@@ -11,8 +11,12 @@
 3. [Docker Deployment](#docker-deployment)
 4. [API Reference](#api-reference)
 5. [Scanning Approaches](#scanning-approaches)
-6. [Sample Data & Demo Code](#sample-data--demo-code)
-7. [Configuration](#configuration)
+6. [Third-Party Dependency Scanning](#third-party-dependency-scanning)
+7. [PQC Readiness Verdicts](#pqc-readiness-verdicts)
+8. [AI-Powered Suggested Fixes](#ai-powered-suggested-fixes)
+9. [Sample Data & Demo Code](#sample-data--demo-code)
+10. [Configuration](#configuration)
+11. [CycloneDX 1.6 Standard](#cyclonedx-16-standard)
 
 ---
 
@@ -266,6 +270,20 @@ docker run -d -p 8080:80 cbom-frontend
 |--------|----------|------|----------|
 | `POST` | `/api/scan-code` | `{ repoPath, excludePatterns? }` | `{ success, cbomId, cbom, readinessScore, compliance }` |
 | `POST` | `/api/scan-code/regex` | `{ repoPath, excludePatterns? }` | Same (regex scanner only, no sonar) |
+| `POST` | `/api/scan-code/full` | `{ repoPath, networkHosts?, excludePatterns? }` | Same + `cbom.thirdPartyLibraries` + PQC verdicts |
+
+The **`/api/scan-code/full`** endpoint runs the complete 5-step pipeline:
+1. Code scan (sonar-cryptography or regex fallback)
+2. Dependency scan (manifest file analysis + transitive resolution)
+3. Network scan (if `networkHosts` provided)
+4. Merge all discovered crypto assets
+5. Smart PQC parameter analysis on conditional assets
+
+### AI Suggestions
+
+| Method | Endpoint | Body | Response |
+|--------|----------|------|----------|
+| `POST` | `/api/ai-suggest` | `{ algorithmName, primitive?, keyLength?, fileName?, lineNumber?, quantumSafety?, recommendedPQC? }` | `{ success, suggestion, replacement, migrationSteps, effort }` |
 
 ### Health
 
@@ -299,6 +317,17 @@ curl -X POST http://localhost:3001/api/scan-code \
   }'
 ```
 
+**Full pipeline scan (code + dependencies + network + PQC analysis):**
+```bash
+curl -X POST http://localhost:3001/api/scan-code/full \
+  -H "Content-Type: application/json" \
+  -d '{
+    "repoPath": "/path/to/repo",
+    "networkHosts": ["api.example.com", "auth.example.com"]
+  }' \
+  -o full-cbom.json
+```
+
 **Scan a TLS endpoint:**
 ```bash
 curl -X POST http://localhost:3001/api/scan-network \
@@ -316,6 +345,19 @@ curl -X POST http://localhost:3001/api/scan-network/batch \
       {"host": "google.com"},
       {"host": "api.stripe.com"}
     ]
+  }'
+```
+
+**Get AI-powered migration suggestion:**
+```bash
+curl -X POST http://localhost:3001/api/ai-suggest \
+  -H "Content-Type: application/json" \
+  -d '{
+    "algorithmName": "RSA-2048",
+    "primitive": "public-key-encryption",
+    "keyLength": 2048,
+    "fileName": "src/auth/TokenService.java",
+    "quantumSafety": "not-quantum-safe"
   }'
 ```
 
@@ -404,9 +446,29 @@ curl -X POST http://localhost:3001/api/scan-network \
   -d '{"url": "github.com", "port": 443}'
 ```
 
-### Approach 4: Combined Approach (Recommended)
+### Approach 4: Full Pipeline (Recommended)
 
-For the most complete CBOM, combine code scanning + network scanning:
+For the most complete CBOM, use the **`/api/scan-code/full`** endpoint — it runs all scanners in sequence and produces a unified CBOM with definitive PQC verdicts:
+
+```bash
+# Single command — runs code scan + dependency scan + network scan + PQC analysis
+curl -X POST http://localhost:3001/api/scan-code/full \
+  -H "Content-Type: application/json" \
+  -d '{
+    "repoPath": "/tmp/your-app",
+    "networkHosts": ["your-app.com", "api.your-app.com"]
+  }' \
+  -o full-cbom.json
+```
+
+This produces a CBOM that includes:
+- All crypto assets from source code (sonar or regex)
+- Third-party crypto libraries discovered from manifest files (`pom.xml`, `package.json`, `requirements.txt`, `go.mod`, etc.)
+- Known algorithms provided by each library (dependency graph with `provides` field)
+- Network TLS scan results (if `networkHosts` specified)
+- **Definitive PQC verdicts** on conditional assets (PBKDF2 iteration counts, AES key sizes, SecureRandom providers, KeyPairGenerator algorithms, etc.)
+
+**Alternatively**, you can still combine scanners manually:
 
 ```bash
 # Step 1: Scan source code
@@ -429,12 +491,120 @@ curl -X POST http://localhost:3001/api/scan-network/merge/urn:uuid:YOUR-CBOM-ID 
 
 ### Comparison Matrix
 
-| Approach | Setup | Speed | Accuracy | Languages | Finds Runtime Crypto |
-|----------|-------|-------|----------|-----------|---------------------|
-| **Regex Scanner** | None | Fast | Medium | Java, Python, JS/TS | No |
-| **sonar-cryptography** | High | Slow | Very High | Java, Python | No |
-| **Network TLS Scanner** | None | Fast | High (for TLS) | N/A | Yes |
-| **Combined** | Varies | Medium | Highest | All | Yes |
+| Approach | Setup | Speed | Accuracy | Languages | Deps | PQC Verdicts | Runtime Crypto |
+|----------|-------|-------|----------|-----------|------|-------------|----------------|
+| **Regex Scanner** | None | Fast | Medium | Java, Python, JS/TS | No | No | No |
+| **sonar-cryptography** | High | Slow | Very High | Java, Python, Go | No | No | No |
+| **Network TLS Scanner** | None | Fast | High (TLS) | N/A | No | No | Yes |
+| **Full Pipeline** | Low–High | Medium | Highest | All | Yes | Yes | Yes |
+
+---
+
+## Third-Party Dependency Scanning
+
+The full pipeline automatically discovers cryptographic libraries in your project's dependency manifests and resolves transitive dependencies.
+
+### Supported Manifest Files
+
+| Ecosystem | Manifest File | Transitive Resolution |
+|-----------|--------------|----------------------|
+| **Maven** | `pom.xml` | Yes — via `mvn dependency:tree` |
+| **Gradle** | `build.gradle` / `build.gradle.kts` | Manifest-level only |
+| **npm** | `package.json` | Yes — via `npm ls --json` |
+| **pip** | `requirements.txt`, `setup.py` | Manifest-level only |
+| **Go** | `go.mod` | Manifest-level only |
+
+### Known Crypto Library Database
+
+The scanner recognizes **50+** cryptographic libraries across ecosystems:
+
+**Maven / Gradle (18 libraries):**
+`BouncyCastle` · `Google Tink` · `Conscrypt` · `JJWT` · `Jasypt` · `Spring Security Crypto` · `Apache Commons Crypto` · `AWS Encryption SDK` · `Nimbus JOSE+JWT` · `KeyStore Explorer` · `Themis` · `Keyczar` · `scrypt` · `bcrypt` · `jBCrypt` · and more
+
+**npm (18 libraries):**
+`crypto-js` · `node-forge` · `tweetnacl` · `jsonwebtoken` · `jose` · `bcryptjs` · `argon2` · `openpgp` · `libsodium-wrappers` · `elliptic` · `noble-curves` · `@aws-crypto/*` · `sodium-native` · `@noble/hashes` · and more
+
+**pip (12 libraries):**
+`cryptography` · `pycryptodome` · `pynacl` · `bcrypt` · `paramiko` · `pyopenssl` · `jwcrypto` · `hashlib` · `hmac` · `python-jose` · `itsdangerous` · `passlib`
+
+**Go (3 libraries):**
+`golang.org/x/crypto` · `circl` (Cloudflare) · `liboqs-go` (Open Quantum Safe)
+
+### Dashboard View
+
+The frontend displays a **Third-Party Crypto Libraries** section below the asset list, showing:
+- Safety badge (Quantum Safe / Not Quantum Safe / Conditional / Unknown)
+- Package manager badge (Maven, npm, pip, Go)
+- Direct vs. transitive dependency indicator
+- Transitive depth (how many hops from your direct dependencies)
+- Expandable cards with dependency path and known algorithms
+- Filter by package manager
+
+---
+
+## PQC Readiness Verdicts
+
+For assets classified as **Conditional** (e.g., PBKDF2, AES, SecureRandom, KeyPairGenerator), the scanner now performs **smart parameter analysis** to deliver definitive PQC readiness verdicts instead of vague labels.
+
+### How It Works
+
+1. The scanner detects a conditional crypto usage (e.g., `SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")`)
+2. It reads ±15 lines of surrounding source code
+3. It extracts actual parameters (iteration count, key length, algorithm, provider)
+4. It applies PQC-aware rules to emit a verdict with confidence score
+
+### Verdict Types
+
+| Verdict | Meaning | Example |
+|---------|---------|--------|
+| **PQC_READY** | Safe for the post-quantum era | AES-256, PBKDF2 ≥ 600k iterations + 256-bit key |
+| **NOT_PQC_READY** | Vulnerable to quantum attack | RSA-2048 KeyPairGenerator, ECDSA Signature |
+| **REVIEW_NEEDED** | Cannot determine automatically | Custom providers, runtime-selected algorithms |
+
+### Analyzers
+
+| Crypto Pattern | What's Extracted | Verdict Rules |
+|---------------|-----------------|---------------|
+| **PBKDF2** | Iteration count, key length, hash algorithm | ≥ 600k iterations + ≥ 256-bit key + SHA-256/512 → PQC_READY |
+| **AES** | Key size (128/192/256) from constant or variable name | AES-256 → PQC_READY; AES-128 → NOT_PQC_READY |
+| **SecureRandom** | Provider (NativePRNG, DRBG, SHA1PRNG, default) | DRBG/NativePRNG → PQC_READY; default → REVIEW_NEEDED |
+| **KeyPairGenerator** | Algorithm (RSA, EC, ML-KEM, ML-DSA, etc.) | RSA/EC → NOT_PQC_READY; ML-KEM/ML-DSA → PQC_READY |
+| **Signature** | Algorithm (SHA256withRSA, SHA384withECDSA, etc.) | RSA/ECDSA → NOT_PQC_READY; ML-DSA → PQC_READY |
+| **SecretKeyFactory** | Delegates to PBKDF2 or AES analysis | Based on underlying algorithm |
+
+### Promotion Rules
+
+- If verdict is `PQC_READY` or `NOT_PQC_READY` with **confidence ≥ 75%**, the asset's `quantumSafety` status is automatically promoted from `CONDITIONAL` to `QUANTUM_SAFE` or `NOT_QUANTUM_SAFE`
+- Otherwise, the asset stays `CONDITIONAL` with the verdict attached for manual review
+
+### Scoring Impact
+
+Verdicts affect the readiness score:
+- `PQC_READY` → weight 1.0 (full marks)
+- `NOT_PQC_READY` → weight 0.0 (zero)
+- `REVIEW_NEEDED` → weight 0.5 (partial)
+- Unanalyzed conditional → weight 0.75 (legacy)
+
+---
+
+## AI-Powered Suggested Fixes
+
+Each crypto asset in the dashboard has an **AI Suggested Fix** column powered by AWS Bedrock (Claude 3 Sonnet). It provides:
+- PQC-safe replacement algorithm
+- Migration code snippet
+- Step-by-step migration instructions
+- Estimated effort level
+
+### Requirements
+
+Set your AWS Bedrock credentials in `.env`:
+
+```bash
+AWS_BEARER_TOKEN_BEDROCK=your-bedrock-bearer-token
+VITE_BEDROCK_API_ENDPOINT=https://bedrock-runtime.us-east-1.amazonaws.com
+```
+
+If AWS credentials are not configured, a **static fallback** provides sensible suggestions for 6 common categories (hash functions, symmetric ciphers, key exchange, digital signatures, key derivation, random number generation).
 
 ---
 
@@ -478,6 +648,13 @@ curl -X POST http://localhost:3001/api/scan-code \
 |----------|---------|-------------|
 | `PORT` | `3001` | Backend server port |
 | `NODE_ENV` | `development` | Environment mode |
+| `SONAR_HOST_URL` | `http://localhost:9090` | SonarQube server URL (for sonar-cryptography) |
+| `SONAR_TOKEN` | — | SonarQube authentication token |
+| `AWS_BEARER_TOKEN_BEDROCK` | — | AWS Bedrock bearer token (for AI suggestions) |
+| `VITE_BEDROCK_API_ENDPOINT` | — | AWS Bedrock API endpoint URL |
+| `VITE_ACCESS_KEY_ID` | — | AWS access key ID (alternative auth) |
+| `VITE_SECRET_ACCESS_KEY` | — | AWS secret access key (alternative auth) |
+| `VITE_SESSION_TOKEN` | — | AWS session token (alternative auth) |
 
 ### Vite Proxy Configuration
 
@@ -502,16 +679,113 @@ The production frontend uses nginx to proxy API requests. See `frontend/nginx.co
 
 ## CycloneDX 1.6 Standard
 
-This project implements the **CycloneDX 1.6** specification for Cryptographic Bill of Materials. The standard defines:
+This project implements the **CycloneDX 1.6** specification for Cryptographic Bill of Materials.
 
-- `cryptoProperties.assetType` — algorithm, protocol, certificate, related-crypto-material
-- `cryptoProperties.algorithmProperties` — primitive, mode, padding, curve, cryptoFunctions
-- `cryptoProperties.protocolProperties` — TLS version and cipher suites
+### Asset Types
+
+| Asset Type | Description |
+|-----------|-------------|
+| `algorithm` | Cryptographic algorithm (AES, RSA, SHA-256, etc.) |
+| `protocol` | Cryptographic protocol (TLS 1.2, SSH, etc.) |
+| `certificate` | X.509 certificates and chains |
+| `related-crypto-material` | Keys, salts, IVs, nonces, credentials |
+| `private-key` | Private key material |
+| `public-key` | Public key material |
+| `secret-key` | Symmetric secret key |
+
+### Related Crypto Material Subtypes
+
+| Type | Description |
+|------|-------------|
+| `salt` | Random salt for password hashing |
+| `seed` | PRNG seed |
+| `nonce` | Number used once |
+| `iv` | Initialization vector |
+| `shared-secret` | Diffie-Hellman shared secret |
+| `credential` | Username / password credential |
+| `password` | Password material |
+| `key` | Generic key material |
+| `ciphertext` | Encrypted data |
+| `signature` | Digital signature value |
+| `digest` | Hash digest output |
+| `token` | Authentication token (JWT, API key) |
+| `tag` | GCM authentication tag |
+| `initialization-vector` | Full-name alias for IV |
+| `private-key` / `public-key` / `secret-key` | Typed key material |
+| `unknown` | Unclassified material |
+
+### CBOM Document Structure
+
+```jsonc
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:...",
+  "version": 1,
+  "metadata": { /* timestamp, tools, component */ },
+  "components": [],
+  "cryptoAssets": [
+    {
+      "id": "uuid",
+      "name": "AES-256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "block-cipher",
+          "parameterSetIdentifier": "256",
+          "cryptoFunctions": ["encrypt", "decrypt"]
+        }
+      },
+      "location": { "fileName": "src/Crypto.java", "lineNumber": 42 },
+      "quantumSafety": "conditional",
+      "pqcVerdict": {
+        "verdict": "PQC_READY",
+        "confidence": 90,
+        "reasons": ["AES-256 key size provides sufficient post-quantum security margin"],
+        "parameters": { "keySize": 256 },
+        "recommendation": "No changes needed — AES-256 is considered PQC-safe."
+      },
+      "detectionSource": "sonar"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "maven:org.bouncycastle:bcprov-jdk18on",
+      "dependsOn": [],
+      "provides": ["algorithm:AES", "algorithm:RSA", "algorithm:ECDSA"]
+    }
+  ],
+  "thirdPartyLibraries": [
+    {
+      "name": "bcprov-jdk18on",
+      "groupId": "org.bouncycastle",
+      "version": "1.78.1",
+      "packageManager": "maven",
+      "isDirect": true,
+      "transitiveDepth": 0,
+      "dependencyPath": ["bcprov-jdk18on"],
+      "cryptoAlgorithms": ["AES", "RSA", "ECDSA", "SHA-256"],
+      "quantumSafety": "conditional"
+    }
+  ]
+}
+```
+
+### Quantum Safety Classification
+
+| Status | Meaning |
+|--------|---------|
+| `quantum-safe` | Uses NIST-approved PQC algorithm or AES-256 |
+| `not-quantum-safe` | Vulnerable to quantum attack (RSA, ECDSA, etc.) |
+| `conditional` | Safety depends on parameters — analyzed by PQC verdict system |
+| `unknown` | Not enough information to classify |
 
 **Resources:**
 - [CycloneDX Specification](https://cyclonedx.org/specification/overview/)
 - [CycloneDX CBOM Guide](https://cyclonedx.org/capabilities/cbom/)
 - [IBM sonar-cryptography](https://github.com/cbomkit/sonar-cryptography)
+- [NIST Post-Quantum Cryptography](https://csrc.nist.gov/projects/post-quantum-cryptography)
 
 ---
 

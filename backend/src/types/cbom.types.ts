@@ -49,6 +49,55 @@ export enum AssetType {
   PROTOCOL = 'protocol',
   CERTIFICATE = 'certificate',
   RELATED_MATERIAL = 'related-crypto-material',
+  PRIVATE_KEY = 'private-key',
+  PUBLIC_KEY = 'public-key',
+  SECRET_KEY = 'secret-key',
+}
+
+/**
+ * CycloneDX 1.6 Related Crypto Material sub-types
+ * @see CycloneDX 1.6 CBOM specification
+ */
+export enum RelatedCryptoMaterialType {
+  PUBLIC_KEY = 'public-key',
+  PRIVATE_KEY = 'private-key',
+  SECRET_KEY = 'secret-key',
+  KEY = 'key',
+  SALT = 'salt',
+  CREDENTIAL = 'credential',
+  PASSWORD = 'password',
+  CIPHERTEXT = 'ciphertext',
+  DIGEST = 'digest',
+  SHARED_SECRET = 'shared-secret',
+  TOKEN = 'token',
+  SIGNATURE = 'signature',
+  SEED = 'seed',
+  INITIALIZATION_VECTOR = 'initialization-vector',
+  TAG = 'tag',
+  ADDITIONAL_DATA = 'additional-data',
+  NONCE = 'nonce',
+  OTHER = 'other',
+}
+
+/**
+ * PQC Readiness Verdict — definitive assessment beyond just quantum safety status.
+ * Used for assets like PBKDF2 where the verdict depends on actual parameters.
+ */
+export enum PQCReadinessVerdict {
+  PQC_READY = 'pqc-ready',
+  NOT_PQC_READY = 'not-pqc-ready',
+  REVIEW_NEEDED = 'review-needed',
+}
+
+/**
+ * Detailed analysis of why an asset received a particular PQC verdict.
+ */
+export interface PQCVerdictDetail {
+  verdict: PQCReadinessVerdict;
+  confidence: number;       // 0-100
+  reasons: string[];        // Human-readable list of rationale items
+  parameters?: Record<string, string | number | boolean>; // Extracted config (iterations, keyLength, etc.)
+  recommendation?: string;  // Actionable next step
 }
 
 export enum ComplianceStatus {
@@ -102,7 +151,7 @@ export interface CertificateProperties {
 }
 
 export interface RelatedCryptoMaterialProperties {
-  type: string;
+  type: RelatedCryptoMaterialType;
   id?: string;
   state?: string;
   size?: number;
@@ -111,6 +160,11 @@ export interface RelatedCryptoMaterialProperties {
     mechanism: string;
     algorithmRef?: string;
   };
+  format?: string;
+  value?: string;                     // Only for non-sensitive material (e.g., salt, IV, nonce)
+  creationDate?: string;
+  activationDate?: string;
+  expirationDate?: string;
 }
 
 export interface CryptoProperties {
@@ -137,6 +191,10 @@ export interface CryptoAsset {
   recommendedPQC?: string;
   complianceStatus?: ComplianceStatus;
   provider?: string;
+  /** Definitive PQC readiness verdict based on actual parameter analysis */
+  pqcVerdict?: PQCVerdictDetail;
+  /** Source of detection: sonar, regex, dependency, network */
+  detectionSource?: 'sonar' | 'regex' | 'dependency' | 'network';
 }
 
 // ─── CBOM Component ──────────────────────────────────────────────────────────
@@ -152,9 +210,31 @@ export interface CBOMComponent {
 
 // ─── Dependency Mapping ──────────────────────────────────────────────────────
 
+/**
+ * CycloneDX 1.6 dependency relationships.
+ * - dependsOn: this component depends on the listed refs
+ * - provides: this component provides/exposes the listed refs
+ */
 export interface CryptoDependency {
   ref: string;
   dependsOn: string[];
+  provides?: string[];
+}
+
+// ─── Third-Party Crypto Library ──────────────────────────────────────────────
+
+export interface ThirdPartyCryptoLibrary {
+  name: string;
+  groupId?: string;        // e.g. org.bouncycastle
+  artifactId?: string;     // e.g. bcprov-jdk18on
+  version?: string;
+  packageManager: 'maven' | 'gradle' | 'npm' | 'pip' | 'go';
+  cryptoAlgorithms: string[];     // Algorithms this library is known to provide
+  quantumSafety: QuantumSafetyStatus;
+  isDirectDependency: boolean;    // true = direct, false = transitive
+  depth: number;                  // 0 = direct dep, 1 = transitive dep of direct, etc.
+  dependencyPath?: string[];      // e.g. ['my-app', 'spring-security', 'bcprov']
+  manifestFile: string;           // e.g. 'pom.xml', 'build.gradle'
 }
 
 // ─── CBOM Metadata ───────────────────────────────────────────────────────────
@@ -188,6 +268,8 @@ export interface CBOMDocument {
   components: CBOMComponent[];
   cryptoAssets: CryptoAsset[];
   dependencies?: CryptoDependency[];
+  /** Third-party libraries detected from dependency manifests (pom.xml, package.json, etc.) */
+  thirdPartyLibraries?: ThirdPartyCryptoLibrary[];
 }
 
 // ─── Dashboard Aggregated Types ──────────────────────────────────────────────

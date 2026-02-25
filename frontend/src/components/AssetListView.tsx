@@ -3,8 +3,9 @@ import {
   ExternalLink, ChevronLeft, ChevronRight, SlidersHorizontal,
   Github, GitBranch, FolderOpen, Sparkles, Loader2,
   X, Copy, Check, Zap, ShieldCheck, ChevronDown, ChevronUp,
+  ShieldAlert, ShieldQuestion, Package,
 } from 'lucide-react';
-import { CryptoAsset, QuantumSafetyStatus, ComplianceStatus } from '../types';
+import { CryptoAsset, QuantumSafetyStatus, ComplianceStatus, PQCReadinessVerdict } from '../types';
 
 interface AssetListViewProps {
   assets: CryptoAsset[];
@@ -68,6 +69,87 @@ function confidenceBadge(level?: string) {
     <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ring-1 ${cls}`}>
       <ShieldCheck className="w-2.5 h-2.5" />
       {level}
+    </span>
+  );
+}
+
+function pqcVerdictBadge(asset: CryptoAsset) {
+  const v = asset.pqcVerdict;
+  if (!v) return null;
+
+  const config: Record<string, { icon: typeof ShieldCheck; cls: string; label: string }> = {
+    [PQCReadinessVerdict.PQC_READY]: {
+      icon: ShieldCheck,
+      cls: 'bg-green-500/15 text-green-400 ring-green-500/30',
+      label: 'PQC Ready',
+    },
+    [PQCReadinessVerdict.NOT_PQC_READY]: {
+      icon: ShieldAlert,
+      cls: 'bg-red-500/15 text-red-400 ring-red-500/30',
+      label: 'Not PQC Ready',
+    },
+    [PQCReadinessVerdict.REVIEW_NEEDED]: {
+      icon: ShieldQuestion,
+      cls: 'bg-yellow-500/15 text-yellow-400 ring-yellow-500/30',
+      label: 'Review Needed',
+    },
+  };
+
+  const c = config[v.verdict] || config[PQCReadinessVerdict.REVIEW_NEEDED];
+  const Icon = c.icon;
+
+  return (
+    <div className="group/verdict relative">
+      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ring-1 cursor-help ${c.cls}`}>
+        <Icon className="w-2.5 h-2.5" />
+        {c.label}
+        <span className="text-[9px] opacity-70">{v.confidence}%</span>
+      </span>
+      {/* Tooltip with reasons */}
+      <div className="absolute z-50 bottom-full left-0 mb-2 w-72 p-3 bg-qg-dark border border-qg-border rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/verdict:opacity-100 group-hover/verdict:pointer-events-auto transition-opacity">
+        <div className="text-[11px] text-gray-300 space-y-1.5">
+          {v.reasons.map((r: string, i: number) => (
+            <div key={i} className="flex gap-1.5">
+              <span className="text-gray-500 flex-shrink-0">{r.includes('✓') ? '✓' : r.includes('✗') ? '✗' : '•'}</span>
+              <span>{r}</span>
+            </div>
+          ))}
+          {v.parameters && Object.keys(v.parameters).length > 0 && (
+            <div className="mt-2 pt-2 border-t border-qg-border/50">
+              <span className="text-gray-500 text-[10px] font-medium uppercase tracking-wider">Detected Parameters</span>
+              <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5">
+                {Object.entries(v.parameters).map(([k, val]) => (
+                  <div key={k}>
+                    <span className="text-gray-500">{k}: </span>
+                    <span className="text-gray-300 font-mono text-[10px]">{String(val)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {v.recommendation && (
+            <div className="mt-2 pt-2 border-t border-qg-border/50 text-[10px] text-blue-400">
+              {v.recommendation}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function detectionSourceBadge(source?: string) {
+  if (!source) return null;
+  const styles: Record<string, string> = {
+    sonar: 'bg-blue-500/10 text-blue-400/80',
+    regex: 'bg-gray-500/10 text-gray-400/80',
+    dependency: 'bg-amber-500/10 text-amber-400/80',
+    network: 'bg-purple-500/10 text-purple-400/80',
+  };
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[9px] font-medium px-1 py-0.5 rounded ${styles[source] || styles.regex}`}>
+      {source === 'dependency' && <Package className="w-2 h-2" />}
+      {source}
     </span>
   );
 }
@@ -284,6 +366,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
               >
                 Primitive {sortField === 'primitive' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
               </th>
+              <th className="px-4 py-2">PQC Verdict</th>
               <th
                 className="px-4 py-2 cursor-pointer hover:text-gray-300"
                 onClick={() => toggleSort('location')}
@@ -330,6 +413,14 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                         {line}
                       </div>
                     ))}
+                  </div>
+                </td>
+
+                {/* PQC Verdict */}
+                <td className="px-4 py-3">
+                  <div className="flex flex-col gap-1">
+                    {pqcVerdictBadge(asset)}
+                    {detectionSourceBadge(asset.detectionSource)}
                   </div>
                 </td>
 
