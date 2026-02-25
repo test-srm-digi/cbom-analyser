@@ -4,17 +4,22 @@
   "serialNumber": "urn:uuid:sample-keycloak-cbom-001",
   "version": 1,
   "metadata": {
-    "timestamp": "2025-12-01T10:30:00Z",
+    "timestamp": "2026-02-25T10:30:00Z",
     "tools": [
+      {
+        "vendor": "QuantumGuard",
+        "name": "CBOM Hub — Full Pipeline",
+        "version": "2.0.0"
+      },
       {
         "vendor": "CBOMkit",
         "name": "sonar-cryptography",
-        "version": "1.4.0"
+        "version": "1.5.1"
       }
     ],
     "component": {
       "name": "keycloak/keycloak",
-      "version": "main",
+      "version": "26.0.7",
       "type": "application",
       "group": "github.com"
     }
@@ -22,7 +27,7 @@
   "components": [],
   "cryptoAssets": [
     {
-      "id": "sha256-001",
+      "id": "sha256-kc-001",
       "name": "SHA-256",
       "type": "crypto-asset",
       "cryptoProperties": {
@@ -33,14 +38,17 @@
         }
       },
       "location": {
-        "fileName": "AbstractIdentityProvider.java",
-        "lineNumber": 118
+        "fileName": "services/src/main/java/org/keycloak/broker/provider/AbstractIdentityProvider.java",
+        "lineNumber": 118,
+        "className": "AbstractIdentityProvider",
+        "methodName": "sha256"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
-      "id": "sha256-002",
+      "id": "sha256-kc-002",
       "name": "SHA-256",
       "type": "crypto-asset",
       "cryptoProperties": {
@@ -51,74 +59,236 @@
         }
       },
       "location": {
-        "fileName": "KeycloakModelUtils.java",
-        "lineNumber": 150
+        "fileName": "server-spi/src/main/java/org/keycloak/models/KeycloakModelUtils.java",
+        "lineNumber": 150,
+        "className": "KeycloakModelUtils",
+        "methodName": "generateId"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
-      "id": "rsa-001",
+      "id": "sha256-kc-003",
+      "name": "SHA-256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "services/src/main/java/org/keycloak/protocol/oidc/utils/PkceUtils.java",
+        "lineNumber": 49,
+        "className": "PkceUtils",
+        "methodName": "verifyS256"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "sha256-kc-004",
+      "name": "SHA-256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "services/src/main/java/org/keycloak/authentication/x509/MutualTLSUtils.java",
+        "lineNumber": 138,
+        "className": "MutualTLSUtils",
+        "methodName": "getCertificateThumbprint"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "sha256-kc-005",
+      "name": "SHA-256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": ["Hash Function"]
+        }
+      },
+      "location": {
+        "fileName": "crypto/default/src/main/java/org/keycloak/crypto/def/SHA256PairwiseSubMapper.java",
+        "lineNumber": 88,
+        "className": "SHA256PairwiseSubMapper",
+        "methodName": "generateIdentifier"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "rsa2048-kc-001",
       "name": "RSA-2048",
       "type": "crypto-asset",
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "pke",
+          "parameterSetIdentifier": "2048",
           "cryptoFunctions": ["Keygen", "Encrypt"]
         }
       },
       "location": {
-        "fileName": "RSAKeyProvider.java",
-        "lineNumber": 78
+        "fileName": "crypto/default/src/main/java/org/keycloak/crypto/def/RSAKeyProvider.java",
+        "lineNumber": 78,
+        "className": "RSAKeyProvider",
+        "methodName": "generateRsaKeyPair"
       },
       "quantumSafety": "not-quantum-safe",
       "keyLength": 2048,
       "recommendedPQC": "ML-KEM (Kyber-768)",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "not-pqc-ready",
+        "confidence": 95,
+        "reasons": [
+          "RSA-2048 KeyPairGenerator detected — RSA is fundamentally broken by Shor's algorithm",
+          "No post-quantum key encapsulation fallback found in surrounding code"
+        ],
+        "parameters": {
+          "algorithm": "RSA",
+          "keySize": 2048
+        },
+        "recommendation": "Replace with ML-KEM (Kyber-768) for key encapsulation or use a hybrid RSA+ML-KEM approach during migration."
+      }
     },
     {
-      "id": "ed25519-001",
+      "id": "rsa2048-kc-002",
+      "name": "RSA-2048",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "pke",
+          "parameterSetIdentifier": "2048",
+          "cryptoFunctions": ["Sign"]
+        }
+      },
+      "location": {
+        "fileName": "core/src/main/java/org/keycloak/jose/jws/JWSBuilder.java",
+        "lineNumber": 156,
+        "className": "JWSBuilder",
+        "methodName": "sign"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 2048,
+      "recommendedPQC": "ML-DSA (Dilithium-2)",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "ed25519-kc-001",
       "name": "Ed25519",
       "type": "crypto-asset",
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "signature",
+          "curve": "Curve25519",
           "cryptoFunctions": ["Sign", "Verify"]
         }
       },
       "location": {
-        "fileName": "Ed25519KeyPairProvider.java",
-        "lineNumber": 42
+        "fileName": "crypto/default/src/main/java/org/keycloak/crypto/def/Ed25519KeyPairProvider.java",
+        "lineNumber": 42,
+        "className": "Ed25519KeyPairProvider",
+        "methodName": "generateKeyPair"
       },
       "quantumSafety": "not-quantum-safe",
-      "recommendedPQC": "ML-DSA (Dilithium)",
-      "complianceStatus": "not-compliant"
+      "recommendedPQC": "ML-DSA (Dilithium-2)",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "not-pqc-ready",
+        "confidence": 95,
+        "reasons": [
+          "Ed25519 is an elliptic-curve signature scheme — vulnerable to Shor's algorithm"
+        ],
+        "parameters": {
+          "algorithm": "Ed25519",
+          "curve": "Curve25519"
+        },
+        "recommendation": "Migrate to ML-DSA (Dilithium-2) for digital signatures. Consider SLH-DSA (SPHINCS+) for hash-based stateless signatures."
+      }
     },
     {
-      "id": "aes256-001",
-      "name": "AES-256",
+      "id": "ecsecp-kc-001",
+      "name": "EC-P256",
       "type": "crypto-asset",
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
-          "primitive": "block-cipher",
+          "primitive": "signature",
+          "curve": "P-256",
+          "cryptoFunctions": ["Sign", "Verify"]
+        }
+      },
+      "location": {
+        "fileName": "crypto/default/src/main/java/org/keycloak/crypto/def/ECDSASignatureProvider.java",
+        "lineNumber": 34,
+        "className": "ECDSASignatureProvider",
+        "methodName": "sign"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "ML-DSA (Dilithium-2)",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "aes256-kc-001",
+      "name": "AES-256-GCM",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "ae",
           "mode": "GCM",
           "cryptoFunctions": ["Encrypt", "Decrypt"]
         }
       },
       "location": {
-        "fileName": "ContentEncryptionProvider.java",
-        "lineNumber": 92
+        "fileName": "core/src/main/java/org/keycloak/jose/jwe/enc/AesGcmJWEEncryptionProvider.java",
+        "lineNumber": 92,
+        "className": "AesGcmJWEEncryptionProvider",
+        "methodName": "encryptBytes"
       },
       "quantumSafety": "quantum-safe",
       "keyLength": 256,
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "pqc-ready",
+        "confidence": 95,
+        "reasons": [
+          "AES-256 with GCM mode — key size provides sufficient post-quantum security margin (Grover's reduces effective security to 128-bit)"
+        ],
+        "parameters": {
+          "algorithm": "AES",
+          "keySize": 256,
+          "mode": "GCM"
+        },
+        "recommendation": "No changes needed — AES-256-GCM is considered PQC-safe."
+      }
     },
     {
-      "id": "aes128-001",
-      "name": "AES-128",
+      "id": "aes128-kc-001",
+      "name": "AES-128-GCM",
       "type": "crypto-asset",
       "cryptoProperties": {
         "assetType": "algorithm",
@@ -129,34 +299,133 @@
         }
       },
       "location": {
-        "fileName": "AesKeyWrap.java",
-        "lineNumber": 44
+        "fileName": "core/src/main/java/org/keycloak/jose/jwe/alg/AesKeyWrapAlgorithmProvider.java",
+        "lineNumber": 44,
+        "className": "AesKeyWrapAlgorithmProvider",
+        "methodName": "wrapKey"
       },
       "quantumSafety": "not-quantum-safe",
       "keyLength": 128,
-      "recommendedPQC": "AES-256",
-      "complianceStatus": "not-compliant"
+      "recommendedPQC": "AES-256-GCM",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "not-pqc-ready",
+        "confidence": 90,
+        "reasons": [
+          "AES-128 provides only 64-bit security against Grover's algorithm — below the 128-bit post-quantum threshold"
+        ],
+        "parameters": {
+          "algorithm": "AES",
+          "keySize": 128,
+          "mode": "GCM"
+        },
+        "recommendation": "Upgrade to AES-256-GCM for post-quantum security."
+      }
     },
     {
-      "id": "hmac-001",
-      "name": "HMACSHA256",
+      "id": "hmac256-kc-001",
+      "name": "HMAC-SHA256",
       "type": "crypto-asset",
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "mac",
+          "cryptoFunctions": ["Tag"]
+        }
+      },
+      "location": {
+        "fileName": "crypto/default/src/main/java/org/keycloak/crypto/def/HmacKeyProvider.java",
+        "lineNumber": 56,
+        "className": "HmacKeyProvider",
+        "methodName": "getHmacKey"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "hmac384-kc-001",
+      "name": "HMAC-SHA384",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "mac",
+          "cryptoFunctions": ["Tag"]
+        }
+      },
+      "location": {
+        "fileName": "crypto/default/src/main/java/org/keycloak/crypto/def/HmacSignatureProvider.java",
+        "lineNumber": 78,
+        "className": "HmacSignatureProvider",
+        "methodName": "computeMac"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "pbkdf2-kc-001",
+      "name": "PBKDF2-HMAC-SHA256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-derivation",
+          "cryptoFunctions": ["Keygen"]
+        }
+      },
+      "location": {
+        "fileName": "model/jpa/src/main/java/org/keycloak/credential/hash/Pbkdf2PasswordHashProviderFactory.java",
+        "lineNumber": 67,
+        "className": "Pbkdf2PasswordHashProviderFactory",
+        "methodName": "encode"
+      },
+      "quantumSafety": "conditional",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "pqc-ready",
+        "confidence": 85,
+        "reasons": [
+          "PBKDF2 with HMAC-SHA256 detected",
+          "Iteration count: 600000 (≥ 600000 threshold — good)",
+          "Key length: 256 bits (≥ 256 threshold — good)",
+          "Hash algorithm: SHA-256 (quantum-safe)"
+        ],
+        "parameters": {
+          "algorithm": "PBKDF2WithHmacSHA256",
+          "iterations": 600000,
+          "keyLength": 256,
+          "hashAlgorithm": "SHA-256"
+        },
+        "recommendation": "Current parameters are PQC-ready. Consider migrating to Argon2id for memory-hard KDF."
+      }
+    },
+    {
+      "id": "bcrypt-kc-001",
+      "name": "BCrypt",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
           "cryptoFunctions": ["Hash Function"]
         }
       },
       "location": {
-        "fileName": "HmacKeyProvider.java",
-        "lineNumber": 56
+        "fileName": "model/jpa/src/main/java/org/keycloak/credential/hash/BcryptPasswordHashProviderFactory.java",
+        "lineNumber": 41,
+        "className": "BcryptPasswordHashProviderFactory",
+        "methodName": "encode"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
-      "id": "sha1-001",
+      "id": "sha1-kc-001",
       "name": "SHA-1",
       "type": "crypto-asset",
       "cryptoProperties": {
@@ -167,22 +436,296 @@
         }
       },
       "location": {
-        "fileName": "LegacyHashProvider.java",
-        "lineNumber": 45
+        "fileName": "services/src/main/java/org/keycloak/credential/hash/LegacyHashProvider.java",
+        "lineNumber": 45,
+        "className": "LegacyHashProvider",
+        "methodName": "verify"
       },
       "quantumSafety": "not-quantum-safe",
       "recommendedPQC": "SHA-3-256 or SHA-256",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "secrand-kc-001",
+      "name": "SecureRandom",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "other",
+          "cryptoFunctions": ["Other"]
+        }
+      },
+      "location": {
+        "fileName": "server-spi/src/main/java/org/keycloak/models/KeycloakModelUtils.java",
+        "lineNumber": 88,
+        "className": "KeycloakModelUtils",
+        "methodName": "generateSecret"
+      },
+      "quantumSafety": "conditional",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "review-needed",
+        "confidence": 50,
+        "reasons": [
+          "SecureRandom() uses default provider — actual CSPRNG depends on JVM and OS configuration",
+          "No explicit provider specified (e.g., DRBG, NativePRNG)"
+        ],
+        "parameters": {
+          "provider": "default"
+        },
+        "recommendation": "Specify SecureRandom.getInstance(\"DRBG\") for a NIST SP 800-90A compliant generator. Default is likely safe but not verifiable."
+      }
+    },
+    {
+      "id": "tls13-kc-001",
+      "name": "TLS 1.3",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "protocol",
+        "protocolProperties": {
+          "type": "tls",
+          "version": "1.3",
+          "cipherSuites": [
+            {
+              "name": "TLS_AES_256_GCM_SHA384",
+              "algorithms": ["AES-256-GCM", "SHA-384"]
+            },
+            {
+              "name": "TLS_CHACHA20_POLY1305_SHA256",
+              "algorithms": ["ChaCha20-Poly1305", "SHA-256"]
+            }
+          ]
+        }
+      },
+      "location": {
+        "fileName": "quarkus/runtime/src/main/java/org/keycloak/quarkus/runtime/configuration/TlsConfig.java",
+        "lineNumber": 55,
+        "className": "TlsConfig",
+        "methodName": "configureSslContext"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "TLS 1.3 with ML-KEM hybrid key exchange (X25519Kyber768Draft00)",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "regex"
+    },
+    {
+      "id": "x509rsa-kc-001",
+      "name": "X.509-RSA-2048",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "certificate",
+        "algorithmProperties": {
+          "primitive": "pke",
+          "parameterSetIdentifier": "2048",
+          "cryptoFunctions": ["Sign", "Verify"]
+        }
+      },
+      "location": {
+        "fileName": "services/src/main/java/org/keycloak/authentication/x509/X509ClientCertificateAuthenticator.java",
+        "lineNumber": 112,
+        "className": "X509ClientCertificateAuthenticator",
+        "methodName": "validateCertificate"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 2048,
+      "recommendedPQC": "X.509 with ML-DSA signature",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "salt-kc-001",
+      "name": "PBKDF2 Salt",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "salt",
+          "size": 128
+        }
+      },
+      "location": {
+        "fileName": "model/jpa/src/main/java/org/keycloak/credential/hash/Pbkdf2PasswordHashProviderFactory.java",
+        "lineNumber": 52,
+        "className": "Pbkdf2PasswordHashProviderFactory",
+        "methodName": "generateSalt"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "iv-kc-001",
+      "name": "AES-GCM IV",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "initialization-vector",
+          "size": 96
+        }
+      },
+      "location": {
+        "fileName": "core/src/main/java/org/keycloak/jose/jwe/enc/AesGcmJWEEncryptionProvider.java",
+        "lineNumber": 78,
+        "className": "AesGcmJWEEncryptionProvider",
+        "methodName": "generateIV"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "jwt-secret-kc-001",
+      "name": "HMAC Signing Key",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "secret-key",
+        "algorithmProperties": {
+          "primitive": "mac",
+          "cryptoFunctions": ["Tag"]
+        }
+      },
+      "location": {
+        "fileName": "crypto/default/src/main/java/org/keycloak/crypto/def/HmacKeyProvider.java",
+        "lineNumber": 33,
+        "className": "HmacKeyProvider",
+        "methodName": "loadOrGenerateKey"
+      },
+      "quantumSafety": "quantum-safe",
+      "keyLength": 256,
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "rsa-priv-kc-001",
+      "name": "RSA-2048 Private Key",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "private-key",
+        "algorithmProperties": {
+          "primitive": "pke",
+          "parameterSetIdentifier": "2048",
+          "cryptoFunctions": ["Sign", "Decrypt"]
+        }
+      },
+      "location": {
+        "fileName": "services/src/main/java/org/keycloak/keys/GeneratedRsaKeyProviderFactory.java",
+        "lineNumber": 89,
+        "className": "GeneratedRsaKeyProviderFactory",
+        "methodName": "createKeyPair"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 2048,
+      "recommendedPQC": "ML-DSA (Dilithium) private key",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "nimbus-rsa-kc-001",
+      "name": "RSA-OAEP-256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "pke",
+          "padding": "OAEP",
+          "cryptoFunctions": ["Encrypt", "Decrypt"]
+        }
+      },
+      "location": {
+        "fileName": "core/src/main/java/org/keycloak/jose/jwe/alg/RsaOaepAlgorithmProvider.java",
+        "lineNumber": 35,
+        "className": "RsaOaepAlgorithmProvider",
+        "methodName": "unwrapKey"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "ML-KEM (Kyber-768) with HPKE",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "dependency"
     }
   ],
   "dependencies": [
     {
-      "ref": "org.bouncycastle:bcprov-jdk18on",
-      "dependsOn": ["RSA", "ECC", "AES", "SHA-256"]
+      "ref": "maven:org.bouncycastle:bcprov-jdk18on:1.78.1",
+      "dependsOn": [],
+      "provides": ["algorithm:RSA", "algorithm:ECDSA", "algorithm:Ed25519", "algorithm:AES", "algorithm:SHA-256", "algorithm:SHA-384", "algorithm:HMAC-SHA256"]
     },
     {
-      "ref": "javax.crypto",
-      "dependsOn": ["AES", "HMAC"]
+      "ref": "maven:org.bouncycastle:bcpkix-jdk18on:1.78.1",
+      "dependsOn": ["maven:org.bouncycastle:bcprov-jdk18on:1.78.1"],
+      "provides": ["algorithm:X.509", "algorithm:PKCS12"]
+    },
+    {
+      "ref": "maven:com.nimbusds:nimbus-jose-jwt:9.40",
+      "dependsOn": [],
+      "provides": ["algorithm:RSA-OAEP", "algorithm:ECDSA", "algorithm:HMAC-SHA256", "algorithm:AES-GCM"]
+    },
+    {
+      "ref": "jdk:javax.crypto",
+      "dependsOn": [],
+      "provides": ["algorithm:AES", "algorithm:HMAC"]
+    },
+    {
+      "ref": "jdk:java.security",
+      "dependsOn": [],
+      "provides": ["algorithm:SHA-256", "algorithm:SHA-1", "algorithm:RSA", "algorithm:SecureRandom"]
+    }
+  ],
+  "thirdPartyLibraries": [
+    {
+      "name": "bcprov-jdk18on",
+      "groupId": "org.bouncycastle",
+      "artifactId": "bcprov-jdk18on",
+      "version": "1.78.1",
+      "packageManager": "maven",
+      "cryptoAlgorithms": ["AES", "RSA", "ECDSA", "Ed25519", "SHA-256", "SHA-384", "SHA-512", "HMAC", "ChaCha20"],
+      "quantumSafety": "conditional",
+      "isDirectDependency": true,
+      "depth": 0,
+      "dependencyPath": ["bcprov-jdk18on"],
+      "manifestFile": "pom.xml"
+    },
+    {
+      "name": "bcpkix-jdk18on",
+      "groupId": "org.bouncycastle",
+      "artifactId": "bcpkix-jdk18on",
+      "version": "1.78.1",
+      "packageManager": "maven",
+      "cryptoAlgorithms": ["X.509", "PKCS12", "CMS", "OCSP"],
+      "quantumSafety": "conditional",
+      "isDirectDependency": true,
+      "depth": 0,
+      "dependencyPath": ["bcpkix-jdk18on"],
+      "manifestFile": "pom.xml"
+    },
+    {
+      "name": "nimbus-jose-jwt",
+      "groupId": "com.nimbusds",
+      "artifactId": "nimbus-jose-jwt",
+      "version": "9.40",
+      "packageManager": "maven",
+      "cryptoAlgorithms": ["RSA-OAEP", "ECDSA", "EdDSA", "AES-GCM", "HMAC-SHA256", "HMAC-SHA384", "HMAC-SHA512"],
+      "quantumSafety": "not-quantum-safe",
+      "isDirectDependency": true,
+      "depth": 0,
+      "dependencyPath": ["nimbus-jose-jwt"],
+      "manifestFile": "pom.xml"
+    },
+    {
+      "name": "jbcrypt",
+      "groupId": "org.mindrot",
+      "artifactId": "jbcrypt",
+      "version": "0.4",
+      "packageManager": "maven",
+      "cryptoAlgorithms": ["BCrypt"],
+      "quantumSafety": "quantum-safe",
+      "isDirectDependency": false,
+      "depth": 1,
+      "dependencyPath": ["spring-security-crypto", "jbcrypt"],
+      "manifestFile": "pom.xml"
     }
   ]
 }

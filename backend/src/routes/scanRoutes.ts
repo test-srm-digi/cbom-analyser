@@ -133,7 +133,11 @@ router.post('/scan-code/full', async (req: Request, res: Response) => {
  */
 router.post('/ai-suggest', async (req: Request, res: Response) => {
   try {
-    const { algorithmName, primitive, keyLength, fileName, lineNumber, quantumSafety, recommendedPQC } = req.body;
+    const {
+      algorithmName, primitive, keyLength, fileName, lineNumber,
+      quantumSafety, recommendedPQC,
+      assetType, detectionSource, description, mode, curve, pqcVerdict,
+    } = req.body;
 
     if (!algorithmName) {
       res.status(400).json({ success: false, error: 'algorithmName is required' });
@@ -149,6 +153,12 @@ router.post('/ai-suggest', async (req: Request, res: Response) => {
       lineNumber,
       quantumSafety,
       recommendedPQC,
+      assetType,
+      detectionSource,
+      description,
+      mode,
+      curve,
+      pqcVerdict,
     });
 
     res.json({ success: true, ...suggestion });

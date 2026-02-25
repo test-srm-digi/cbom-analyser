@@ -106,7 +106,7 @@ function pqcVerdictBadge(asset: CryptoAsset) {
         <span className="text-[9px] opacity-70">{v.confidence}%</span>
       </span>
       {/* Tooltip with reasons */}
-      <div className="absolute z-50 bottom-full left-0 mb-2 w-72 p-3 bg-qg-dark border border-qg-border rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/verdict:opacity-100 group-hover/verdict:pointer-events-auto transition-opacity">
+      <div className="absolute z-[999] bottom-full left-0 mb-2 w-72 p-3 bg-qg-dark border border-qg-border rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/verdict:opacity-100 group-hover/verdict:pointer-events-auto transition-opacity">
         <div className="text-[11px] text-gray-300 space-y-1.5">
           {v.reasons.map((r: string, i: number) => (
             <div key={i} className="flex gap-1.5">
@@ -193,6 +193,19 @@ export default function AssetListView({ assets }: AssetListViewProps) {
           lineNumber: asset.location?.lineNumber,
           quantumSafety: asset.quantumSafety,
           recommendedPQC: asset.recommendedPQC,
+          // CycloneDX 1.6 fields
+          assetType: asset.cryptoProperties?.assetType,
+          detectionSource: asset.detectionSource,
+          description: asset.description,
+          mode: asset.cryptoProperties?.algorithmProperties?.mode,
+          curve: asset.cryptoProperties?.algorithmProperties?.curve,
+          pqcVerdict: asset.pqcVerdict ? {
+            verdict: asset.pqcVerdict.verdict,
+            confidence: asset.pqcVerdict.confidence,
+            reasons: asset.pqcVerdict.reasons,
+            parameters: asset.pqcVerdict.parameters,
+            recommendation: asset.pqcVerdict.recommendation,
+          } : undefined,
         }),
       });
       const data = await res.json();
@@ -349,7 +362,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div style={{ overflowX: 'clip', overflowY: 'visible' }}>
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-gray-500 text-xs border-b border-qg-border">

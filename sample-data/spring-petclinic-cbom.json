@@ -4,12 +4,17 @@
   "serialNumber": "urn:uuid:sample-spring-petclinic-cbom-002",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-02-18T09:00:00Z",
+    "timestamp": "2026-02-25T09:00:00Z",
     "tools": [
       {
         "vendor": "QuantumGuard",
-        "name": "cbom-analyser",
-        "version": "0.1.0"
+        "name": "CBOM Hub — Full Pipeline",
+        "version": "2.0.0"
+      },
+      {
+        "vendor": "CBOMkit",
+        "name": "sonar-cryptography",
+        "version": "1.5.1"
       }
     ],
     "component": {
@@ -29,17 +34,20 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "hash",
-          "cryptoFunctions": ["Hash Function"]
+          "cryptoFunctions": [
+            "Hash Function"
+          ]
         }
       },
       "location": {
-        "fileName": "SecurityConfig.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/security/SecurityConfig.java",
         "lineNumber": 47,
         "className": "SecurityConfig",
         "methodName": "passwordEncoder"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "sha256-pc-002",
@@ -49,17 +57,20 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "hash",
-          "cryptoFunctions": ["Hash Function"]
+          "cryptoFunctions": [
+            "Hash Function"
+          ]
         }
       },
       "location": {
-        "fileName": "CsrfTokenRepository.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/security/CsrfTokenRepository.java",
         "lineNumber": 33,
         "className": "CsrfTokenRepository",
         "methodName": "generateToken"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "sha384-pc-001",
@@ -69,17 +80,20 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "hash",
-          "cryptoFunctions": ["Hash Function"]
+          "cryptoFunctions": [
+            "Hash Function"
+          ]
         }
       },
       "location": {
-        "fileName": "TokenService.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/auth/TokenService.java",
         "lineNumber": 81,
         "className": "TokenService",
         "methodName": "hashRefreshToken"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "sha512-pc-001",
@@ -89,17 +103,20 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "hash",
-          "cryptoFunctions": ["Hash Function"]
+          "cryptoFunctions": [
+            "Hash Function"
+          ]
         }
       },
       "location": {
-        "fileName": "AuditLogService.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/audit/AuditLogService.java",
         "lineNumber": 102,
         "className": "AuditLogService",
         "methodName": "computeIntegrityHash"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "sha1-pc-001",
@@ -109,18 +126,21 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "hash",
-          "cryptoFunctions": ["Hash Function"]
+          "cryptoFunctions": [
+            "Hash Function"
+          ]
         }
       },
       "location": {
-        "fileName": "LegacyMigrationHelper.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/legacy/LegacyMigrationHelper.java",
         "lineNumber": 29,
         "className": "LegacyMigrationHelper",
         "methodName": "verifyOldHash"
       },
       "quantumSafety": "not-quantum-safe",
       "recommendedPQC": "SHA-256 or SHA-3-256",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "md5-pc-001",
@@ -130,18 +150,44 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "hash",
-          "cryptoFunctions": ["Digest"]
+          "cryptoFunctions": [
+            "Digest"
+          ]
         }
       },
       "location": {
-        "fileName": "GravatarService.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/service/GravatarService.java",
         "lineNumber": 17,
         "className": "GravatarService",
         "methodName": "emailToGravatarUrl"
       },
       "quantumSafety": "not-quantum-safe",
       "recommendedPQC": "SHA-256",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "regex"
+    },
+    {
+      "id": "sha3-pc-001",
+      "name": "SHA3-256",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash",
+          "cryptoFunctions": [
+            "Hash Function"
+          ]
+        }
+      },
+      "location": {
+        "fileName": "src/main/java/org/springframework/samples/petclinic/integrity/IntegrityVerifier.java",
+        "lineNumber": 38,
+        "className": "IntegrityVerifier",
+        "methodName": "hashDocument"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "bcrypt-pc-001",
@@ -151,17 +197,20 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "hash",
-          "cryptoFunctions": ["Hash Function"]
+          "cryptoFunctions": [
+            "Hash Function"
+          ]
         }
       },
       "location": {
-        "fileName": "SecurityConfig.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/security/SecurityConfig.java",
         "lineNumber": 51,
         "className": "SecurityConfig",
         "methodName": "passwordEncoder"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "rsa2048-pc-001",
@@ -171,11 +220,16 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "pke",
-          "cryptoFunctions": ["Keygen", "Sign", "Verify"]
+          "parameterSetIdentifier": "2048",
+          "cryptoFunctions": [
+            "Keygen",
+            "Sign",
+            "Verify"
+          ]
         }
       },
       "location": {
-        "fileName": "JwtKeyProvider.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/auth/JwtKeyProvider.java",
         "lineNumber": 63,
         "className": "JwtKeyProvider",
         "methodName": "generateRsaKeyPair"
@@ -183,7 +237,21 @@
       "quantumSafety": "not-quantum-safe",
       "keyLength": 2048,
       "recommendedPQC": "ML-KEM (Kyber-768)",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "not-pqc-ready",
+        "confidence": 95,
+        "reasons": [
+          "RSA-2048 KeyPairGenerator detected — RSA is fundamentally broken by Shor’s algorithm",
+          "Key size 2048 provides 0 bits of post-quantum security"
+        ],
+        "parameters": {
+          "algorithm": "RSA",
+          "keySize": 2048
+        },
+        "recommendation": "Replace with ML-KEM (Kyber-768) for key encapsulation. During migration, consider hybrid RSA+ML-KEM."
+      }
     },
     {
       "id": "rsa4096-pc-001",
@@ -193,11 +261,16 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "pke",
-          "cryptoFunctions": ["Keygen", "Encrypt", "Decrypt"]
+          "parameterSetIdentifier": "4096",
+          "cryptoFunctions": [
+            "Keygen",
+            "Encrypt",
+            "Decrypt"
+          ]
         }
       },
       "location": {
-        "fileName": "EncryptionKeyStore.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/crypto/EncryptionKeyStore.java",
         "lineNumber": 88,
         "className": "EncryptionKeyStore",
         "methodName": "loadMasterKey"
@@ -205,7 +278,20 @@
       "quantumSafety": "not-quantum-safe",
       "keyLength": 4096,
       "recommendedPQC": "ML-KEM (Kyber-1024)",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "not-pqc-ready",
+        "confidence": 95,
+        "reasons": [
+          "RSA-4096 KeyPairGenerator detected — all RSA key sizes are broken by Shor’s algorithm"
+        ],
+        "parameters": {
+          "algorithm": "RSA",
+          "keySize": 4096
+        },
+        "recommendation": "Replace with ML-KEM (Kyber-1024) for equivalent security level."
+      }
     },
     {
       "id": "ec-p256-pc-001",
@@ -216,18 +302,34 @@
         "algorithmProperties": {
           "primitive": "signature",
           "curve": "P-256",
-          "cryptoFunctions": ["Sign", "Verify"]
+          "cryptoFunctions": [
+            "Sign",
+            "Verify"
+          ]
         }
       },
       "location": {
-        "fileName": "OAuth2TokenSigner.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/auth/OAuth2TokenSigner.java",
         "lineNumber": 44,
         "className": "OAuth2TokenSigner",
         "methodName": "signAccessToken"
       },
       "quantumSafety": "not-quantum-safe",
       "recommendedPQC": "ML-DSA (Dilithium-2)",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "not-pqc-ready",
+        "confidence": 95,
+        "reasons": [
+          "ECDSA with P-256 curve — elliptic curve algorithms are broken by Shor’s algorithm"
+        ],
+        "parameters": {
+          "algorithm": "ECDSA",
+          "curve": "P-256"
+        },
+        "recommendation": "Migrate to ML-DSA (Dilithium-2) for digital signatures."
+      }
     },
     {
       "id": "ec-p384-pc-001",
@@ -238,18 +340,22 @@
         "algorithmProperties": {
           "primitive": "signature",
           "curve": "P-384",
-          "cryptoFunctions": ["Sign", "Verify"]
+          "cryptoFunctions": [
+            "Sign",
+            "Verify"
+          ]
         }
       },
       "location": {
-        "fileName": "MutualTlsConfig.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/tls/MutualTlsConfig.java",
         "lineNumber": 72,
         "className": "MutualTlsConfig",
         "methodName": "buildKeyManager"
       },
       "quantumSafety": "not-quantum-safe",
       "recommendedPQC": "ML-DSA (Dilithium-3)",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "ed25519-pc-001",
@@ -260,18 +366,34 @@
         "algorithmProperties": {
           "primitive": "signature",
           "curve": "Curve25519",
-          "cryptoFunctions": ["Sign", "Verify"]
+          "cryptoFunctions": [
+            "Sign",
+            "Verify"
+          ]
         }
       },
       "location": {
-        "fileName": "WebAuthnService.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/auth/WebAuthnService.java",
         "lineNumber": 130,
         "className": "WebAuthnService",
         "methodName": "verifyAssertion"
       },
       "quantumSafety": "not-quantum-safe",
       "recommendedPQC": "ML-DSA (Dilithium-2)",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "not-pqc-ready",
+        "confidence": 95,
+        "reasons": [
+          "Ed25519 is an elliptic-curve signature scheme — vulnerable to Shor’s algorithm"
+        ],
+        "parameters": {
+          "algorithm": "Ed25519",
+          "curve": "Curve25519"
+        },
+        "recommendation": "Migrate to ML-DSA (Dilithium-2) for digital signatures."
+      }
     },
     {
       "id": "aes256gcm-pc-001",
@@ -282,18 +404,35 @@
         "algorithmProperties": {
           "primitive": "ae",
           "mode": "GCM",
-          "cryptoFunctions": ["Encrypt", "Decrypt"]
+          "cryptoFunctions": [
+            "Encrypt",
+            "Decrypt"
+          ]
         }
       },
       "location": {
-        "fileName": "PropertyEncryptor.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/crypto/PropertyEncryptor.java",
         "lineNumber": 36,
         "className": "PropertyEncryptor",
         "methodName": "encrypt"
       },
       "quantumSafety": "quantum-safe",
       "keyLength": 256,
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "pqc-ready",
+        "confidence": 95,
+        "reasons": [
+          "AES-256-GCM — key size provides 128-bit post-quantum security margin (Grover’s halves effective key length)"
+        ],
+        "parameters": {
+          "algorithm": "AES",
+          "keySize": 256,
+          "mode": "GCM"
+        },
+        "recommendation": "No changes needed — AES-256-GCM is considered PQC-safe."
+      }
     },
     {
       "id": "aes256gcm-pc-002",
@@ -304,18 +443,22 @@
         "algorithmProperties": {
           "primitive": "ae",
           "mode": "GCM",
-          "cryptoFunctions": ["Encrypt", "Decrypt"]
+          "cryptoFunctions": [
+            "Encrypt",
+            "Decrypt"
+          ]
         }
       },
       "location": {
-        "fileName": "SessionCookieEncryptor.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/session/SessionCookieEncryptor.java",
         "lineNumber": 58,
         "className": "SessionCookieEncryptor",
         "methodName": "sealCookie"
       },
       "quantumSafety": "quantum-safe",
       "keyLength": 256,
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "aes128cbc-pc-001",
@@ -327,11 +470,14 @@
           "primitive": "block-cipher",
           "mode": "CBC",
           "padding": "PKCS5Padding",
-          "cryptoFunctions": ["Encrypt", "Decrypt"]
+          "cryptoFunctions": [
+            "Encrypt",
+            "Decrypt"
+          ]
         }
       },
       "location": {
-        "fileName": "LegacyMigrationHelper.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/legacy/LegacyMigrationHelper.java",
         "lineNumber": 67,
         "className": "LegacyMigrationHelper",
         "methodName": "decryptOldData"
@@ -339,7 +485,22 @@
       "quantumSafety": "not-quantum-safe",
       "keyLength": 128,
       "recommendedPQC": "AES-256-GCM",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "not-pqc-ready",
+        "confidence": 90,
+        "reasons": [
+          "AES-128 provides only 64-bit security against Grover’s algorithm — below the 128-bit post-quantum threshold",
+          "CBC mode is also less secure than GCM (no authentication)"
+        ],
+        "parameters": {
+          "algorithm": "AES",
+          "keySize": 128,
+          "mode": "CBC"
+        },
+        "recommendation": "Upgrade to AES-256-GCM for authenticated encryption with post-quantum security."
+      }
     },
     {
       "id": "chacha20-pc-001",
@@ -349,18 +510,22 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "ae",
-          "cryptoFunctions": ["Encrypt", "Decrypt"]
+          "cryptoFunctions": [
+            "Encrypt",
+            "Decrypt"
+          ]
         }
       },
       "location": {
-        "fileName": "StreamEncryptionService.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/crypto/StreamEncryptionService.java",
         "lineNumber": 25,
         "className": "StreamEncryptionService",
         "methodName": "encryptStream"
       },
       "quantumSafety": "quantum-safe",
       "keyLength": 256,
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "hmac256-pc-001",
@@ -370,17 +535,20 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "mac",
-          "cryptoFunctions": ["Tag"]
+          "cryptoFunctions": [
+            "Tag"
+          ]
         }
       },
       "location": {
-        "fileName": "CsrfTokenRepository.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/security/CsrfTokenRepository.java",
         "lineNumber": 49,
         "className": "CsrfTokenRepository",
         "methodName": "signToken"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "hmac256-pc-002",
@@ -390,17 +558,20 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "mac",
-          "cryptoFunctions": ["Tag"]
+          "cryptoFunctions": [
+            "Tag"
+          ]
         }
       },
       "location": {
-        "fileName": "WebhookSignatureService.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/webhook/WebhookSignatureService.java",
         "lineNumber": 31,
         "className": "WebhookSignatureService",
         "methodName": "computeHmac"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "hmac512-pc-001",
@@ -410,17 +581,20 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "mac",
-          "cryptoFunctions": ["Tag"]
+          "cryptoFunctions": [
+            "Tag"
+          ]
         }
       },
       "location": {
-        "fileName": "JwtMacSigner.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/auth/JwtMacSigner.java",
         "lineNumber": 22,
         "className": "JwtMacSigner",
         "methodName": "sign"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "pbkdf2-pc-001",
@@ -430,17 +604,37 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "key-derivation",
-          "cryptoFunctions": ["Keygen"]
+          "cryptoFunctions": [
+            "Keygen"
+          ]
         }
       },
       "location": {
-        "fileName": "ApiKeyService.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/auth/ApiKeyService.java",
         "lineNumber": 55,
         "className": "ApiKeyService",
         "methodName": "deriveKey"
       },
-      "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "quantumSafety": "conditional",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "pqc-ready",
+        "confidence": 85,
+        "reasons": [
+          "PBKDF2 with HMAC-SHA256 detected",
+          "Iteration count: 600000 (≥ 600000 threshold — good)",
+          "Key length: 256 bits (≥ 256 threshold — good)",
+          "Hash algorithm: SHA-256 (quantum-safe)"
+        ],
+        "parameters": {
+          "algorithm": "PBKDF2WithHmacSHA256",
+          "iterations": 600000,
+          "keyLength": 256,
+          "hashAlgorithm": "SHA-256"
+        },
+        "recommendation": "Current parameters are PQC-ready. Consider Argon2id for memory-hard KDF."
+      }
     },
     {
       "id": "hkdf-pc-001",
@@ -450,17 +644,20 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "key-derivation",
-          "cryptoFunctions": ["Keygen"]
+          "cryptoFunctions": [
+            "Keygen"
+          ]
         }
       },
       "location": {
-        "fileName": "EncryptionKeyStore.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/crypto/EncryptionKeyStore.java",
         "lineNumber": 112,
         "className": "EncryptionKeyStore",
         "methodName": "deriveSubKey"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "ecdh-pc-001",
@@ -471,18 +668,33 @@
         "algorithmProperties": {
           "primitive": "key-agreement",
           "curve": "P-256",
-          "cryptoFunctions": ["Key Exchange"]
+          "cryptoFunctions": [
+            "Key Exchange"
+          ]
         }
       },
       "location": {
-        "fileName": "JweEncryptionService.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/crypto/JweEncryptionService.java",
         "lineNumber": 78,
         "className": "JweEncryptionService",
         "methodName": "performKeyAgreement"
       },
       "quantumSafety": "not-quantum-safe",
       "recommendedPQC": "ML-KEM (Kyber-768)",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "not-pqc-ready",
+        "confidence": 95,
+        "reasons": [
+          "ECDH with P-256 curve — Diffie-Hellman key agreement over elliptic curves is broken by Shor’s algorithm"
+        ],
+        "parameters": {
+          "algorithm": "ECDH",
+          "curve": "P-256"
+        },
+        "recommendation": "Replace with ML-KEM (Kyber-768) key encapsulation mechanism."
+      }
     },
     {
       "id": "dh2048-pc-001",
@@ -492,11 +704,13 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "key-agreement",
-          "cryptoFunctions": ["Key Exchange"]
+          "cryptoFunctions": [
+            "Key Exchange"
+          ]
         }
       },
       "location": {
-        "fileName": "LegacyKeyExchange.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/legacy/LegacyKeyExchange.java",
         "lineNumber": 39,
         "className": "LegacyKeyExchange",
         "methodName": "negotiateSharedSecret"
@@ -504,7 +718,8 @@
       "quantumSafety": "not-quantum-safe",
       "keyLength": 2048,
       "recommendedPQC": "ML-KEM (Kyber-768)",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "tls13-pc-001",
@@ -518,24 +733,31 @@
           "cipherSuites": [
             {
               "name": "TLS_AES_256_GCM_SHA384",
-              "algorithms": ["AES-256-GCM", "SHA-384"]
+              "algorithms": [
+                "AES-256-GCM",
+                "SHA-384"
+              ]
             },
             {
               "name": "TLS_CHACHA20_POLY1305_SHA256",
-              "algorithms": ["ChaCha20-Poly1305", "SHA-256"]
+              "algorithms": [
+                "ChaCha20-Poly1305",
+                "SHA-256"
+              ]
             }
           ]
         }
       },
       "location": {
-        "fileName": "TlsServerConfig.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/tls/TlsServerConfig.java",
         "lineNumber": 28,
         "className": "TlsServerConfig",
         "methodName": "configureSslContext"
       },
       "quantumSafety": "not-quantum-safe",
-      "recommendedPQC": "TLS 1.3 with PQ hybrid key exchange",
-      "complianceStatus": "not-compliant"
+      "recommendedPQC": "TLS 1.3 with ML-KEM hybrid key exchange (X25519Kyber768Draft00)",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "regex"
     },
     {
       "id": "tls12-pc-001",
@@ -549,47 +771,63 @@
           "cipherSuites": [
             {
               "name": "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
-              "algorithms": ["ECDHE", "RSA", "AES-256-GCM", "SHA-384"]
+              "algorithms": [
+                "ECDHE",
+                "RSA",
+                "AES-256-GCM",
+                "SHA-384"
+              ]
             },
             {
               "name": "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-              "algorithms": ["ECDHE", "RSA", "AES-128-GCM", "SHA-256"]
+              "algorithms": [
+                "ECDHE",
+                "RSA",
+                "AES-128-GCM",
+                "SHA-256"
+              ]
             }
           ]
         }
       },
       "location": {
-        "fileName": "HttpClientConfig.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/config/HttpClientConfig.java",
         "lineNumber": 55,
         "className": "HttpClientConfig",
         "methodName": "buildRestTemplate"
       },
       "quantumSafety": "not-quantum-safe",
-      "recommendedPQC": "Migrate to TLS 1.3 with PQ hybrid",
-      "complianceStatus": "not-compliant"
+      "recommendedPQC": "Migrate to TLS 1.3 with PQ hybrid key exchange",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "regex"
     },
     {
-      "id": "x509-pc-001",
+      "id": "x509rsa-pc-001",
       "name": "X.509-RSA-2048",
       "type": "crypto-asset",
       "cryptoProperties": {
         "assetType": "certificate",
         "algorithmProperties": {
           "primitive": "pke",
-          "cryptoFunctions": ["Sign", "Verify"]
+          "parameterSetIdentifier": "2048",
+          "cryptoFunctions": [
+            "Sign",
+            "Verify"
+          ]
         }
       },
       "location": {
-        "fileName": "application.yml",
+        "fileName": "src/main/resources/application.yml",
         "lineNumber": 18
       },
       "quantumSafety": "not-quantum-safe",
       "keyLength": 2048,
-      "recommendedPQC": "X.509 with ML-DSA",
-      "complianceStatus": "not-compliant"
+      "recommendedPQC": "X.509 with ML-DSA signature",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "regex"
     },
     {
-      "id": "x509-pc-002",
+      "id": "x509ec-pc-001",
       "name": "X.509-EC-P256",
       "type": "crypto-asset",
       "cryptoProperties": {
@@ -597,18 +835,22 @@
         "algorithmProperties": {
           "primitive": "signature",
           "curve": "P-256",
-          "cryptoFunctions": ["Sign", "Verify"]
+          "cryptoFunctions": [
+            "Sign",
+            "Verify"
+          ]
         }
       },
       "location": {
-        "fileName": "MutualTlsConfig.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/tls/MutualTlsConfig.java",
         "lineNumber": 91,
         "className": "MutualTlsConfig",
         "methodName": "loadClientCert"
       },
       "quantumSafety": "not-quantum-safe",
       "recommendedPQC": "X.509 with ML-DSA",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "secrand-pc-001",
@@ -618,17 +860,32 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "other",
-          "cryptoFunctions": ["Other"]
+          "cryptoFunctions": [
+            "Other"
+          ]
         }
       },
       "location": {
-        "fileName": "TokenGenerator.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/auth/TokenGenerator.java",
         "lineNumber": 15,
         "className": "TokenGenerator",
         "methodName": "generateOpaqueToken"
       },
-      "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "quantumSafety": "conditional",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "pqc-ready",
+        "confidence": 80,
+        "reasons": [
+          "SecureRandom with SHA1PRNG provider — CSPRNG output is quantum-safe",
+          "SHA-1 is used internally for entropy mixing only (not as a hash function)"
+        ],
+        "parameters": {
+          "provider": "SHA1PRNG"
+        },
+        "recommendation": "Consider migrating to SecureRandom.getInstance(\"DRBG\") for NIST SP 800-90A compliance."
+      }
     },
     {
       "id": "secrand-pc-002",
@@ -638,17 +895,32 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "other",
-          "cryptoFunctions": ["Other"]
+          "cryptoFunctions": [
+            "Other"
+          ]
         }
       },
       "location": {
-        "fileName": "SessionIdGenerator.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/session/SessionIdGenerator.java",
         "lineNumber": 22,
         "className": "SessionIdGenerator",
         "methodName": "nextId"
       },
-      "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "quantumSafety": "conditional",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar",
+      "pqcVerdict": {
+        "verdict": "pqc-ready",
+        "confidence": 90,
+        "reasons": [
+          "SecureRandom with NativePRNG provider — backed by OS entropy source (/dev/urandom)",
+          "OS-backed CSPRNGs are considered quantum-safe"
+        ],
+        "parameters": {
+          "provider": "NativePRNG"
+        },
+        "recommendation": "NativePRNG is PQC-safe. No changes required."
+      }
     },
     {
       "id": "des-pc-001",
@@ -660,11 +932,14 @@
           "primitive": "block-cipher",
           "mode": "CBC",
           "padding": "PKCS5Padding",
-          "cryptoFunctions": ["Encrypt", "Decrypt"]
+          "cryptoFunctions": [
+            "Encrypt",
+            "Decrypt"
+          ]
         }
       },
       "location": {
-        "fileName": "LegacyMigrationHelper.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/legacy/LegacyMigrationHelper.java",
         "lineNumber": 105,
         "className": "LegacyMigrationHelper",
         "methodName": "decryptTripleDes"
@@ -672,7 +947,8 @@
       "quantumSafety": "not-quantum-safe",
       "keyLength": 168,
       "recommendedPQC": "AES-256-GCM",
-      "complianceStatus": "not-compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "dsa-pc-001",
@@ -682,11 +958,14 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "signature",
-          "cryptoFunctions": ["Sign", "Verify"]
+          "cryptoFunctions": [
+            "Sign",
+            "Verify"
+          ]
         }
       },
       "location": {
-        "fileName": "LegacyMigrationHelper.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/legacy/LegacyMigrationHelper.java",
         "lineNumber": 140,
         "className": "LegacyMigrationHelper",
         "methodName": "verifyLegacySignature"
@@ -694,27 +973,8 @@
       "quantumSafety": "not-quantum-safe",
       "keyLength": 1024,
       "recommendedPQC": "ML-DSA (Dilithium-2)",
-      "complianceStatus": "not-compliant"
-    },
-    {
-      "id": "sha3-pc-001",
-      "name": "SHA3-256",
-      "type": "crypto-asset",
-      "cryptoProperties": {
-        "assetType": "algorithm",
-        "algorithmProperties": {
-          "primitive": "hash",
-          "cryptoFunctions": ["Hash Function"]
-        }
-      },
-      "location": {
-        "fileName": "IntegrityVerifier.java",
-        "lineNumber": 38,
-        "className": "IntegrityVerifier",
-        "methodName": "hashDocument"
-      },
-      "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "mlkem-pc-001",
@@ -724,17 +984,21 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "key-encapsulation",
-          "cryptoFunctions": ["Key Exchange", "Encrypt"]
+          "cryptoFunctions": [
+            "Key Exchange",
+            "Encrypt"
+          ]
         }
       },
       "location": {
-        "fileName": "PqcExperimentalService.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/experimental/PqcExperimentalService.java",
         "lineNumber": 22,
         "className": "PqcExperimentalService",
         "methodName": "encapsulate"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
     },
     {
       "id": "mldsa-pc-001",
@@ -744,35 +1008,303 @@
         "assetType": "algorithm",
         "algorithmProperties": {
           "primitive": "signature",
-          "cryptoFunctions": ["Sign", "Verify"]
+          "cryptoFunctions": [
+            "Sign",
+            "Verify"
+          ]
         }
       },
       "location": {
-        "fileName": "PqcExperimentalService.java",
+        "fileName": "src/main/java/org/springframework/samples/petclinic/experimental/PqcExperimentalService.java",
         "lineNumber": 55,
         "className": "PqcExperimentalService",
         "methodName": "signWithDilithium"
       },
       "quantumSafety": "quantum-safe",
-      "complianceStatus": "compliant"
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "salt-pc-001",
+      "name": "PBKDF2 Salt",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "salt",
+          "size": 128
+        }
+      },
+      "location": {
+        "fileName": "src/main/java/org/springframework/samples/petclinic/auth/ApiKeyService.java",
+        "lineNumber": 42,
+        "className": "ApiKeyService",
+        "methodName": "generateSalt"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "iv-pc-001",
+      "name": "AES-GCM IV",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "initialization-vector",
+          "size": 96
+        }
+      },
+      "location": {
+        "fileName": "src/main/java/org/springframework/samples/petclinic/crypto/PropertyEncryptor.java",
+        "lineNumber": 28,
+        "className": "PropertyEncryptor",
+        "methodName": "generateIV"
+      },
+      "quantumSafety": "quantum-safe",
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "rsa-priv-pc-001",
+      "name": "RSA-2048 Private Key",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "private-key",
+        "algorithmProperties": {
+          "primitive": "pke",
+          "parameterSetIdentifier": "2048",
+          "cryptoFunctions": [
+            "Sign",
+            "Decrypt"
+          ]
+        }
+      },
+      "location": {
+        "fileName": "src/main/java/org/springframework/samples/petclinic/auth/JwtKeyProvider.java",
+        "lineNumber": 71,
+        "className": "JwtKeyProvider",
+        "methodName": "getPrivateKey"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "keyLength": 2048,
+      "recommendedPQC": "ML-DSA (Dilithium) private key",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "hmac-secret-pc-001",
+      "name": "HMAC Signing Key",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "secret-key",
+        "algorithmProperties": {
+          "primitive": "mac",
+          "cryptoFunctions": [
+            "Tag"
+          ]
+        }
+      },
+      "location": {
+        "fileName": "src/main/java/org/springframework/samples/petclinic/security/CsrfTokenRepository.java",
+        "lineNumber": 25,
+        "className": "CsrfTokenRepository",
+        "methodName": "loadOrGenerateKey"
+      },
+      "quantumSafety": "quantum-safe",
+      "keyLength": 256,
+      "complianceStatus": "compliant",
+      "detectionSource": "sonar"
+    },
+    {
+      "id": "shared-secret-pc-001",
+      "name": "ECDH Shared Secret",
+      "type": "crypto-asset",
+      "cryptoProperties": {
+        "assetType": "related-crypto-material",
+        "relatedCryptoMaterialProperties": {
+          "type": "shared-secret",
+          "size": 256
+        }
+      },
+      "location": {
+        "fileName": "src/main/java/org/springframework/samples/petclinic/crypto/JweEncryptionService.java",
+        "lineNumber": 95,
+        "className": "JweEncryptionService",
+        "methodName": "deriveSharedSecret"
+      },
+      "quantumSafety": "not-quantum-safe",
+      "recommendedPQC": "ML-KEM shared secret",
+      "complianceStatus": "not-compliant",
+      "detectionSource": "sonar"
     }
   ],
   "dependencies": [
     {
-      "ref": "org.bouncycastle:bcprov-jdk18on:1.78",
-      "dependsOn": ["RSA", "ECC", "AES", "SHA-256", "ML-KEM", "ML-DSA"]
+      "ref": "maven:org.bouncycastle:bcprov-jdk18on:1.78",
+      "dependsOn": [],
+      "provides": [
+        "algorithm:RSA",
+        "algorithm:ECDSA",
+        "algorithm:Ed25519",
+        "algorithm:AES",
+        "algorithm:SHA-256",
+        "algorithm:ML-KEM",
+        "algorithm:ML-DSA"
+      ]
     },
     {
-      "ref": "org.springframework.security:spring-security-crypto:6.4.0",
-      "dependsOn": ["BCrypt", "PBKDF2", "AES"]
+      "ref": "maven:org.bouncycastle:bcpqc-jdk18on:1.78",
+      "dependsOn": [
+        "maven:org.bouncycastle:bcprov-jdk18on:1.78"
+      ],
+      "provides": [
+        "algorithm:ML-KEM-768",
+        "algorithm:ML-DSA-65",
+        "algorithm:SLH-DSA"
+      ]
     },
     {
-      "ref": "javax.crypto",
-      "dependsOn": ["AES", "HMAC", "3DES"]
+      "ref": "maven:org.springframework.security:spring-security-crypto:6.4.0",
+      "dependsOn": [],
+      "provides": [
+        "algorithm:BCrypt",
+        "algorithm:PBKDF2",
+        "algorithm:AES"
+      ]
     },
     {
-      "ref": "org.bouncycastle:bcpqc-jdk18on:1.78",
-      "dependsOn": ["ML-KEM", "ML-DSA"]
+      "ref": "jdk:javax.crypto",
+      "dependsOn": [],
+      "provides": [
+        "algorithm:AES",
+        "algorithm:HMAC",
+        "algorithm:3DES",
+        "algorithm:ChaCha20"
+      ]
+    },
+    {
+      "ref": "jdk:java.security",
+      "dependsOn": [],
+      "provides": [
+        "algorithm:SHA-256",
+        "algorithm:SHA-1",
+        "algorithm:RSA",
+        "algorithm:SecureRandom",
+        "algorithm:DSA"
+      ]
+    }
+  ],
+  "thirdPartyLibraries": [
+    {
+      "name": "bcprov-jdk18on",
+      "groupId": "org.bouncycastle",
+      "artifactId": "bcprov-jdk18on",
+      "version": "1.78",
+      "packageManager": "maven",
+      "cryptoAlgorithms": [
+        "AES",
+        "RSA",
+        "ECDSA",
+        "Ed25519",
+        "SHA-256",
+        "SHA-384",
+        "SHA-512",
+        "HMAC",
+        "ChaCha20",
+        "ML-KEM",
+        "ML-DSA"
+      ],
+      "quantumSafety": "conditional",
+      "isDirectDependency": true,
+      "depth": 0,
+      "dependencyPath": [
+        "bcprov-jdk18on"
+      ],
+      "manifestFile": "pom.xml"
+    },
+    {
+      "name": "bcpqc-jdk18on",
+      "groupId": "org.bouncycastle",
+      "artifactId": "bcpqc-jdk18on",
+      "version": "1.78",
+      "packageManager": "maven",
+      "cryptoAlgorithms": [
+        "ML-KEM-768",
+        "ML-DSA-65",
+        "SLH-DSA",
+        "BIKE",
+        "Classic McEliece"
+      ],
+      "quantumSafety": "quantum-safe",
+      "isDirectDependency": true,
+      "depth": 0,
+      "dependencyPath": [
+        "bcpqc-jdk18on"
+      ],
+      "manifestFile": "pom.xml"
+    },
+    {
+      "name": "spring-security-crypto",
+      "groupId": "org.springframework.security",
+      "artifactId": "spring-security-crypto",
+      "version": "6.4.0",
+      "packageManager": "maven",
+      "cryptoAlgorithms": [
+        "BCrypt",
+        "PBKDF2",
+        "AES",
+        "SCrypt"
+      ],
+      "quantumSafety": "conditional",
+      "isDirectDependency": false,
+      "depth": 1,
+      "dependencyPath": [
+        "spring-boot-starter-security",
+        "spring-security-crypto"
+      ],
+      "manifestFile": "pom.xml"
+    },
+    {
+      "name": "jbcrypt",
+      "groupId": "org.mindrot",
+      "artifactId": "jbcrypt",
+      "version": "0.4",
+      "packageManager": "maven",
+      "cryptoAlgorithms": [
+        "BCrypt"
+      ],
+      "quantumSafety": "quantum-safe",
+      "isDirectDependency": false,
+      "depth": 2,
+      "dependencyPath": [
+        "spring-boot-starter-security",
+        "spring-security-crypto",
+        "jbcrypt"
+      ],
+      "manifestFile": "pom.xml"
+    },
+    {
+      "name": "nimbus-jose-jwt",
+      "groupId": "com.nimbusds",
+      "artifactId": "nimbus-jose-jwt",
+      "version": "9.40",
+      "packageManager": "maven",
+      "cryptoAlgorithms": [
+        "RSA-OAEP",
+        "ECDSA",
+        "EdDSA",
+        "AES-GCM",
+        "HMAC-SHA256"
+      ],
+      "quantumSafety": "not-quantum-safe",
+      "isDirectDependency": true,
+      "depth": 0,
+      "dependencyPath": [
+        "nimbus-jose-jwt"
+      ],
+      "manifestFile": "pom.xml"
     }
   ]
 }

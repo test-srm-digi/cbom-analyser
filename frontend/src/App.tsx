@@ -216,6 +216,8 @@ export default function App() {
     } : null);
   }
 
+   console.log({cbom})
+
   return (
     <div className="min-h-screen bg-qg-dark">
       {/* Header */}
@@ -284,15 +286,16 @@ export default function App() {
             <AssetListView assets={cbom.cryptoAssets} />
 
             {/* Third-Party Crypto Libraries */}
+           
             {cbom.thirdPartyLibraries && cbom.thirdPartyLibraries.length > 0 && (
               <ThirdPartyLibrariesView libraries={cbom.thirdPartyLibraries} />
             )}
 
             {/* Upload another */}
-            <div className="pt-4 border-t border-qg-border">
+            {/* <div className="pt-4 border-t border-qg-border">
               <p className="text-sm text-gray-500 mb-3">Upload another CBOM:</p>
               <CBOMUploader onUpload={handleUpload} isLoading={isLoading} />
-            </div>
+            </div> */}
           </div>
         )}
       </main>
