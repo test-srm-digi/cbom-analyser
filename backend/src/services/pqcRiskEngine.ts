@@ -10,6 +10,7 @@ import {
   CryptoAsset,
   QuantumReadinessScore,
   ComplianceSummary,
+  PQCReadinessVerdict,
 } from '../types';
 
 // ─── Quantum Safety Classification Database ──────────────────────────────────
@@ -385,6 +386,11 @@ export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
 /**
  * Calculate the Quantum Readiness Score for a set of crypto assets.
  * Score is 0-100 where 100 = all assets are quantum-safe.
+ *
+ * If assets have a pqcVerdict, that verdict is used for more precise scoring:
+ *   PQC_READY     → 1.0  (not just the flat 0.75 for conditional)
+ *   NOT_PQC_READY → 0.0
+ *   REVIEW_NEEDED → 0.5
  */
 export function calculateReadinessScore(assets: CryptoAsset[]): QuantumReadinessScore {
   const total = assets.length;
@@ -397,8 +403,33 @@ export function calculateReadinessScore(assets: CryptoAsset[]): QuantumReadiness
   const conditional = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.CONDITIONAL).length;
   const unknown = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.UNKNOWN).length;
 
-  // Score: safe=1, conditional=0.75 (likely safe, needs review), unknown=0.5, vulnerable=0
-  const score = Math.round(((quantumSafe + conditional * 0.75 + unknown * 0.5) / total) * 100);
+  // Verdict-aware scoring
+  let weightedSum = quantumSafe; // safe = 1.0 each
+  // unknown = 0.5 each
+  weightedSum += unknown * 0.5;
+
+  // Conditional assets: use their pqcVerdict if available for precise scoring
+  for (const asset of assets) {
+    if (asset.quantumSafety === QuantumSafetyStatus.CONDITIONAL) {
+      if (asset.pqcVerdict) {
+        switch (asset.pqcVerdict.verdict) {
+          case PQCReadinessVerdict.PQC_READY:
+            weightedSum += 1.0;
+            break;
+          case PQCReadinessVerdict.NOT_PQC_READY:
+            weightedSum += 0.0;
+            break;
+          case PQCReadinessVerdict.REVIEW_NEEDED:
+            weightedSum += 0.5;
+            break;
+        }
+      } else {
+        weightedSum += 0.75; // legacy flat weight for unanalyzed conditional
+      }
+    }
+  }
+
+  const score = Math.round((weightedSum / total) * 100);
 
   return { score, totalAssets: total, quantumSafe, notQuantumSafe, conditional, unknown };
 }

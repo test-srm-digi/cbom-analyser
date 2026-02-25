@@ -5,6 +5,7 @@ import { Router, Request, Response } from 'express';
 import {
   runSonarCryptoScan,
   runRegexCryptoScan,
+  runFullScan,
   calculateReadinessScore,
   checkNISTPQCCompliance,
 } from '../services';
@@ -89,12 +90,54 @@ router.post('/scan-code/regex', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/scan-code/full
+ * Full pipeline: code scan + dependency scan + network scan + PQC parameter analysis.
+ */
+router.post('/scan-code/full', async (req: Request, res: Response) => {
+  try {
+    const { repoPath, networkHosts, excludePatterns }: ScanCodeRequest & { networkHosts?: string[] } = req.body;
+
+    if (!repoPath) {
+      res.status(400).json({ success: false, error: 'repoPath is required' });
+      return;
+    }
+
+    const cbom = await runFullScan(repoPath, networkHosts);
+
+    const storeKey = cbom.serialNumber || `full-scan-${Date.now()}`;
+    cbomStore.set(storeKey, cbom);
+
+    const readinessScore = calculateReadinessScore(cbom.cryptoAssets);
+    const compliance = checkNISTPQCCompliance(cbom.cryptoAssets);
+
+    res.json({
+      success: true,
+      message: `Full scan complete. Found ${cbom.cryptoAssets.length} cryptographic assets` +
+        (cbom.thirdPartyLibraries ? ` and ${cbom.thirdPartyLibraries.length} third-party crypto libraries` : '') + '.',
+      cbomId: storeKey,
+      cbom,
+      readinessScore,
+      compliance,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+    });
+  }
+});
+
+/**
  * POST /api/ai-suggest
  * Get AI-powered suggested fix for a cryptographic asset via Bedrock.
  */
 router.post('/ai-suggest', async (req: Request, res: Response) => {
   try {
-    const { algorithmName, primitive, keyLength, fileName, lineNumber, quantumSafety, recommendedPQC } = req.body;
+    const {
+      algorithmName, primitive, keyLength, fileName, lineNumber,
+      quantumSafety, recommendedPQC,
+      assetType, detectionSource, description, mode, curve, pqcVerdict,
+    } = req.body;
 
     if (!algorithmName) {
       res.status(400).json({ success: false, error: 'algorithmName is required' });
@@ -110,6 +153,12 @@ router.post('/ai-suggest', async (req: Request, res: Response) => {
       lineNumber,
       quantumSafety,
       recommendedPQC,
+      assetType,
+      detectionSource,
+      description,
+      mode,
+      curve,
+      pqcVerdict,
     });
 
     res.json({ success: true, ...suggestion });
