@@ -11,12 +11,15 @@
 3. [Docker Deployment](#docker-deployment)
 4. [API Reference](#api-reference)
 5. [Scanning Approaches](#scanning-approaches)
-6. [Third-Party Dependency Scanning](#third-party-dependency-scanning)
-7. [PQC Readiness Verdicts](#pqc-readiness-verdicts)
-8. [AI-Powered Suggested Fixes](#ai-powered-suggested-fixes)
-9. [Sample Data & Demo Code](#sample-data--demo-code)
-10. [Configuration](#configuration)
-11. [CycloneDX 1.6 Standard](#cyclonedx-16-standard)
+6. [Variable Resolution & Context Scanning](#variable-resolution--context-scanning)
+7. [Third-Party Dependency Scanning](#third-party-dependency-scanning)
+8. [PQC Readiness Verdicts](#pqc-readiness-verdicts)
+9. [Quantum Safety Dashboard](#quantum-safety-dashboard)
+10. [Project Insight Panel](#project-insight-panel)
+11. [AI-Powered Suggested Fixes](#ai-powered-suggested-fixes)
+12. [Sample Data & Demo Code](#sample-data--demo-code)
+13. [Configuration](#configuration)
+14. [CycloneDX 1.6 Standard](#cyclonedx-16-standard)
 
 ---
 
@@ -285,6 +288,25 @@ The **`/api/scan-code/full`** endpoint runs the complete 5-step pipeline:
 |--------|----------|------|----------|
 | `POST` | `/api/ai-suggest` | `{ algorithmName, primitive?, keyLength?, fileName?, lineNumber?, quantumSafety?, recommendedPQC? }` | `{ success, suggestion, replacement, migrationSteps, effort }` |
 
+### Project Insight
+
+| Method | Endpoint | Body | Response |
+|--------|----------|------|----------|
+| `POST` | `/api/ai-summary` | `{ assets, stats }` | `{ success, insight: { riskScore, headline, summary, priorities[], migrationEstimate } }` |
+
+The **`/api/ai-summary`** endpoint generates a holistic project-level risk assessment. The request includes:
+- `assets` — array of crypto asset summaries (`{ name, type, quantumSafety }`)
+- `stats` — aggregate counts (`{ total, notSafe, conditional, safe, unknown }`)
+
+The response `insight` object contains:
+- `riskScore` (0–100) — 0 = fully PQC-ready, 100 = critical risk
+- `headline` — one-line risk summary
+- `summary` — 2–3 sentence executive overview
+- `priorities[]` — ranked migration actions with `impact` (High/Medium/Low) and `effort` (Low/Medium/High) ratings
+- `migrationEstimate` — human-readable time estimate for full PQC migration
+
+Falls back to a **deterministic local engine** when AWS Bedrock credentials are not configured.
+
 ### Health
 
 | Method | Endpoint | Response |
@@ -358,6 +380,19 @@ curl -X POST http://localhost:3001/api/ai-suggest \
     "keyLength": 2048,
     "fileName": "src/auth/TokenService.java",
     "quantumSafety": "not-quantum-safe"
+  }'
+```
+
+**Get project-level risk insight:**
+```bash
+curl -X POST http://localhost:3001/api/ai-summary \
+  -H "Content-Type: application/json" \
+  -d '{
+    "assets": [
+      { "name": "RSA-2048", "type": "algorithm", "quantumSafety": "not-quantum-safe" },
+      { "name": "AES-256", "type": "algorithm", "quantumSafety": "quantum-safe" }
+    ],
+    "stats": { "total": 2, "notSafe": 1, "conditional": 0, "safe": 1, "unknown": 0 }
   }'
 ```
 
@@ -500,6 +535,57 @@ curl -X POST http://localhost:3001/api/scan-network/merge/urn:uuid:YOUR-CBOM-ID 
 
 ---
 
+## Variable Resolution & Context Scanning
+
+The regex scanner includes two advanced analysis capabilities that go beyond simple pattern matching.
+
+### Variable-Argument Resolution
+
+When the scanner encounters crypto API calls that use a **variable** instead of a string literal (e.g., `KeyPairGenerator.getInstance(algorithm)` instead of `getInstance("RSA")`), it attempts to **resolve the variable to an actual algorithm name**.
+
+**How it works:**
+
+1. The scanner detects a variable-arg pattern like `KeyPairGenerator.getInstance(algo)`
+2. It scans ±50 lines around the call site for assignment patterns:
+   - `String algo = "RSA";`
+   - `algo = "EC";`
+   - `final String algo = "ML-KEM";`
+3. If the variable is a method parameter, it traces callers in the same file for the concrete value
+4. If resolved → the asset is named with the **actual algorithm** (e.g., `RSA`) and enriched with PQC data
+5. If unresolved → the asset keeps a generic name with a description like *"Algorithm determined at runtime via variable `algo`"*
+
+**Supported variable patterns:**
+- `KeyPairGenerator.getInstance(variable)`
+- `Cipher.getInstance(variable)`
+- `MessageDigest.getInstance(variable)`
+- `Signature.getInstance(variable)`
+- `SecretKeyFactory.getInstance(variable)`
+- `KeyAgreement.getInstance(variable)`
+- `Mac.getInstance(variable)`
+
+### Context Scanning
+
+For certain crypto patterns whose security depends on **how they're used**, the scanner examines surrounding source code to provide richer context.
+
+**How it works:**
+
+1. Patterns like `X509Certificate`, `X509TrustManager`, and `BouncyCastleProvider` trigger context scanning
+2. The scanner reads ±30 lines around the detection site
+3. It looks for `getInstance()` calls and signature algorithm references (e.g., `SHA256withRSA`, `ECDSA`)
+4. The asset description is enriched, e.g.:
+   > *"X.509 used alongside: SHA256withRSA, RSA. Review these algorithms for PQC readiness."*
+
+**Context-scanned patterns:**
+
+| Pattern | Detection | Context Gathered |
+|---------|-----------|------------------|
+| **X.509 Certificate** | `X509Certificate`, `X509TrustManager` | Nearby `getInstance()` calls, signature algorithms |
+| **BouncyCastle Provider** | `new BouncyCastleProvider()`, `PROVIDER_NAME` | Nearby algorithm instantiations |
+
+This helps reviewers understand the **full cryptographic picture** around certificate and provider usage, even when the X.509 or provider reference itself doesn't name a specific algorithm.
+
+---
+
 ## Third-Party Dependency Scanning
 
 The full pipeline automatically discovers cryptographic libraries in your project's dependency manifests and resolves transitive dependencies.
@@ -571,6 +657,26 @@ For assets classified as **Conditional** (e.g., PBKDF2, AES, SecureRandom, KeyPa
 | **KeyPairGenerator** | Algorithm (RSA, EC, ML-KEM, ML-DSA, etc.) | RSA/EC → NOT_PQC_READY; ML-KEM/ML-DSA → PQC_READY |
 | **Signature** | Algorithm (SHA256withRSA, SHA384withECDSA, etc.) | RSA/ECDSA → NOT_PQC_READY; ML-DSA → PQC_READY |
 | **SecretKeyFactory** | Delegates to PBKDF2 or AES analysis | Based on underlying algorithm |
+| **X.509 Certificate** | Certificate type, signature algorithm, key usage | RSA/ECDSA-signed certs → NOT_PQC_READY; PQC-signed → PQC_READY |
+| **TLS/SSL** | Protocol version, cipher suite | TLS 1.3 with PQC KEM → PQC_READY; legacy suites → NOT_PQC_READY |
+| **TSP (Timestamping)** | Timestamp hash algorithm | SHA-256+ → REVIEW_NEEDED; SHA-1 → NOT_PQC_READY |
+| **CMS/PKCS#7** | Signing algorithm, envelope encryption | RSA/ECDSA → NOT_PQC_READY |
+| **OCSP** | Response signing algorithm | RSA/ECDSA → NOT_PQC_READY |
+
+### Algorithm Database Entries
+
+The scanner includes a comprehensive **ALGORITHM_DATABASE** with quantum safety classifications for 80+ algorithms. Recent additions include:
+
+| Algorithm | Classification | Notes |
+|-----------|---------------|-------|
+| `CAST5` | NOT_QUANTUM_SAFE | Legacy 64-bit block cipher |
+| `ElGamal` | NOT_QUANTUM_SAFE | Discrete logarithm-based |
+| `MessageDigest` | CONDITIONAL | Java JCE wrapper — safety depends on underlying algorithm |
+| `NONE` | NOT_QUANTUM_SAFE | Raw signature without digest — no cryptographic protection |
+| `NONEwithRSA` | NOT_QUANTUM_SAFE | RSA signature without hashing |
+| `NONEwithECDSA` | NOT_QUANTUM_SAFE | ECDSA signature without hashing |
+
+Non-cryptographic hash functions (`CRC32`, `Murmur3`) are **excluded** from scanning results — they are checksums, not crypto primitives.
 
 ### Promotion Rules
 
@@ -584,6 +690,84 @@ Verdicts affect the readiness score:
 - `NOT_PQC_READY` → weight 0.0 (zero)
 - `REVIEW_NEEDED` → weight 0.5 (partial)
 - Unanalyzed conditional → weight 0.75 (legacy)
+
+---
+
+## Quantum Safety Dashboard
+
+The asset list includes a **Quantum Safety** column that provides at-a-glance risk classification with interactive filtering.
+
+### Color-Coded Safety Badges
+
+Each crypto asset displays a labeled badge in the **Quantum Safety** column:
+
+| Badge | Color | Meaning |
+|-------|-------|---------|
+| **Not Safe** | Red | Vulnerable to quantum attack (RSA, ECDSA, DH, etc.) |
+| **Conditional** | Cyan | Safety depends on parameters — check PQC verdict |
+| **Safe** | Green | Post-quantum safe (AES-256, ML-KEM, ML-DSA, etc.) |
+| **Unknown** | Gray | Insufficient data to classify |
+
+### Filter Chips
+
+Above the asset table, clickable **filter chips** let you focus on specific risk categories:
+
+- **Not Safe (12)** — red chip with live count
+- **Conditional (5)** — cyan chip with live count
+- **Safe (8)** — green chip with live count
+- **Unknown (0)** — gray chip with live count
+
+Click a chip to show only those assets. Click again to clear the filter. The text search also matches safety labels (e.g., typing "not safe" filters to at-risk assets).
+
+### Sorting
+
+The Quantum Safety column is **sortable by risk priority**: Not Safe → Conditional → Unknown → Safe. This puts the most urgent items at the top.
+
+### Location Column Enhancements
+
+For assets discovered via **dependency scanning**, the Location column displays:
+- **Provider library name** (e.g., `BouncyCastle bcprov-jdk18on`) with an amber package icon
+- **Manifest file path** below (e.g., `pom.xml:45`)
+
+This makes it clear which third-party library introduced each crypto asset.
+
+---
+
+## Project Insight Panel
+
+The **Project Insight** button (bar-chart icon) in the toolbar generates a high-level PQC migration risk assessment for all loaded crypto assets.
+
+### How It Works
+
+1. Click the **Project Insight** button in the dashboard toolbar
+2. The frontend aggregates asset statistics (total, not-safe, conditional, safe, unknown)
+3. Calls `POST /api/ai-summary` with the asset list and stats
+4. Displays a gradient insight panel between the filter chips and the asset table
+
+### Insight Panel Contents
+
+| Section | Description |
+|---------|-------------|
+| **Risk Score** | 0–100 progress bar (0 = fully PQC-ready, 100 = critical risk). Color-coded: green ≤ 30, amber ≤ 60, red > 60 |
+| **Headline** | One-line risk summary (e.g., *"High Risk — 67% of crypto assets need migration"*) |
+| **Summary** | 2–3 sentence executive overview of the project's PQC posture |
+| **Prioritized Actions** | Ranked list of migration tasks, each with **Impact** (High/Medium/Low) and **Effort** (Low/Medium/High) ratings |
+| **Migration Estimate** | Human-readable time estimate for full PQC migration |
+
+### Risk Scoring (Fallback Engine)
+
+When AWS Bedrock is not configured, the deterministic fallback engine calculates risk:
+
+```
+riskScore = (notSafeRatio × 80) + (conditionalRatio × 40) + (unknownRatio × 20)
+```
+
+- > 60% not-safe → "Critical Risk"
+- > 30% not-safe → "High Risk"
+- > 50% conditional → "Moderate Risk"
+- All safe → "PQC Ready"
+
+The panel can be dismissed with the **×** button and re-generated at any time.
 
 ---
 
