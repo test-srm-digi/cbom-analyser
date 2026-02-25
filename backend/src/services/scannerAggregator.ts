@@ -322,13 +322,17 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
   }
 
   /**
-   * Scan nearby lines (±30) for crypto-relevant context clues.
-   * Used for X.509 and BouncyCastle-Provider detections to find what algorithms
-   * are associated. Returns a description string with found algorithms.
+   * Scan nearby lines for crypto-relevant context clues.
+   * For provider-type detections (BouncyCastle-Provider), scans the **entire file**
+   * since provider registration is typically distant from algorithm usage.
+   * For certificates (X.509), scans ±30 lines.
+   * Returns a description string with found algorithms.
    */
   function scanNearbyContext(lines: string[], matchLine: number, assetName: string): string | null {
-    const start = Math.max(0, matchLine - 30);
-    const end = Math.min(lines.length, matchLine + 30);
+    // For provider detections, scan the whole file; for others, scan ±30 lines
+    const isProvider = assetName.toLowerCase().includes('provider');
+    const start = isProvider ? 0 : Math.max(0, matchLine - 30);
+    const end = isProvider ? lines.length : Math.min(lines.length, matchLine + 30);
     const nearbyText = lines.slice(start, end).join('\n');
 
     // Look for getInstance("...") calls nearby to determine which algorithms are in scope
@@ -349,6 +353,43 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
     const keyStoreRe = /KeyStore\.getInstance\s*\(\s*"([^"]+)"/;
     const ksMatch = nearbyText.match(keyStoreRe);
     if (ksMatch && !algoRefs.includes(ksMatch[1])) algoRefs.push(`KeyStore:${ksMatch[1]}`);
+
+    if (isProvider) {
+      // ── Provider-specific: also look for explicit BC provider references ──
+      // getInstance("AES", "BC") or getInstance("RSA/ECB/PKCS1Padding", bcProvider)
+      const bcProviderRe = /getInstance\s*\(\s*"([^"]+)"\s*,\s*(?:"BC"|"BouncyCastle"|[Bb]c\w*|new\s+BouncyCastleProvider\s*\(\s*\)|BouncyCastleProvider\.PROVIDER_NAME)\s*\)/g;
+      while ((m = bcProviderRe.exec(nearbyText)) !== null) {
+        const algo = m[1];
+        if (!algoRefs.includes(algo)) algoRefs.unshift(algo); // prepend — these are confirmed BC-routed
+      }
+
+      // BouncyCastle-specific class instantiations (not via JCE)
+      const bcClassRe = /new\s+((?:JcaContentSignerBuilder|JcaDigestCalculatorProviderBuilder|JcaX509CertificateConverter|JcaX509v3CertificateBuilder|JcePBESecretKeyDecryptorBuilder|JcePKCSPBEInputDecryptorProviderBuilder|BcRSAContentVerifierProviderBuilder|BcECContentVerifierProviderBuilder)\s*\(\s*"?([^")\s]*)"?)/g;
+      while ((m = bcClassRe.exec(nearbyText)) !== null) {
+        const className = m[1].split('(')[0].trim();
+        const arg = m[2]?.trim();
+        const label = arg ? `${className}(${arg})` : className;
+        if (!algoRefs.includes(label)) algoRefs.push(label);
+      }
+
+      // BouncyCastle PEM / ASN1 patterns that reveal algorithm usage
+      const bcPemRe = /(?:PEMParser|PEMKeyPair|JcePEMDecryptorProviderBuilder|JcaPEMKeyConverter)/g;
+      while ((m = bcPemRe.exec(nearbyText)) !== null) {
+        if (!algoRefs.includes(m[0])) algoRefs.push(m[0]);
+      }
+
+      // Security.addProvider / Security.insertProviderAt
+      const addProviderRe = /Security\.(?:addProvider|insertProviderAt)\s*\(/g;
+      const hasProvider = addProviderRe.test(nearbyText);
+
+      if (algoRefs.length > 0) {
+        const prefix = hasProvider
+          ? 'BouncyCastle provider registered. Algorithms used through it'
+          : 'BouncyCastle provider referenced. Algorithms found in same file';
+        return `${prefix}: ${algoRefs.join(', ')}. Review each for PQC readiness.`;
+      }
+      return 'BouncyCastle provider registered/referenced but no specific algorithm usage found in this file. Check other files that import from this class.';
+    }
 
     if (algoRefs.length > 0) {
       return `${assetName} used alongside: ${algoRefs.join(', ')}. Review these algorithms for PQC readiness.`;
@@ -405,6 +446,7 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
     { pattern: /new\s+SecureRandom\s*\(/g, algorithm: 'SecureRandom', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.KEYGEN },
     { pattern: /new\s+BouncyCastleProvider\s*\(/g, algorithm: 'BouncyCastle-Provider', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, scanContext: true },
     { pattern: /BouncyCastleProvider\.PROVIDER_NAME/g, algorithm: 'BouncyCastle-Provider', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, scanContext: true },
+    { pattern: /Security\.(?:addProvider|insertProviderAt)\s*\(\s*new\s+BouncyCastleProvider/g, algorithm: 'BouncyCastle-Provider', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, scanContext: true },
 
     // ── Java: JCE Provider registration patterns ──
     // put("Signature.SHA256withRSA", ...) → extracts "SHA256withRSA"
