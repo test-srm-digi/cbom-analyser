@@ -88,7 +88,7 @@ else
   REQUEST_BODY="{\"repoPath\": \"${FULL_SCAN_PATH}\"}"
 fi
 
-SCAN_RESULT=$(curl -s -X POST http://localhost:3001/api/scan-code \
+SCAN_RESULT=$(curl -s -X POST http://localhost:3001/api/scan-code/full \
   -H "Content-Type: application/json" \
   -d "$REQUEST_BODY")
 
