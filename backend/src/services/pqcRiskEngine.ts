@@ -319,6 +319,67 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     recommendedPQC: 'TLS 1.3 with ML-KEM hybrid',
     notes: 'Best current standard but key exchange is not PQC yet',
   },
+  'TLS': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'TLS 1.3 with ML-KEM hybrid',
+    notes: 'TLS protocol — current key exchange mechanisms are vulnerable to quantum attacks. Migrate to PQC hybrid.',
+  },
+
+  // Additional algorithms that may be extracted by the improved scanner
+  'Diffie-Hellman': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-KEM (Kyber)',
+    notes: 'Classical Diffie-Hellman — vulnerable to Shor\'s algorithm. Migrate to ML-KEM.',
+  },
+  'DES': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    notes: 'DES is cryptographically broken regardless of quantum. Replace with AES-256.',
+  },
+  'DESede': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    notes: 'Triple DES (3DES) — weak key length, deprecated. Replace with AES-256.',
+  },
+  'CSPRNG': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Cryptographically Secure PRNG — quantum computers don\'t break randomness generation.',
+  },
+  'scrypt': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'scrypt KDF — not directly broken by quantum computers. Use sufficient cost parameters for post-quantum margin.',
+  },
+  'X.509': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'X.509 certificate format — quantum safety depends on the signature algorithm used (RSA → vulnerable, ML-DSA → safe).',
+  },
+  'HMAC': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Generic HMAC — quantum computers reduce effective key strength by half (Grover). Use ≥256-bit keys for post-quantum safety.',
+  },
+  'RC4': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    notes: 'RC4 is cryptographically broken. Replace immediately with AES-256.',
+  },
+  'Blowfish': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Blowfish has 64-bit block size (birthday attack risk). Replace with AES-256.',
+  },
+  'ChaCha20': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'ChaCha20 (256-bit key) is considered quantum-safe against Grover\'s attack.',
+  },
+  'ChaCha20-Poly1305': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'ChaCha20-Poly1305 AEAD — quantum-safe with 256-bit symmetric key.',
+  },
+  'EC': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-KEM (Kyber) / ML-DSA (Dilithium)',
+    notes: 'Elliptic Curve cryptography is vulnerable to Shor\'s algorithm.',
+  },
+  'GCM': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'GCM mode with AES-256 is quantum-safe.',
+  },
 };
 
 // ─── Risk Engine Functions ───────────────────────────────────────────────────

@@ -256,63 +256,136 @@ export async function runSonarCryptoScan(repoPath: string, excludePatterns?: str
 export async function runRegexCryptoScan(repoPath: string, excludePatterns?: string[]): Promise<CBOMDocument> {
   const cbom = createEmptyCBOM(path.basename(repoPath));
 
-  const cryptoPatterns: { pattern: RegExp; algorithm: string; primitive: CryptoPrimitive; cryptoFunction: CryptoFunction }[] = [
-    // ── Java: Exact string-literal JCE calls ──
-    { pattern: /MessageDigest\.getInstance\s*\(\s*"SHA-?256"\s*\)/g, algorithm: 'SHA-256', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
-    { pattern: /MessageDigest\.getInstance\s*\(\s*"SHA-?1"\s*\)/g, algorithm: 'SHA-1', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
-    { pattern: /MessageDigest\.getInstance\s*\(\s*"MD5"\s*\)/g, algorithm: 'MD5', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
-    { pattern: /MessageDigest\.getInstance\s*\(\s*"SHA-?384"\s*\)/g, algorithm: 'SHA-384', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
-    { pattern: /MessageDigest\.getInstance\s*\(\s*"SHA-?512"\s*\)/g, algorithm: 'SHA-512', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
-    { pattern: /MessageDigest\.getInstance\s*\(\s*"SHA3-[^"]+"\s*\)/g, algorithm: 'SHA-3', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
-    { pattern: /KeyPairGenerator\.getInstance\s*\(\s*"RSA"\s*\)/g, algorithm: 'RSA', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /Cipher\.getInstance\s*\(\s*"AES[^"]*"\s*\)/g, algorithm: 'AES', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
-    { pattern: /Cipher\.getInstance\s*\(\s*"RSA[^"]*"\s*\)/g, algorithm: 'RSA', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.ENCRYPT },
-    { pattern: /KeyGenerator\.getInstance\s*\(\s*"AES"\s*\)/g, algorithm: 'AES', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /Signature\.getInstance\s*\(\s*"SHA256withRSA"\s*\)/g, algorithm: 'RSA', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
-    { pattern: /Signature\.getInstance\s*\(\s*"SHA256withECDSA"\s*\)/g, algorithm: 'ECDSA', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
-    // ── Java: Broad dynamic JCE & BouncyCastle patterns ──
-    { pattern: /KeyFactory\.getInstance\s*\([^)]+\)/g, algorithm: 'KeyFactory', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /KeyPairGenerator\.getInstance\s*\([^)]+\)/g, algorithm: 'KeyPairGenerator', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /Signature\.getInstance\s*\([^)]+\)/g, algorithm: 'Digital-Signature', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
-    { pattern: /SecretKeyFactory\.getInstance\s*\(\s*"PBKDF2[^"]*"[^)]*\)/g, algorithm: 'PBKDF2', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /SecretKeyFactory\.getInstance\s*\([^)]+\)/g, algorithm: 'SecretKeyFactory', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.KEYGEN },
+  // Pattern type with optional asset-type override and algorithm extraction from capture group 1
+  type CryptoPattern = {
+    pattern: RegExp;
+    algorithm: string;          // static name OR fallback when capture group is empty
+    primitive: CryptoPrimitive;
+    cryptoFunction: CryptoFunction;
+    assetType?: AssetType;      // defaults to ALGORITHM if omitted
+    extractAlgorithm?: boolean; // when true, prefer capture group 1 over static `algorithm`
+  };
+
+  const cryptoPatterns: CryptoPattern[] = [
+    // ════════════════════════════════════════════════════════════════════════
+    // ── Java: JCE getInstance() with algorithm extraction from string arg ──
+    // ════════════════════════════════════════════════════════════════════════
+    // MessageDigest.getInstance("SHA-256")  → extracts "SHA-256"
+    { pattern: /MessageDigest\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'Unknown-Hash', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION, extractAlgorithm: true },
+    // Cipher.getInstance("AES/CBC/PKCS5Padding") → extracts "AES/CBC/PKCS5Padding", normalised later
+    { pattern: /Cipher\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'Unknown-Cipher', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT, extractAlgorithm: true },
+    // Signature.getInstance("SHA256withRSA") → extracts "SHA256withRSA"
+    { pattern: /Signature\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'Digital-Signature', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN, extractAlgorithm: true },
+    // KeyFactory.getInstance("RSA") → extracts "RSA"
+    { pattern: /KeyFactory\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'KeyFactory', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN, extractAlgorithm: true },
+    // KeyPairGenerator.getInstance("RSA") → extracts "RSA"
+    { pattern: /KeyPairGenerator\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'KeyPairGenerator', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN, extractAlgorithm: true },
+    // KeyGenerator.getInstance("AES") → extracts "AES"
+    { pattern: /KeyGenerator\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'KeyGenerator', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.KEYGEN, extractAlgorithm: true },
+    // SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256") → extracts "PBKDF2WithHmacSHA256"
+    { pattern: /SecretKeyFactory\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'SecretKeyFactory', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.KEYGEN, extractAlgorithm: true },
+    // KeyAgreement.getInstance("ECDH") → extracts "ECDH"
+    { pattern: /KeyAgreement\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'KeyAgreement', primitive: CryptoPrimitive.KEY_AGREEMENT, cryptoFunction: CryptoFunction.KEY_EXCHANGE, extractAlgorithm: true },
+    // Mac.getInstance("HmacSHA256") → extracts "HmacSHA256"
+    { pattern: /Mac\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'HMAC', primitive: CryptoPrimitive.MAC, cryptoFunction: CryptoFunction.TAG, extractAlgorithm: true },
+    // AlgorithmParameters.getInstance("EC") → extracts "EC"
+    { pattern: /AlgorithmParameters\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'AlgorithmParameters', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, extractAlgorithm: true },
+    // SecretKeySpec with algorithm arg: new SecretKeySpec(key, "AES") → extracts "AES"
+    { pattern: /new\s+SecretKeySpec\s*\([^,]+,\s*"([^"]+)"[^)]*\)/g, algorithm: 'SecretKeySpec', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.KEYGEN, assetType: AssetType.SECRET_KEY, extractAlgorithm: true },
+
+    // ── Java: JCE calls with variable arguments (no string literal → generic fallback) ──
+    { pattern: /MessageDigest\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'MessageDigest', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
+    { pattern: /Cipher\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'Cipher', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
+    { pattern: /Signature\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'Digital-Signature', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
+    { pattern: /KeyFactory\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'KeyFactory', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN },
+    { pattern: /KeyPairGenerator\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'KeyPairGenerator', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN },
+    { pattern: /SecretKeyFactory\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'SecretKeyFactory', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.KEYGEN },
+    { pattern: /Mac\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'HMAC', primitive: CryptoPrimitive.MAC, cryptoFunction: CryptoFunction.TAG },
+
+    // ── Java: TLS / SSL (protocol asset type) ──
+    { pattern: /SSLContext\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'TLS', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL, extractAlgorithm: true },
+    { pattern: /SSLContext\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'TLS', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
+
+    // ── Java: Certificates ──
+    { pattern: /CertificateFactory\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'X.509', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.CERTIFICATE, extractAlgorithm: true },
+    { pattern: /X509Certificate/g, algorithm: 'X.509', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.CERTIFICATE },
+    { pattern: /X509TrustManager/g, algorithm: 'X.509', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.CERTIFICATE },
+
+    // ── Java: Misc JCE & BouncyCastle ──
     { pattern: /new\s+SecureRandom\s*\(/g, algorithm: 'SecureRandom', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.KEYGEN },
     { pattern: /new\s+BouncyCastleProvider\s*\(/g, algorithm: 'BouncyCastle-Provider', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER },
     { pattern: /BouncyCastleProvider\.PROVIDER_NAME/g, algorithm: 'BouncyCastle-Provider', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER },
-    { pattern: /new\s+SecretKeySpec\s*\([^)]*"AES"[^)]*\)/g, algorithm: 'AES', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /Mac\.getInstance\s*\([^)]+\)/g, algorithm: 'HMAC', primitive: CryptoPrimitive.MAC, cryptoFunction: CryptoFunction.TAG },
-    // ── Java: JCE Provider registration patterns (put("Signature.X", ...)) ──
-    { pattern: /put\s*\(\s*"Signature\.[^"]+"\s*,/g, algorithm: 'JCE-Signature-Registration', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
-    { pattern: /put\s*\(\s*"KeyPairGenerator\.[^"]+"\s*,/g, algorithm: 'JCE-KeyPairGen-Registration', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /put\s*\(\s*"MessageDigest\.[^"]+"\s*,/g, algorithm: 'JCE-Digest-Registration', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
-    // Python patterns
+
+    // ── Java: JCE Provider registration patterns ──
+    // put("Signature.SHA256withRSA", ...) → extracts "SHA256withRSA"
+    { pattern: /put\s*\(\s*"Signature\.([^"]+)"\s*,/g, algorithm: 'JCE-Signature-Registration', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN, extractAlgorithm: true },
+    { pattern: /put\s*\(\s*"KeyPairGenerator\.([^"]+)"\s*,/g, algorithm: 'JCE-KeyPairGen-Registration', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN, extractAlgorithm: true },
+    { pattern: /put\s*\(\s*"MessageDigest\.([^"]+)"\s*,/g, algorithm: 'JCE-Digest-Registration', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION, extractAlgorithm: true },
+    { pattern: /put\s*\(\s*"Cipher\.([^"]+)"\s*,/g, algorithm: 'JCE-Cipher-Registration', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT, extractAlgorithm: true },
+    { pattern: /put\s*\(\s*"KeyAgreement\.([^"]+)"\s*,/g, algorithm: 'JCE-KeyAgreement-Registration', primitive: CryptoPrimitive.KEY_AGREEMENT, cryptoFunction: CryptoFunction.KEY_EXCHANGE, extractAlgorithm: true },
+    { pattern: /put\s*\(\s*"Mac\.([^"]+)"\s*,/g, algorithm: 'JCE-Mac-Registration', primitive: CryptoPrimitive.MAC, cryptoFunction: CryptoFunction.TAG, extractAlgorithm: true },
+
+    // ── Python patterns ──
     { pattern: /hashlib\.sha256/g, algorithm: 'SHA-256', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
     { pattern: /hashlib\.sha1/g, algorithm: 'SHA-1', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
     { pattern: /hashlib\.md5/g, algorithm: 'MD5', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
+    { pattern: /hashlib\.sha384/g, algorithm: 'SHA-384', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
+    { pattern: /hashlib\.sha512/g, algorithm: 'SHA-512', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
+    { pattern: /hashlib\.new\s*\(\s*['"]([^'"]+)['"]/g, algorithm: 'Unknown-Hash', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION, extractAlgorithm: true },
     { pattern: /from\s+Crypto\.Cipher\s+import\s+AES/g, algorithm: 'AES', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
     { pattern: /RSA\.generate/g, algorithm: 'RSA', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN },
     { pattern: /from\s+cryptography\.hazmat.*\s+import.*rsa/g, algorithm: 'RSA', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN },
     { pattern: /from\s+cryptography\.hazmat.*\s+import.*ec\b/g, algorithm: 'ECC', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
-    // Node.js / TypeScript patterns
-    { pattern: /crypto\.createHash\s*\(\s*['"]sha256['"]\s*\)/g, algorithm: 'SHA-256', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
-    { pattern: /crypto\.createHash\s*\(\s*['"]sha1['"]\s*\)/g, algorithm: 'SHA-1', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
-    { pattern: /crypto\.createHash\s*\(\s*['"]md5['"]\s*\)/g, algorithm: 'MD5', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
-    { pattern: /crypto\.createHash\s*\(\s*['"]sha512['"]\s*\)/g, algorithm: 'SHA-512', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
-    { pattern: /crypto\.createCipheriv\s*\(\s*['"]aes-256[^'"]*['"]/g, algorithm: 'AES-256', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
-    { pattern: /crypto\.createCipheriv\s*\(\s*['"]aes-128[^'"]*['"]/g, algorithm: 'AES-128', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
-    { pattern: /crypto\.createDecipheriv\s*\(\s*['"]aes[^'"]*['"]/g, algorithm: 'AES', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.DECRYPT },
-    { pattern: /crypto\.generateKeyPairSync\s*\(\s*['"]rsa['"]/g, algorithm: 'RSA', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /crypto\.generateKeyPairSync\s*\(\s*['"]ec['"]/g, algorithm: 'ECC', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /crypto\.createSign\s*\(\s*['"]SHA256['"]\s*\)/g, algorithm: 'RSA-SHA256', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
-    { pattern: /crypto\.createHmac\s*\(\s*['"]sha256['"]/g, algorithm: 'HMAC-SHA256', primitive: CryptoPrimitive.MAC, cryptoFunction: CryptoFunction.TAG },
-    { pattern: /crypto\.createHmac\s*\(\s*['"]sha512['"]/g, algorithm: 'HMAC-SHA512', primitive: CryptoPrimitive.MAC, cryptoFunction: CryptoFunction.TAG },
+    { pattern: /ssl\.create_default_context\s*\(/g, algorithm: 'TLS', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
+    { pattern: /ssl\.SSLContext\s*\(/g, algorithm: 'TLS', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
+
+    // ── Node.js / TypeScript patterns ──
+    { pattern: /crypto\.createHash\s*\(\s*['"]([^'"]+)['"]\s*\)/g, algorithm: 'Unknown-Hash', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION, extractAlgorithm: true },
+    { pattern: /crypto\.createCipheriv\s*\(\s*['"]([^'"]+)['"]/g, algorithm: 'Unknown-Cipher', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT, extractAlgorithm: true },
+    { pattern: /crypto\.createDecipheriv\s*\(\s*['"]([^'"]+)['"]/g, algorithm: 'Unknown-Cipher', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.DECRYPT, extractAlgorithm: true },
+    { pattern: /crypto\.generateKeyPairSync\s*\(\s*['"]([^'"]+)['"]/g, algorithm: 'Unknown-KeyPair', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN, extractAlgorithm: true },
+    { pattern: /crypto\.createSign\s*\(\s*['"]([^'"]+)['"]\s*\)/g, algorithm: 'Unknown-Signature', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN, extractAlgorithm: true },
+    { pattern: /crypto\.createHmac\s*\(\s*['"]([^'"]+)['"]/g, algorithm: 'HMAC', primitive: CryptoPrimitive.MAC, cryptoFunction: CryptoFunction.TAG, extractAlgorithm: true },
     { pattern: /crypto\.randomBytes\s*\(/g, algorithm: 'CSPRNG', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.KEYGEN },
     { pattern: /crypto\.pbkdf2Sync\s*\(/g, algorithm: 'PBKDF2', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.KEYGEN },
     { pattern: /crypto\.scryptSync\s*\(/g, algorithm: 'scrypt', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.KEYGEN },
     { pattern: /crypto\.createDiffieHellman\s*\(/g, algorithm: 'Diffie-Hellman', primitive: CryptoPrimitive.KEY_AGREEMENT, cryptoFunction: CryptoFunction.KEY_EXCHANGE },
     { pattern: /crypto\.createECDH\s*\(/g, algorithm: 'ECDH', primitive: CryptoPrimitive.KEY_AGREEMENT, cryptoFunction: CryptoFunction.KEY_EXCHANGE },
     { pattern: /new\s+SubtleCrypto|crypto\.subtle\./g, algorithm: 'WebCrypto', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.ENCRYPT },
+    { pattern: /tls\.createSecureContext\s*\(/g, algorithm: 'TLS', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
+    { pattern: /tls\.connect\s*\(/g, algorithm: 'TLS', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
   ];
+
+  /**
+   * Normalise an extracted algorithm name:
+   *  - "AES/CBC/PKCS5Padding" → "AES"  (take the base algo before mode/padding)
+   *  - "HmacSHA256" → "HMAC-SHA256"    (normalise HmacX → HMAC-X)
+   *  - "SHA256withRSA" → "SHA256withRSA" (leave composite signatures as-is for DB lookup)
+   *  - "PBKDF2WithHmacSHA256" → "PBKDF2" (normalise PBKDF2 variants)
+   */
+  function normaliseAlgorithmName(raw: string): string {
+    let name = raw.trim();
+    // Cipher transforms: "AES/CBC/PKCS5Padding" → "AES"
+    if (name.includes('/')) {
+      name = name.split('/')[0];
+    }
+    // HmacSHA256 → HMAC-SHA256
+    const hmacMatch = name.match(/^Hmac(.+)$/i);
+    if (hmacMatch) {
+      const inner = hmacMatch[1].replace(/^sha/i, 'SHA-').replace(/^md/i, 'MD');
+      return `HMAC-${inner}`;
+    }
+    // PBKDF2WithHmacSHA256 → PBKDF2
+    if (/^PBKDF2/i.test(name)) {
+      return 'PBKDF2';
+    }
+    // SHA256 → SHA-256, SHA384 → SHA-384, SHA512 → SHA-512 (insert dash if missing)
+    const shaMatch = name.match(/^SHA(\d{3,4})$/i);
+    if (shaMatch) {
+      return `SHA-${shaMatch[1]}`;
+    }
+    return name;
+  }
 
   try {
     // Find Java, Python, JS, and TS files
@@ -362,7 +435,8 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
         const content = fs.readFileSync(filePath, 'utf-8');
         const lines = content.split('\n');
 
-        for (const { pattern, algorithm, primitive, cryptoFunction } of cryptoPatterns) {
+        for (const patternDef of cryptoPatterns) {
+          const { pattern, algorithm, primitive, cryptoFunction, assetType, extractAlgorithm } = patternDef;
           // Reset regex lastIndex
           pattern.lastIndex = 0;
           let match;
@@ -376,12 +450,19 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
             if (seen.has(dedupeKey)) continue;
             seen.add(dedupeKey);
 
+            // Determine the asset name: use extracted capture group when available,
+            // normalise it, then fall back to the static algorithm name.
+            let assetName = algorithm;
+            if (extractAlgorithm && match[1]) {
+              assetName = normaliseAlgorithmName(match[1]);
+            }
+
             const asset: CryptoAsset = {
               id: uuidv4(),
-              name: algorithm,
+              name: assetName,
               type: 'crypto-asset',
               cryptoProperties: {
-                assetType: AssetType.ALGORITHM,
+                assetType: assetType ?? AssetType.ALGORITHM,
                 algorithmProperties: {
                   primitive,
                   cryptoFunctions: [cryptoFunction],

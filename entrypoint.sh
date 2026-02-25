@@ -106,8 +106,8 @@ fi
 # Extract metrics
 TOTAL_ASSETS=$(echo "$SCAN_RESULT" | jq '.cbom.cryptoAssets | length')
 READINESS_SCORE=$(echo "$SCAN_RESULT" | jq -r '.readinessScore.score')
-VULNERABLE_ASSETS=$(echo "$SCAN_RESULT" | jq '[.cbom.cryptoAssets[] | select(.quantumSafety == "vulnerable" or .quantumSafety == "unknown")] | length')
-QUANTUM_SAFE_ASSETS=$(echo "$SCAN_RESULT" | jq '[.cbom.cryptoAssets[] | select(.quantumSafety == "safe")] | length')
+VULNERABLE_ASSETS=$(echo "$SCAN_RESULT" | jq '[.cbom.cryptoAssets[] | select(.quantumSafety == "not-quantum-safe" or .quantumSafety == "unknown")] | length')
+QUANTUM_SAFE_ASSETS=$(echo "$SCAN_RESULT" | jq '[.cbom.cryptoAssets[] | select(.quantumSafety == "quantum-safe")] | length')
 
 # Always generate cbom.json for artifact download
 CBOM_JSON_PATH="${GITHUB_WORKSPACE}/cbom.json"
@@ -154,11 +154,11 @@ case "$OUTPUT_FORMAT" in
           ]
         }
       },
-      "results": $(echo "$SCAN_RESULT" | jq '[.cbom.cryptoAssets[] | select(.quantumSafety == "vulnerable" or .quantumSafety == "unknown") | {
+      "results": $(echo "$SCAN_RESULT" | jq '[.cbom.cryptoAssets[] | select(.quantumSafety == "not-quantum-safe" or .quantumSafety == "unknown") | {
         "ruleId": "CBOM001",
-        "level": (if .quantumSafety == "vulnerable" then "warning" else "note" end),
+        "level": (if .quantumSafety == "not-quantum-safe" then "warning" else "note" end),
         "message": {
-          "text": ("Non-quantum-safe algorithm: " + .name + " (" + (.primitive // "unknown") + ")" + (if .recommendedPQC then " - Recommended: " + .recommendedPQC else "" end))
+          "text": ("Non-quantum-safe algorithm: " + .name + " (" + (.cryptoProperties.algorithmProperties.primitive // "unknown") + ")" + (if .pqcRecommendation then " - Recommended: " + .pqcRecommendation else "" end))
         },
         "locations": [{
           "physicalLocation": {
@@ -208,7 +208,7 @@ echo ""
 if [ "$VULNERABLE_ASSETS" -gt 0 ]; then
   echo -e "${YELLOW}Non-quantum-safe algorithms found:${NC}"
   echo ""
-  echo "$SCAN_RESULT" | jq -r '.cbom.cryptoAssets[] | select(.quantumSafety == "vulnerable" or .quantumSafety == "unknown") | "  ⚠️  \(.name) (\(.primitive // "unknown")) - \(.location.fileName):\(.location.lineNumber // "?")"'
+  echo "$SCAN_RESULT" | jq -r '.cbom.cryptoAssets[] | select(.quantumSafety == "not-quantum-safe" or .quantumSafety == "unknown") | "  ⚠️  \(.name) (\(.cryptoProperties.algorithmProperties.primitive // "unknown")) - \(.location.fileName):\(.location.lineNumber // "?")"'
   echo ""
 fi
 
@@ -242,7 +242,7 @@ if [ "$VULNERABLE_ASSETS" -gt 0 ]; then
 
 | Algorithm | Primitive | Location |
 |-----------|-----------|----------|
-$(echo "$SCAN_RESULT" | jq -r '.cbom.cryptoAssets[] | select(.quantumSafety == "vulnerable" or .quantumSafety == "unknown") | "| \(.name) | \(.primitive // "unknown") | \(.location.fileName):\(.location.lineNumber // "?") |"')
+$(echo "$SCAN_RESULT" | jq -r '.cbom.cryptoAssets[] | select(.quantumSafety == "not-quantum-safe" or .quantumSafety == "unknown") | "| \(.name) | \(.cryptoProperties.algorithmProperties.primitive // "unknown") | \(.location.fileName):\(.location.lineNumber // "?") |"')
 
 > 💡 **Recommendation**: Migrate to NIST-approved post-quantum cryptographic algorithms (ML-KEM, ML-DSA, SLH-DSA)
 
