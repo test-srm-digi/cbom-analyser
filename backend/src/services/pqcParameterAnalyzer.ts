@@ -571,6 +571,134 @@ export function analyzeConditionalAsset(
         recommendation: 'Check the algorithm passed to KeyFactory.getInstance().',
       };
     }
+  } else if (name === 'X.509' || name === 'X509' || name.includes('CERTIFICATE')) {
+    // X.509 / certificate analysis — quantum safety depends on the signature algorithm
+    const sigPatterns = [
+      // Java / BouncyCastle patterns
+      /SHA\d*\s*with\s*(RSA|ECDSA|DSA|ED25519|ED448)/i,
+      /Signature\.getInstance\s*\(\s*"([^"]+)"/,
+      /sigAlgName\s*[=:]\s*"?([A-Za-z0-9_-]+)"?/i,
+      /signatureAlgorithm\s*[=:]\s*"?([A-Za-z0-9_-]+)"?/i,
+      /(ML-DSA|SLH-DSA|Dilithium|SPHINCS|Falcon)/i,
+      /(SHA256withRSA|SHA384withECDSA|SHA512withRSA|SHA256withECDSA|SHA1withRSA|MD5withRSA)/i,
+    ];
+
+    let foundSigAlg: string | null = null;
+    for (const pat of sigPatterns) {
+      const m = context.match(pat);
+      if (m) {
+        foundSigAlg = m[1] || m[0];
+        break;
+      }
+    }
+
+    if (foundSigAlg) {
+      const upper = foundSigAlg.toUpperCase();
+      if (upper.includes('ML-DSA') || upper.includes('SLH-DSA') || upper.includes('DILITHIUM') || upper.includes('SPHINCS') || upper.includes('FALCON')) {
+        verdict = {
+          verdict: PQCReadinessVerdict.PQC_READY,
+          confidence: 90,
+          reasons: [`X.509 certificate uses post-quantum signature algorithm: ${foundSigAlg} ✓`],
+          parameters: { signatureAlgorithm: foundSigAlg },
+          recommendation: 'Post-quantum certificate — no migration needed.',
+        };
+      } else if (upper.includes('RSA') || upper.includes('ECDSA') || upper.includes('DSA') || upper.includes('ED25519') || upper.includes('ED448')) {
+        verdict = {
+          verdict: PQCReadinessVerdict.NOT_PQC_READY,
+          confidence: 90,
+          reasons: [`X.509 certificate uses classical signature algorithm: ${foundSigAlg} — quantum-vulnerable ✗`],
+          parameters: { signatureAlgorithm: foundSigAlg },
+          recommendation: `Migrate certificate signing from ${foundSigAlg} to ML-DSA-65 or SLH-DSA for post-quantum safety.`,
+        };
+      } else {
+        verdict = {
+          verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+          confidence: 55,
+          reasons: [`X.509 certificate uses signature algorithm: ${foundSigAlg} — verify if quantum-safe.`],
+          parameters: { signatureAlgorithm: foundSigAlg },
+          recommendation: `Verify whether ${foundSigAlg} is quantum-safe. If classical (RSA/EC), migrate to ML-DSA.`,
+        };
+      }
+    } else if (asset.detectionSource === 'dependency') {
+      // Dependency-sourced X.509 — no source context available
+      verdict = {
+        verdict: PQCReadinessVerdict.NOT_PQC_READY,
+        confidence: 70,
+        reasons: [
+          'X.509 certificates detected via dependency (likely BouncyCastle/OpenSSL).',
+          'Most deployed X.509 certificates use RSA or ECDSA signatures, which are quantum-vulnerable.',
+        ],
+        recommendation: 'Audit certificate chains for signature algorithms. Plan migration to ML-DSA/SLH-DSA certificates when CA support is available.',
+      };
+    } else {
+      verdict = {
+        verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+        confidence: 45,
+        reasons: ['X.509 certificate detected but could not determine the signature algorithm from source context.'],
+        recommendation: 'Check the certificate signature algorithm. RSA/ECDSA → quantum-vulnerable; ML-DSA/SLH-DSA → quantum-safe.',
+      };
+    }
+  } else if (name === 'TLS' || name === 'SSL' || name === 'DTLS') {
+    // TLS/SSL protocol analysis
+    const versionPatterns = [
+      /TLSv?(1\.3|1\.2|1\.1|1\.0)/i,
+      /SSLv?(3|2)/i,
+      /setProtocol\s*\(\s*"([^"]+)"/,
+      /sslProtocol\s*[=:]\s*"?([A-Za-z0-9.]+)"?/i,
+    ];
+
+    let foundVersion: string | null = null;
+    for (const pat of versionPatterns) {
+      const m = context.match(pat);
+      if (m) {
+        foundVersion = m[1] || m[0];
+        break;
+      }
+    }
+
+    // TLS key exchange is the quantum-vulnerable part (RSA/ECDHE)
+    verdict = {
+      verdict: PQCReadinessVerdict.NOT_PQC_READY,
+      confidence: 75,
+      reasons: [
+        `${asset.name} protocol detected${foundVersion ? ' (version ' + foundVersion + ')' : ''}.`,
+        'TLS key exchange (RSA/ECDHE) is quantum-vulnerable. TLS 1.3 supports hybrid PQ key exchange (ML-KEM) but requires server/client updates.',
+      ],
+      parameters: foundVersion ? { version: foundVersion } : undefined,
+      recommendation: 'Plan migration to TLS 1.3 with hybrid ML-KEM key exchange. Monitor RFC 9180 (HPKE) and draft-ietf-tls-hybrid-design.',
+    };
+  } else if (name === 'TSP' || name.includes('TIMESTAMP')) {
+    // Time Stamp Protocol — relies on PKI signatures
+    verdict = {
+      verdict: PQCReadinessVerdict.NOT_PQC_READY,
+      confidence: 75,
+      reasons: [
+        'TSP (Time Stamp Protocol, RFC 3161) relies on PKI signatures for timestamp tokens.',
+        'Current TSP implementations use RSA/ECDSA signatures, which are quantum-vulnerable.',
+      ],
+      recommendation: 'When TSA providers support PQ signatures (ML-DSA), update TSP configuration. Monitor IETF post-quantum PKI timeline.',
+    };
+  } else if (name === 'CMS' || name === 'PKCS7') {
+    // Cryptographic Message Syntax — depends on underlying algorithms
+    verdict = {
+      verdict: PQCReadinessVerdict.NOT_PQC_READY,
+      confidence: 70,
+      reasons: [
+        'CMS/PKCS#7 typically uses RSA/ECDSA for signatures and RSA/ECDH for key transport — both quantum-vulnerable.',
+      ],
+      recommendation: 'Migrate CMS operations to use ML-DSA for signatures and ML-KEM for key encapsulation.',
+    };
+  } else if (name === 'OCSP') {
+    // Online Certificate Status Protocol — relies on PKI
+    verdict = {
+      verdict: PQCReadinessVerdict.NOT_PQC_READY,
+      confidence: 75,
+      reasons: [
+        'OCSP relies on PKI signatures for certificate revocation responses.',
+        'OCSP responders typically sign with RSA/ECDSA — quantum-vulnerable.',
+      ],
+      recommendation: 'OCSP quantum safety depends on PKI migration. Plan for ML-DSA-signed OCSP responses when CA infrastructure supports it.',
+    };
   } else {
     // Generic conditional — can't analyze further
     verdict = {

@@ -360,6 +360,7 @@ const GO_CRYPTO_LIBS: Record<string, KnownCryptoLib> = {
  */
 function parseMavenPom(content: string, manifestFile: string): ThirdPartyCryptoLibrary[] {
   const results: ThirdPartyCryptoLibrary[] = [];
+  const lines = content.split('\n');
 
   // Match <dependency><groupId>...</groupId><artifactId>...</artifactId><version>...</version></dependency>
   const depRegex = /<dependency>\s*<groupId>([^<]+)<\/groupId>\s*<artifactId>([^<]+)<\/artifactId>(?:\s*<version>([^<]*)<\/version>)?/gs;
@@ -370,6 +371,10 @@ function parseMavenPom(content: string, manifestFile: string): ThirdPartyCryptoL
     const artifactId = match[2].trim();
     const version = match[3]?.trim();
     const coordinate = `${groupId}:${artifactId}`;
+
+    // Find the line number of this dependency in the manifest
+    const matchOffset = match.index;
+    const lineNumber = content.substring(0, matchOffset).split('\n').length;
 
     // Check against known crypto libs (prefix match)
     for (const [prefix, lib] of Object.entries(MAVEN_CRYPTO_LIBS)) {
@@ -386,6 +391,7 @@ function parseMavenPom(content: string, manifestFile: string): ThirdPartyCryptoL
           depth: 0,
           dependencyPath: [artifactId],
           manifestFile,
+          lineNumber,
         });
         break;
       }
@@ -412,6 +418,10 @@ function parseGradleBuild(content: string, manifestFile: string): ThirdPartyCryp
     const version = match[3]?.trim();
     const coordinate = `${groupId}:${artifactId}`;
 
+    // Find the line number of this dependency in the manifest
+    const matchOffset = match.index;
+    const lineNumber = content.substring(0, matchOffset).split('\n').length;
+
     for (const [prefix, lib] of Object.entries(MAVEN_CRYPTO_LIBS)) {
       if (coordinate.startsWith(prefix) || coordinate.includes(prefix)) {
         results.push({
@@ -426,6 +436,7 @@ function parseGradleBuild(content: string, manifestFile: string): ThirdPartyCryp
           depth: 0,
           dependencyPath: [artifactId],
           manifestFile,
+          lineNumber,
         });
         break;
       }
@@ -440,6 +451,7 @@ function parseGradleBuild(content: string, manifestFile: string): ThirdPartyCryp
  */
 function parsePackageJson(content: string, manifestFile: string): ThirdPartyCryptoLibrary[] {
   const results: ThirdPartyCryptoLibrary[] = [];
+  const lines = content.split('\n');
 
   try {
     const pkg = JSON.parse(content);
@@ -451,6 +463,8 @@ function parsePackageJson(content: string, manifestFile: string): ThirdPartyCryp
     for (const [name, version] of Object.entries(allDeps)) {
       if (NPM_CRYPTO_LIBS[name]) {
         const lib = NPM_CRYPTO_LIBS[name];
+        // Find the line number where this dependency is declared
+        const lineNumber = lines.findIndex(l => l.includes(`"${name}"`)) + 1 || undefined;
         results.push({
           name: lib.name,
           artifactId: name,
@@ -462,6 +476,7 @@ function parsePackageJson(content: string, manifestFile: string): ThirdPartyCryp
           depth: 0,
           dependencyPath: [name],
           manifestFile,
+          lineNumber,
         });
       }
     }
@@ -479,8 +494,8 @@ function parseRequirementsTxt(content: string, manifestFile: string): ThirdParty
   const results: ThirdPartyCryptoLibrary[] = [];
   const lines = content.split('\n');
 
-  for (const raw of lines) {
-    const line = raw.trim();
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
     if (!line || line.startsWith('#') || line.startsWith('-')) continue;
 
     // Parse: package==version, package>=version, package~=version, or just package
@@ -504,6 +519,7 @@ function parseRequirementsTxt(content: string, manifestFile: string): ThirdParty
           depth: 0,
           dependencyPath: [pkgName],
           manifestFile,
+          lineNumber: i + 1,
         });
         break;
       }
@@ -529,6 +545,9 @@ function parseSetupPy(content: string, manifestFile: string): ThirdPartyCryptoLi
 
   while ((match = pkgPattern.exec(reqBlock)) !== null) {
     const pkgName = match[1].toLowerCase().replace(/_/g, '-');
+    // Find the line number of this match within the full content
+    const matchAbsOffset = (reqMatch?.index || 0) + match.index;
+    const lineNumber = content.substring(0, matchAbsOffset).split('\n').length;
     for (const [key, lib] of Object.entries(PIP_CRYPTO_LIBS)) {
       if (pkgName === key || pkgName === key.replace(/-/g, '_')) {
         results.push({
@@ -541,6 +560,7 @@ function parseSetupPy(content: string, manifestFile: string): ThirdPartyCryptoLi
           depth: 0,
           dependencyPath: [pkgName],
           manifestFile,
+          lineNumber,
         });
         break;
       }
@@ -558,8 +578,8 @@ function parseGoMod(content: string, manifestFile: string): ThirdPartyCryptoLibr
 
   // Match: require ( ... ) block and single require lines
   const lines = content.split('\n');
-  for (const raw of lines) {
-    const line = raw.trim();
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
 
     // Match: <module> <version> in require block or single require
     const modMatch = line.match(/^(?:require\s+)?([a-zA-Z0-9._/:-]+)\s+v?([\d.]+\S*)/);
@@ -581,6 +601,7 @@ function parseGoMod(content: string, manifestFile: string): ThirdPartyCryptoLibr
           depth: 0,
           dependencyPath: [modulePath],
           manifestFile,
+          lineNumber: i + 1,
         });
         break;
       }
@@ -805,17 +826,25 @@ export async function scanDependencies(repoPath: string): Promise<ThirdPartyCryp
  */
 export function cryptoLibToCBOMAssets(lib: ThirdPartyCryptoLibrary): CryptoAsset[] {
   return lib.cryptoAlgorithms.map(alg => {
+    // Determine a more specific asset type based on the algorithm
+    let assetType = AssetType.ALGORITHM;
+    if (['X.509', 'X509'].includes(alg)) assetType = AssetType.CERTIFICATE;
+    else if (['TLS', 'SSL', 'DTLS'].includes(alg)) assetType = AssetType.PROTOCOL;
+    else if (['RSA', 'ECDSA', 'Ed25519', 'DSA', 'ML-DSA', 'SLH-DSA'].includes(alg)) assetType = AssetType.ALGORITHM;
+
     const asset: CryptoAsset = {
       id: uuidv4(),
       name: alg,
       type: 'crypto-asset',
       version: lib.version,
-      description: `Provided by ${lib.name} (${lib.packageManager}: ${lib.groupId ? lib.groupId + ':' : ''}${lib.artifactId})`,
+      description: `Provided by ${lib.name} v${lib.version || 'unknown'} (${lib.packageManager}: ${lib.groupId ? lib.groupId + ':' : ''}${lib.artifactId}). ` +
+        `Detected as a ${lib.isDirectDependency ? 'direct' : 'transitive'} dependency in ${lib.manifestFile}${lib.lineNumber ? ':' + lib.lineNumber : ''}.`,
       cryptoProperties: {
-        assetType: AssetType.ALGORITHM,
+        assetType,
       },
       location: {
         fileName: lib.manifestFile,
+        lineNumber: lib.lineNumber,
       },
       quantumSafety: QuantumSafetyStatus.UNKNOWN,
       provider: lib.name,

@@ -380,6 +380,21 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
     notes: 'GCM mode with AES-256 is quantum-safe.',
   },
+  'TSP': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'TSP with ML-DSA signatures',
+    notes: 'Time Stamp Protocol (RFC 3161) relies on PKI signatures (RSA/ECDSA) — quantum-vulnerable.',
+  },
+  'CMS': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'CMS with ML-DSA/ML-KEM',
+    notes: 'Cryptographic Message Syntax uses RSA/ECDSA signatures and RSA/ECDH key transport — quantum-vulnerable.',
+  },
+  'OCSP': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'OCSP with ML-DSA signed responses',
+    notes: 'Online Certificate Status Protocol relies on PKI signatures — quantum-vulnerable.',
+  },
 };
 
 // ─── Risk Engine Functions ───────────────────────────────────────────────────
@@ -430,10 +445,51 @@ export function classifyAlgorithm(algorithmName: string): AlgorithmProfile {
 export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
   const profile = classifyAlgorithm(asset.name);
 
+  // Build a pqcVerdict for definitively classified assets so the frontend always has verdict data
+  let pqcVerdict = asset.pqcVerdict;
+  if (!pqcVerdict && profile.quantumSafety !== QuantumSafetyStatus.UNKNOWN) {
+    if (profile.quantumSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE) {
+      pqcVerdict = {
+        verdict: PQCReadinessVerdict.NOT_PQC_READY,
+        confidence: 95,
+        reasons: [
+          `${asset.name} is classified as not quantum-safe.`,
+          ...(profile.notes ? [profile.notes] : []),
+        ],
+        recommendation: profile.recommendedPQC
+          ? `Replace with ${profile.recommendedPQC}.`
+          : 'Migrate to a NIST-approved post-quantum algorithm.',
+      };
+    } else if (profile.quantumSafety === QuantumSafetyStatus.QUANTUM_SAFE) {
+      pqcVerdict = {
+        verdict: PQCReadinessVerdict.PQC_READY,
+        confidence: 95,
+        reasons: [
+          `${asset.name} is classified as quantum-safe.`,
+          ...(profile.notes ? [profile.notes] : []),
+        ],
+        recommendation: 'No migration needed.',
+      };
+    } else if (profile.quantumSafety === QuantumSafetyStatus.CONDITIONAL) {
+      pqcVerdict = {
+        verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+        confidence: 40,
+        reasons: [
+          `${asset.name} quantum safety is conditional on configuration/parameters.`,
+          ...(profile.notes ? [profile.notes] : []),
+        ],
+        recommendation: profile.recommendedPQC
+          ? `Consider ${profile.recommendedPQC} if current parameters are insufficient.`
+          : 'Review parameters and configuration for quantum safety.',
+      };
+    }
+  }
+
   return {
     ...asset,
     quantumSafety: profile.quantumSafety,
     recommendedPQC: profile.recommendedPQC,
+    pqcVerdict,
     complianceStatus: profile.quantumSafety === QuantumSafetyStatus.QUANTUM_SAFE
       ? ComplianceStatus.COMPLIANT
       : profile.quantumSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE

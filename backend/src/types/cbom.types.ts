@@ -235,6 +235,7 @@ export interface ThirdPartyCryptoLibrary {
   depth: number;                  // 0 = direct dep, 1 = transitive dep of direct, etc.
   dependencyPath?: string[];      // e.g. ['my-app', 'spring-security', 'bcprov']
   manifestFile: string;           // e.g. 'pom.xml', 'build.gradle'
+  lineNumber?: number;            // Line in manifest where the dependency is declared
 }
 
 // ─── CBOM Metadata ───────────────────────────────────────────────────────────
