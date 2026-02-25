@@ -570,10 +570,18 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                 {/* Location */}
                 <td className="px-4 py-3">
                   {asset.location ? (
-                    <span className="text-qg-accent text-xs hover:underline cursor-pointer">
-                      {asset.location.fileName}
-                      {asset.location.lineNumber ? `:${asset.location.lineNumber}` : ''}
-                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      {asset.detectionSource === 'dependency' && asset.provider && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-amber-400/90 font-medium">
+                          <Package className="w-2.5 h-2.5" />
+                          {asset.provider}
+                        </span>
+                      )}
+                      <span className="text-qg-accent text-xs hover:underline cursor-pointer">
+                        {asset.location.fileName}
+                        {asset.location.lineNumber ? `:${asset.location.lineNumber}` : ''}
+                      </span>
+                    </div>
                   ) : (
                     <span className="text-gray-600 text-xs">—</span>
                   )}
