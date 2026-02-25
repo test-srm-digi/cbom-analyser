@@ -216,6 +216,8 @@ export default function App() {
     } : null);
   }
 
+   console.log({cbom})
+
   return (
     <div className="min-h-screen bg-qg-dark">
       {/* Header */}
