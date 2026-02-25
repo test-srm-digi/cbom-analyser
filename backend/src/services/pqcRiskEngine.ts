@@ -395,6 +395,34 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     recommendedPQC: 'OCSP with ML-DSA signed responses',
     notes: 'Online Certificate Status Protocol relies on PKI signatures — quantum-vulnerable.',
   },
+  'CAST5': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'AES-256',
+    notes: 'CAST5 has 64-bit block size and max 128-bit key. Deprecated — replace with AES-256.',
+  },
+  'ElGamal': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-KEM (Kyber)',
+    notes: 'ElGamal encryption is based on discrete logarithm problem — broken by Shor\'s algorithm.',
+  },
+  'MessageDigest': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Java MessageDigest wrapper — quantum safety depends on the actual hash algorithm parameter. SHA-256+ is safe; MD5/SHA-1 are classically broken.',
+  },
+  'NONE': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    notes: 'NONE digest used in raw signature operations (e.g. NONEwithRSA). The signature scheme itself determines quantum safety.',
+  },
+  'NONEwithRSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'Raw RSA signature (no hash) — quantum-vulnerable via Shor\'s algorithm.',
+  },
+  'NONEwithECDSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'Raw ECDSA signature (no hash) — quantum-vulnerable via Shor\'s algorithm.',
+  },
 };
 
 // ─── Risk Engine Functions ───────────────────────────────────────────────────

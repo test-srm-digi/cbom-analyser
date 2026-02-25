@@ -379,6 +379,8 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
     if (/^PBKDF2/i.test(name)) {
       return 'PBKDF2';
     }
+    // NONEwithRSA → NONEwithRSA (keep as-is for dedicated DB entry)
+    // SHA256withRSA, SHA384withECDSA etc. → keep as-is for DB lookup
     // SHA256 → SHA-256, SHA384 → SHA-384, SHA512 → SHA-512 (insert dash if missing)
     const shaMatch = name.match(/^SHA(\d{3,4})$/i);
     if (shaMatch) {

@@ -131,9 +131,9 @@ const MAVEN_CRYPTO_LIBS: Record<string, KnownCryptoLib> = {
   },
   'com.google.guava:guava': {
     name: 'Google Guava',
-    algorithms: ['SHA-256', 'SHA-512', 'MD5', 'Murmur3', 'CRC32'],
+    algorithms: ['SHA-256', 'SHA-512', 'MD5'],
     quantumSafety: QuantumSafetyStatus.CONDITIONAL,
-    description: 'Contains Hashing utility class — some hashes are non-crypto',
+    description: 'Contains Hashing utility class (CRC32/Murmur3 are non-crypto and excluded)',
   },
   'org.jasypt:jasypt': {
     name: 'Jasypt',
