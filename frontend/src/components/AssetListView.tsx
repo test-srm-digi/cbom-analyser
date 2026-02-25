@@ -3,7 +3,7 @@ import {
   ExternalLink, ChevronLeft, ChevronRight, SlidersHorizontal,
   Github, GitBranch, FolderOpen, Sparkles, Loader2,
   X, Copy, Check, Zap, ShieldCheck, ChevronDown, ChevronUp,
-  ShieldAlert, ShieldQuestion, Package,
+  ShieldAlert, ShieldQuestion, Package, Filter,
 } from 'lucide-react';
 import { CryptoAsset, QuantumSafetyStatus, ComplianceStatus, PQCReadinessVerdict } from '../types';
 
@@ -39,21 +39,30 @@ function getPrimitiveLabel(primitive?: string): string {
   return labels[primitive] || primitive.toUpperCase();
 }
 
-function getStatusColor(status?: QuantumSafetyStatus): string {
+function getStatusLabel(status?: QuantumSafetyStatus): string {
   switch (status) {
-    case QuantumSafetyStatus.QUANTUM_SAFE: return 'text-qg-green';
-    case QuantumSafetyStatus.NOT_QUANTUM_SAFE: return 'text-qg-red';
-    case QuantumSafetyStatus.CONDITIONAL: return 'text-cyan-400';
-    default: return 'text-gray-500';
+    case QuantumSafetyStatus.QUANTUM_SAFE: return 'Safe';
+    case QuantumSafetyStatus.NOT_QUANTUM_SAFE: return 'Not Safe';
+    case QuantumSafetyStatus.CONDITIONAL: return 'Conditional';
+    default: return 'Unknown';
   }
 }
 
-function getStatusDash(status?: QuantumSafetyStatus): string {
+function getStatusBg(status?: QuantumSafetyStatus): string {
   switch (status) {
-    case QuantumSafetyStatus.QUANTUM_SAFE: return '●●●';
-    case QuantumSafetyStatus.NOT_QUANTUM_SAFE: return '— —';
-    case QuantumSafetyStatus.CONDITIONAL: return '◐◐◐';
-    default: return '· · ·';
+    case QuantumSafetyStatus.QUANTUM_SAFE: return 'bg-green-500/15 ring-green-500/30 text-green-400';
+    case QuantumSafetyStatus.NOT_QUANTUM_SAFE: return 'bg-red-500/15 ring-red-500/30 text-red-400';
+    case QuantumSafetyStatus.CONDITIONAL: return 'bg-cyan-500/15 ring-cyan-500/30 text-cyan-400';
+    default: return 'bg-gray-500/15 ring-gray-500/30 text-gray-400';
+  }
+}
+
+function getStatusIcon(status?: QuantumSafetyStatus) {
+  switch (status) {
+    case QuantumSafetyStatus.QUANTUM_SAFE: return ShieldCheck;
+    case QuantumSafetyStatus.NOT_QUANTUM_SAFE: return ShieldAlert;
+    case QuantumSafetyStatus.CONDITIONAL: return ShieldQuestion;
+    default: return ShieldQuestion;
   }
 }
 
@@ -166,9 +175,10 @@ function buildGitHubFileUrl(repoUrl: string, branch: string, basePath: string, f
 export default function AssetListView({ assets }: AssetListViewProps) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [sortField, setSortField] = useState<'name' | 'primitive' | 'location'>('name');
+  const [sortField, setSortField] = useState<'name' | 'primitive' | 'location' | 'safety'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [filterText, setFilterText] = useState('');
+  const [safetyFilter, setSafetyFilter] = useState<Set<QuantumSafetyStatus | 'unknown'>>(new Set());
   const [repoUrl, setRepoUrl] = useState('');
   const [branch, setBranch] = useState('main');
   const [customBranch, setCustomBranch] = useState('');
@@ -250,16 +260,59 @@ export default function AssetListView({ assets }: AssetListViewProps) {
     setTimeout(() => setCopiedId(null), 1500);
   }, []);
 
+  // Compute safety category counts from full asset list (before filtering)
+  const safetyCounts = useMemo(() => {
+    const counts = { safe: 0, notSafe: 0, conditional: 0, unknown: 0 };
+    for (const a of assets) {
+      switch (a.quantumSafety) {
+        case QuantumSafetyStatus.QUANTUM_SAFE: counts.safe++; break;
+        case QuantumSafetyStatus.NOT_QUANTUM_SAFE: counts.notSafe++; break;
+        case QuantumSafetyStatus.CONDITIONAL: counts.conditional++; break;
+        default: counts.unknown++;
+      }
+    }
+    return counts;
+  }, [assets]);
+
+  const toggleSafetyFilter = useCallback((key: QuantumSafetyStatus | 'unknown') => {
+    setSafetyFilter(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+    setPage(1);
+  }, []);
+
   const filtered = useMemo(() => {
     let list = [...assets];
+
+    // Quantum safety chip filter
+    if (safetyFilter.size > 0) {
+      list = list.filter(a => {
+        if (!a.quantumSafety || a.quantumSafety === QuantumSafetyStatus.UNKNOWN) {
+          return safetyFilter.has('unknown');
+        }
+        return safetyFilter.has(a.quantumSafety);
+      });
+    }
+
     if (filterText) {
       const q = filterText.toLowerCase();
       list = list.filter(a =>
         a.name.toLowerCase().includes(q) ||
         a.location?.fileName.toLowerCase().includes(q) ||
-        a.cryptoProperties?.algorithmProperties?.primitive?.toLowerCase().includes(q)
+        a.cryptoProperties?.algorithmProperties?.primitive?.toLowerCase().includes(q) ||
+        getStatusLabel(a.quantumSafety).toLowerCase().includes(q)
       );
     }
+
+    const safetyOrder: Record<string, number> = {
+      [QuantumSafetyStatus.NOT_QUANTUM_SAFE]: 0,
+      [QuantumSafetyStatus.CONDITIONAL]: 1,
+      'unknown': 2,
+      [QuantumSafetyStatus.QUANTUM_SAFE]: 3,
+    };
+
     list.sort((a, b) => {
       let cmp = 0;
       if (sortField === 'name') cmp = a.name.localeCompare(b.name);
@@ -267,6 +320,10 @@ export default function AssetListView({ assets }: AssetListViewProps) {
         const pa = a.cryptoProperties?.algorithmProperties?.primitive || '';
         const pb = b.cryptoProperties?.algorithmProperties?.primitive || '';
         cmp = pa.localeCompare(pb);
+      } else if (sortField === 'safety') {
+        const sa = safetyOrder[a.quantumSafety ?? 'unknown'] ?? 2;
+        const sb = safetyOrder[b.quantumSafety ?? 'unknown'] ?? 2;
+        cmp = sa - sb;
       } else {
         const la = a.location?.fileName || '';
         const lb = b.location?.fileName || '';
@@ -275,12 +332,12 @@ export default function AssetListView({ assets }: AssetListViewProps) {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return list;
-  }, [assets, filterText, sortField, sortDir]);
+  }, [assets, filterText, sortField, sortDir, safetyFilter]);
 
   const totalPages = Math.ceil(filtered.length / perPage);
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
-  function toggleSort(field: 'name' | 'primitive' | 'location') {
+  function toggleSort(field: 'name' | 'primitive' | 'location' | 'safety') {
     if (sortField === field) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     } else {
@@ -292,9 +349,10 @@ export default function AssetListView({ assets }: AssetListViewProps) {
   return (
     <div className="bg-qg-card border border-qg-border rounded-lg animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-qg-border">
-        <h3 className="text-sm font-semibold text-gray-200">List of all assets</h3>
-        <div className="flex items-center gap-3">
+      <div className="px-4 py-3 border-b border-qg-border space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-200">List of all assets</h3>
+          <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-qg-dark border border-qg-border rounded px-2.5 py-1.5">
             <div className="flex items-center gap-1.5" title="GitHub repository URL">
               <Github className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
@@ -359,6 +417,67 @@ export default function AssetListView({ assets }: AssetListViewProps) {
           </button>
           <SlidersHorizontal className="w-4 h-4 text-gray-500" />
         </div>
+        </div>
+
+        {/* Quantum Safety Filter Chips */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+            <Filter className="w-3 h-3 text-gray-500 flex-shrink-0" />
+            <button
+              onClick={() => toggleSafetyFilter(QuantumSafetyStatus.NOT_QUANTUM_SAFE)}
+              className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full ring-1 transition-all ${
+                safetyFilter.has(QuantumSafetyStatus.NOT_QUANTUM_SAFE)
+                  ? 'bg-red-500/25 ring-red-500/60 text-red-300 shadow-sm shadow-red-500/10'
+                  : 'bg-red-500/10 ring-red-500/20 text-red-400/70 hover:ring-red-500/40'
+              }`}
+            >
+              <ShieldAlert className="w-2.5 h-2.5" />
+              Not Safe
+              <span className="text-[9px] opacity-70">{safetyCounts.notSafe}</span>
+            </button>
+            <button
+              onClick={() => toggleSafetyFilter(QuantumSafetyStatus.CONDITIONAL)}
+              className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full ring-1 transition-all ${
+                safetyFilter.has(QuantumSafetyStatus.CONDITIONAL)
+                  ? 'bg-cyan-500/25 ring-cyan-500/60 text-cyan-300 shadow-sm shadow-cyan-500/10'
+                  : 'bg-cyan-500/10 ring-cyan-500/20 text-cyan-400/70 hover:ring-cyan-500/40'
+              }`}
+            >
+              <ShieldQuestion className="w-2.5 h-2.5" />
+              Conditional
+              <span className="text-[9px] opacity-70">{safetyCounts.conditional}</span>
+            </button>
+            <button
+              onClick={() => toggleSafetyFilter(QuantumSafetyStatus.QUANTUM_SAFE)}
+              className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full ring-1 transition-all ${
+                safetyFilter.has(QuantumSafetyStatus.QUANTUM_SAFE)
+                  ? 'bg-green-500/25 ring-green-500/60 text-green-300 shadow-sm shadow-green-500/10'
+                  : 'bg-green-500/10 ring-green-500/20 text-green-400/70 hover:ring-green-500/40'
+              }`}
+            >
+              <ShieldCheck className="w-2.5 h-2.5" />
+              Safe
+              <span className="text-[9px] opacity-70">{safetyCounts.safe}</span>
+            </button>
+            <button
+              onClick={() => toggleSafetyFilter('unknown' as any)}
+              className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full ring-1 transition-all ${
+                safetyFilter.has('unknown' as any)
+                  ? 'bg-gray-500/25 ring-gray-500/60 text-gray-300 shadow-sm shadow-gray-500/10'
+                  : 'bg-gray-500/10 ring-gray-500/20 text-gray-400/70 hover:ring-gray-500/40'
+              }`}
+            >
+              Unknown
+              <span className="text-[9px] opacity-70">{safetyCounts.unknown}</span>
+            </button>
+            {safetyFilter.size > 0 && (
+              <button
+                onClick={() => { setSafetyFilter(new Set()); setPage(1); }}
+                className="text-[10px] text-gray-500 hover:text-gray-300 ml-0.5 underline"
+              >
+                clear
+              </button>
+            )}
+          </div>
       </div>
 
       {/* Table */}
@@ -366,7 +485,12 @@ export default function AssetListView({ assets }: AssetListViewProps) {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-gray-500 text-xs border-b border-qg-border">
-              <th className="px-4 py-2 w-8"></th>
+              <th
+                className="px-4 py-2 cursor-pointer hover:text-gray-300 whitespace-nowrap"
+                onClick={() => toggleSort('safety')}
+              >
+                Quantum Safety {sortField === 'safety' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+              </th>
               <th
                 className="px-4 py-2 cursor-pointer hover:text-gray-300"
                 onClick={() => toggleSort('name')}
@@ -403,11 +527,17 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                 key={asset.id}
                 className="border-b border-qg-border/50 hover:bg-qg-dark/50 transition-colors"
               >
-                {/* Status indicator */}
+                {/* Quantum Safety badge */}
                 <td className="px-4 py-3">
-                  <span className={`text-xs ${getStatusColor(asset.quantumSafety)}`}>
-                    {getStatusDash(asset.quantumSafety)}
-                  </span>
+                  {(() => {
+                    const Icon = getStatusIcon(asset.quantumSafety);
+                    return (
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ring-1 ${getStatusBg(asset.quantumSafety)}`}>
+                        <Icon className="w-2.5 h-2.5" />
+                        {getStatusLabel(asset.quantumSafety)}
+                      </span>
+                    );
+                  })()}
                 </td>
 
                 {/* Algorithm name */}
