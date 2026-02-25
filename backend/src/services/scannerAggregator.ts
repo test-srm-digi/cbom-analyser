@@ -322,18 +322,153 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
   }
 
   /**
+   * Extract algorithms from WebCrypto (crypto.subtle) API calls.
+   * Looks for algorithm name objects like { name: 'RSA-OAEP' }, 'AES-GCM', etc.
+   */
+  function scanWebCryptoContext(fileText: string): string | null {
+    const algoRefs: string[] = [];
+
+    // Pattern 1: crypto.subtle.<method>({ name: 'ALGO', ... })
+    // e.g., crypto.subtle.encrypt({ name: 'AES-GCM', ... }, key, data)
+    // e.g., crypto.subtle.generateKey({ name: 'RSA-OAEP', modulusLength: 2048, ... })
+    const subtleCallRe = /crypto\.subtle\.(\w+)\s*\(\s*\{[^}]*name\s*:\s*['"]([^'"]+)['"]/g;
+    let m: RegExpExecArray | null;
+    while ((m = subtleCallRe.exec(fileText)) !== null) {
+      const method = m[1]; // encrypt, sign, generateKey, etc.
+      const algo = m[2];   // RSA-OAEP, AES-GCM, ECDSA, etc.
+      const label = `${algo} (${method})`;
+      if (!algoRefs.includes(label)) algoRefs.push(label);
+    }
+
+    // Pattern 2: algorithm object defined separately:
+    // const algorithm = { name: 'RSA-OAEP', ... }
+    // { name: "ECDSA", namedCurve: "P-256" }
+    const algoObjRe = /\{\s*name\s*:\s*['"]([^'"]+)['"][^}]*(?:modulusLength|namedCurve|length|hash|saltLength|counter|iv|label)\s*:/g;
+    while ((m = algoObjRe.exec(fileText)) !== null) {
+      if (!algoRefs.some(r => r.startsWith(m![1]))) algoRefs.push(m![1]);
+    }
+
+    // Pattern 3: standalone string algorithm names in subtle calls
+    // crypto.subtle.digest('SHA-256', data)
+    const digestRe = /crypto\.subtle\.digest\s*\(\s*['"]([^'"]+)['"]/g;
+    while ((m = digestRe.exec(fileText)) !== null) {
+      const label = `${m[1]} (digest)`;
+      if (!algoRefs.includes(label)) algoRefs.push(label);
+    }
+
+    // Pattern 4: importKey with algorithm: crypto.subtle.importKey('raw', ..., { name: 'AES-GCM' })
+    const importKeyRe = /crypto\.subtle\.importKey\s*\([^)]*\{\s*name\s*:\s*['"]([^'"]+)['"]/g;
+    while ((m = importKeyRe.exec(fileText)) !== null) {
+      const label = `${m[1]} (importKey)`;
+      if (!algoRefs.includes(label)) algoRefs.push(label);
+    }
+
+    // Pattern 5: namedCurve references revealing EC usage
+    const curvesRe = /namedCurve\s*:\s*['"]([^'"]+)['"]/g;
+    while ((m = curvesRe.exec(fileText)) !== null) {
+      const label = `EC:${m[1]}`;
+      if (!algoRefs.includes(label)) algoRefs.push(label);
+    }
+
+    // Pattern 6: modulusLength revealing RSA key size
+    const modulusRe = /modulusLength\s*:\s*(\d+)/g;
+    const keySizes: string[] = [];
+    while ((m = modulusRe.exec(fileText)) !== null) {
+      if (!keySizes.includes(m[1])) keySizes.push(m[1]);
+    }
+
+    if (algoRefs.length > 0) {
+      let desc = `WebCrypto (crypto.subtle) algorithms found in file: ${algoRefs.join(', ')}.`;
+      if (keySizes.length > 0) desc += ` Key sizes: ${keySizes.join(', ')}-bit.`;
+      desc += ' Review each algorithm for PQC readiness.';
+      return desc;
+    }
+    return 'WebCrypto (crypto.subtle) detected but could not determine specific algorithms from the file. Check crypto.subtle.encrypt/sign/generateKey calls for the algorithm parameter.';
+  }
+
+  /**
+   * Extract algorithms from X.509 certificate usage patterns.
+   * Scans for signature algorithms, certificate builder APIs, and key usage.
+   */
+  function scanX509Context(fileText: string, existingAlgoRefs: string[]): string | null {
+    const algoRefs = [...existingAlgoRefs];
+    let m;
+
+    // getSigAlgName(), getSigAlgOID()
+    const sigAlgRe = /getSigAlg(?:Name|OID)\s*\(\s*\)/g;
+    if (sigAlgRe.test(fileText)) {
+      if (!algoRefs.includes('getSigAlgName()')) algoRefs.push('getSigAlgName()');
+    }
+
+    // Certificate signature algorithm in string literals: "SHA256withRSA", "SHA384withECDSA", "Ed25519"
+    const sigLiteralRe = /["']((?:SHA\d+with\w+|MD5with\w+|Ed25519|Ed448|ML-DSA-\d+|SLH-DSA-\w+))['"]/g;
+    while ((m = sigLiteralRe.exec(fileText)) !== null) {
+      if (!algoRefs.includes(m[1])) algoRefs.push(m[1]);
+    }
+
+    // JcaContentSignerBuilder("SHA256withRSA"), ContentSigner
+    const contentSignerRe = /JcaContentSignerBuilder\s*\(\s*["']([^"']+)["']/g;
+    while ((m = contentSignerRe.exec(fileText)) !== null) {
+      if (!algoRefs.includes(m[1])) algoRefs.push(m[1]);
+    }
+
+    // X509v3CertificateBuilder, JcaX509v3CertificateBuilder
+    const certBuilderRe = /(?:Jca)?X509v3CertificateBuilder/g;
+    if (certBuilderRe.test(fileText) && !algoRefs.includes('X509v3CertificateBuilder')) {
+      algoRefs.push('X509v3CertificateBuilder');
+    }
+
+    // AlgorithmIdentifier with OID or algorithm name
+    const algIdRe = /AlgorithmIdentifier\s*\(\s*(?:new\s+ASN1ObjectIdentifier\s*\(\s*)?["']([^"']+)["']/g;
+    while ((m = algIdRe.exec(fileText)) !== null) {
+      if (!algoRefs.includes(m[1])) algoRefs.push(m[1]);
+    }
+
+    // PKCS10CertificationRequest (CSR)
+    const csrRe = /PKCS10CertificationRequest|JcaPKCS10CertificationRequestBuilder/g;
+    if (csrRe.test(fileText)) {
+      if (!algoRefs.includes('PKCS10/CSR')) algoRefs.push('PKCS10/CSR');
+    }
+
+    // Explicit key type references: RSAPublicKey, ECPublicKey, etc.
+    const keyTypeRe = /\b(RSA(?:Public|Private)Key|EC(?:Public|Private)Key|EdDSAPublicKey|EdDSAPrivateKey)\b/g;
+    while ((m = keyTypeRe.exec(fileText)) !== null) {
+      if (!algoRefs.includes(m[1])) algoRefs.push(m[1]);
+    }
+
+    // XDH / X25519 / X448 key agreement in cert context
+    const xdhRe = /\b(X25519|X448|XDH)\b/g;
+    while ((m = xdhRe.exec(fileText)) !== null) {
+      if (!algoRefs.includes(m[1])) algoRefs.push(m[1]);
+    }
+
+    if (algoRefs.length > 0) {
+      return `X.509 certificate operations in this file use: ${algoRefs.join(', ')}. Review each for PQC readiness.`;
+    }
+    return 'X.509 certificate detected but could not determine the signature algorithm from this file. Check the certificate signing algorithm and key type used.';
+  }
+
+  /**
    * Scan nearby lines for crypto-relevant context clues.
-   * For provider-type detections (BouncyCastle-Provider), scans the **entire file**
-   * since provider registration is typically distant from algorithm usage.
-   * For certificates (X.509), scans ±30 lines.
+   * For provider/certificate/WebCrypto detections, scans the **entire file**
+   * since the algorithm usage may be distant from the detection point.
+   * For other patterns, scans ±30 lines.
    * Returns a description string with found algorithms.
    */
   function scanNearbyContext(lines: string[], matchLine: number, assetName: string): string | null {
-    // For provider detections, scan the whole file; for others, scan ±30 lines
+    // Whole-file scan for providers, certificates, and WebCrypto; ±30 lines for others
     const isProvider = assetName.toLowerCase().includes('provider');
-    const start = isProvider ? 0 : Math.max(0, matchLine - 30);
-    const end = isProvider ? lines.length : Math.min(lines.length, matchLine + 30);
+    const isCertificate = assetName === 'X.509';
+    const isWebCrypto = assetName === 'WebCrypto';
+    const wholeFile = isProvider || isCertificate || isWebCrypto;
+    const start = wholeFile ? 0 : Math.max(0, matchLine - 30);
+    const end = wholeFile ? lines.length : Math.min(lines.length, matchLine + 30);
     const nearbyText = lines.slice(start, end).join('\n');
+
+    // ── WebCrypto-specific: extract algorithms from crypto.subtle API calls ──
+    if (isWebCrypto) {
+      return scanWebCryptoContext(nearbyText);
+    }
 
     // Look for getInstance("...") calls nearby to determine which algorithms are in scope
     const algoRefs: string[] = [];
@@ -353,6 +488,11 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
     const keyStoreRe = /KeyStore\.getInstance\s*\(\s*"([^"]+)"/;
     const ksMatch = nearbyText.match(keyStoreRe);
     if (ksMatch && !algoRefs.includes(ksMatch[1])) algoRefs.push(`KeyStore:${ksMatch[1]}`);
+
+    // ── X.509-specific: look for certificate-related algorithm references ──
+    if (isCertificate) {
+      return scanX509Context(nearbyText, algoRefs);
+    }
 
     if (isProvider) {
       // ── Provider-specific: also look for explicit BC provider references ──
@@ -483,7 +623,7 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
     { pattern: /crypto\.scryptSync\s*\(/g, algorithm: 'scrypt', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.KEYGEN },
     { pattern: /crypto\.createDiffieHellman\s*\(/g, algorithm: 'Diffie-Hellman', primitive: CryptoPrimitive.KEY_AGREEMENT, cryptoFunction: CryptoFunction.KEY_EXCHANGE },
     { pattern: /crypto\.createECDH\s*\(/g, algorithm: 'ECDH', primitive: CryptoPrimitive.KEY_AGREEMENT, cryptoFunction: CryptoFunction.KEY_EXCHANGE },
-    { pattern: /new\s+SubtleCrypto|crypto\.subtle\./g, algorithm: 'WebCrypto', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.ENCRYPT },
+    { pattern: /new\s+SubtleCrypto|crypto\.subtle\./g, algorithm: 'WebCrypto', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.ENCRYPT, scanContext: true },
     { pattern: /tls\.createSecureContext\s*\(/g, algorithm: 'TLS', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
     { pattern: /tls\.connect\s*\(/g, algorithm: 'TLS', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
   ];
