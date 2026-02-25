@@ -264,7 +264,97 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
     cryptoFunction: CryptoFunction;
     assetType?: AssetType;      // defaults to ALGORITHM if omitted
     extractAlgorithm?: boolean; // when true, prefer capture group 1 over static `algorithm`
+    resolveVariable?: boolean;  // when true, capture group 1 is a variable name to resolve
+    scanContext?: boolean;       // when true, scan nearby lines for algorithm context clues
   };
+
+  /**
+   * Resolve a variable name to its string-literal value by scanning surrounding
+   * lines for common Java/TS/Python assignment patterns:
+   *   String algo = "RSA";
+   *   final String ALGO = "RSA";
+   *   private static final String KEY_ALGO = "RSA";
+   *   algo = "RSA"
+   *   ALGO: str = "RSA"
+   *   const algo = "RSA"
+   *   const algo = 'RSA'
+   *
+   * Returns the resolved algorithm name or null if not found.
+   */
+  function resolveVariableToAlgorithm(varName: string, lines: string[], matchLine: number): string | null {
+    // Build regex: look for `varName = "something"` or `varName = 'something'`
+    const assignmentRe = new RegExp(
+      `(?:^|\\s)${varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[:=]\\s*["']([^"']+)["']`,
+    );
+    // Scan ±50 lines from the match for the assignment (covers field declarations, local vars)
+    const start = Math.max(0, matchLine - 50);
+    const end = Math.min(lines.length, matchLine + 50);
+    for (let i = start; i < end; i++) {
+      const m = lines[i].match(assignmentRe);
+      if (m) return m[1];
+    }
+    // Also look for common constant-naming patterns: VARIABLE_NAME → search for ".*ALGORITHM.*= "
+    // If the variable is a method parameter, look at callers within the same file
+    // (heuristic: search the whole file for any string that looks like an algorithm name near this var)
+    const paramCallRe = new RegExp(
+      `\\.getInstance\\s*\\([^)]*${varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^)]*\\)`,
+    );
+    // If the variable is used in a method parameter, try to find what the method is called with
+    // e.g., createKeyPair(algo) → look for createKeyPair("RSA")
+    const methodCallRe = /function|def |private |public |protected |static /;
+    for (let i = Math.max(0, matchLine - 5); i <= Math.min(lines.length - 1, matchLine + 5); i++) {
+      const line = lines[i];
+      // Check if this line defines a method/function that takes the variable as param
+      if (methodCallRe.test(line) && line.includes(varName)) {
+        // Find the method/function name
+        const funcNameMatch = line.match(/(?:def\s+|function\s+|(?:public|private|protected|static)\s+\S+\s+)(\w+)\s*\(/);
+        if (funcNameMatch) {
+          const funcName = funcNameMatch[1];
+          // Search the file for calls to this function with a string literal
+          for (const fileLine of lines) {
+            const callMatch = fileLine.match(new RegExp(`${funcName}\\s*\\([^)]*["']([A-Za-z0-9_/.-]+)["']`));
+            if (callMatch) return callMatch[1];
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Scan nearby lines (±30) for crypto-relevant context clues.
+   * Used for X.509 and BouncyCastle-Provider detections to find what algorithms
+   * are associated. Returns a description string with found algorithms.
+   */
+  function scanNearbyContext(lines: string[], matchLine: number, assetName: string): string | null {
+    const start = Math.max(0, matchLine - 30);
+    const end = Math.min(lines.length, matchLine + 30);
+    const nearbyText = lines.slice(start, end).join('\n');
+
+    // Look for getInstance("...") calls nearby to determine which algorithms are in scope
+    const algoRefs: string[] = [];
+    const getInstanceRe = /(?:Cipher|Signature|KeyPairGenerator|KeyFactory|KeyAgreement|MessageDigest|Mac|KeyGenerator|SecretKeyFactory)\.getInstance\s*\(\s*"([^"]+)"/g;
+    let m;
+    while ((m = getInstanceRe.exec(nearbyText)) !== null) {
+      if (!algoRefs.includes(m[1])) algoRefs.push(m[1]);
+    }
+
+    // Look for signature algorithm references: getSigAlgName(), getSignature(), "SHA256withRSA" etc.
+    const sigAlgoRe = /(SHA\d+with\w+|MD5with\w+|Ed25519|Ed448|ECDSA|RSA|DSA)/g;
+    while ((m = sigAlgoRe.exec(nearbyText)) !== null) {
+      if (!algoRefs.includes(m[1])) algoRefs.push(m[1]);
+    }
+
+    // Look for KeyStore type references
+    const keyStoreRe = /KeyStore\.getInstance\s*\(\s*"([^"]+)"/;
+    const ksMatch = nearbyText.match(keyStoreRe);
+    if (ksMatch && !algoRefs.includes(ksMatch[1])) algoRefs.push(`KeyStore:${ksMatch[1]}`);
+
+    if (algoRefs.length > 0) {
+      return `${assetName} used alongside: ${algoRefs.join(', ')}. Review these algorithms for PQC readiness.`;
+    }
+    return null;
+  }
 
   const cryptoPatterns: CryptoPattern[] = [
     // ════════════════════════════════════════════════════════════════════════
@@ -293,28 +383,28 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
     // SecretKeySpec with algorithm arg: new SecretKeySpec(key, "AES") → extracts "AES"
     { pattern: /new\s+SecretKeySpec\s*\([^,]+,\s*"([^"]+)"[^)]*\)/g, algorithm: 'SecretKeySpec', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.KEYGEN, assetType: AssetType.SECRET_KEY, extractAlgorithm: true },
 
-    // ── Java: JCE calls with variable arguments (no string literal → generic fallback) ──
-    { pattern: /MessageDigest\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'MessageDigest', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
-    { pattern: /Cipher\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'Cipher', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
-    { pattern: /Signature\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'Digital-Signature', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
-    { pattern: /KeyFactory\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'KeyFactory', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /KeyPairGenerator\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'KeyPairGenerator', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /SecretKeyFactory\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'SecretKeyFactory', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /Mac\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'HMAC', primitive: CryptoPrimitive.MAC, cryptoFunction: CryptoFunction.TAG },
+    // ── Java: JCE calls with variable arguments — capture variable name for resolution ──
+    { pattern: /MessageDigest\.getInstance\s*\(\s*([A-Za-z_]\w*)\s*\)/g, algorithm: 'MessageDigest', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION, resolveVariable: true },
+    { pattern: /Cipher\.getInstance\s*\(\s*([A-Za-z_]\w*)\s*\)/g, algorithm: 'Cipher', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT, resolveVariable: true },
+    { pattern: /Signature\.getInstance\s*\(\s*([A-Za-z_]\w*)\s*\)/g, algorithm: 'Digital-Signature', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN, resolveVariable: true },
+    { pattern: /KeyFactory\.getInstance\s*\(\s*([A-Za-z_]\w*)\s*\)/g, algorithm: 'KeyFactory', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN, resolveVariable: true },
+    { pattern: /KeyPairGenerator\.getInstance\s*\(\s*([A-Za-z_]\w*)\s*\)/g, algorithm: 'KeyPairGenerator', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN, resolveVariable: true },
+    { pattern: /SecretKeyFactory\.getInstance\s*\(\s*([A-Za-z_]\w*)\s*\)/g, algorithm: 'SecretKeyFactory', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.KEYGEN, resolveVariable: true },
+    { pattern: /Mac\.getInstance\s*\(\s*([A-Za-z_]\w*)\s*\)/g, algorithm: 'HMAC', primitive: CryptoPrimitive.MAC, cryptoFunction: CryptoFunction.TAG, resolveVariable: true },
 
     // ── Java: TLS / SSL (protocol asset type) ──
     { pattern: /SSLContext\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'TLS', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL, extractAlgorithm: true },
     { pattern: /SSLContext\.getInstance\s*\(\s*[^")][^)]*\)/g, algorithm: 'TLS', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
 
-    // ── Java: Certificates ──
+    // ── Java: Certificates — extract signature algorithm from nearby context ──
     { pattern: /CertificateFactory\.getInstance\s*\(\s*"([^"]+)"[^)]*\)/g, algorithm: 'X.509', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.CERTIFICATE, extractAlgorithm: true },
-    { pattern: /X509Certificate/g, algorithm: 'X.509', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.CERTIFICATE },
-    { pattern: /X509TrustManager/g, algorithm: 'X.509', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.CERTIFICATE },
+    { pattern: /X509Certificate/g, algorithm: 'X.509', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.CERTIFICATE, scanContext: true },
+    { pattern: /X509TrustManager/g, algorithm: 'X.509', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.CERTIFICATE, scanContext: true },
 
-    // ── Java: Misc JCE & BouncyCastle ──
+    // ── Java: Misc JCE & BouncyCastle — scan context for algorithms ──
     { pattern: /new\s+SecureRandom\s*\(/g, algorithm: 'SecureRandom', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.KEYGEN },
-    { pattern: /new\s+BouncyCastleProvider\s*\(/g, algorithm: 'BouncyCastle-Provider', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER },
-    { pattern: /BouncyCastleProvider\.PROVIDER_NAME/g, algorithm: 'BouncyCastle-Provider', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER },
+    { pattern: /new\s+BouncyCastleProvider\s*\(/g, algorithm: 'BouncyCastle-Provider', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, scanContext: true },
+    { pattern: /BouncyCastleProvider\.PROVIDER_NAME/g, algorithm: 'BouncyCastle-Provider', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, scanContext: true },
 
     // ── Java: JCE Provider registration patterns ──
     // put("Signature.SHA256withRSA", ...) → extracts "SHA256withRSA"
@@ -438,7 +528,7 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
         const lines = content.split('\n');
 
         for (const patternDef of cryptoPatterns) {
-          const { pattern, algorithm, primitive, cryptoFunction, assetType, extractAlgorithm } = patternDef;
+          const { pattern, algorithm, primitive, cryptoFunction, assetType, extractAlgorithm, resolveVariable } = patternDef;
           // Reset regex lastIndex
           pattern.lastIndex = 0;
           let match;
@@ -455,14 +545,35 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
             // Determine the asset name: use extracted capture group when available,
             // normalise it, then fall back to the static algorithm name.
             let assetName = algorithm;
+            let resolved = false;
             if (extractAlgorithm && match[1]) {
               assetName = normaliseAlgorithmName(match[1]);
+              resolved = true;
+            } else if (resolveVariable && match[1]) {
+              // Try to resolve the variable name to an algorithm string
+              const resolvedAlgo = resolveVariableToAlgorithm(match[1], lines, lineNumber - 1);
+              if (resolvedAlgo) {
+                assetName = normaliseAlgorithmName(resolvedAlgo);
+                resolved = true;
+              }
+              // else keep the generic fallback name (e.g. "KeyPairGenerator")
+            }
+
+            // Build description based on detection type
+            let description: string | undefined;
+            if (resolveVariable && !resolved) {
+              description = `${algorithm}.getInstance() called with variable "${match[1]}" — could not resolve to a specific algorithm. Manual review recommended.`;
+            } else if (resolveVariable && resolved) {
+              description = `Resolved from ${algorithm}.getInstance(${match[1]}) → "${assetName}"`;
+            } else if (patternDef.scanContext) {
+              description = scanNearbyContext(lines, lineNumber - 1, assetName) ?? undefined;
             }
 
             const asset: CryptoAsset = {
               id: uuidv4(),
               name: assetName,
               type: 'crypto-asset',
+              description,
               cryptoProperties: {
                 assetType: assetType ?? AssetType.ALGORITHM,
                 algorithmProperties: {

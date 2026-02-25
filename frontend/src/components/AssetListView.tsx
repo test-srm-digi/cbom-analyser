@@ -4,6 +4,7 @@ import {
   Github, GitBranch, FolderOpen, Sparkles, Loader2,
   X, Copy, Check, Zap, ShieldCheck, ChevronDown, ChevronUp,
   ShieldAlert, ShieldQuestion, Package, Filter,
+  BarChart3, AlertTriangle, TrendingUp, Clock,
 } from 'lucide-react';
 import { CryptoAsset, QuantumSafetyStatus, ComplianceStatus, PQCReadinessVerdict } from '../types';
 
@@ -18,6 +19,21 @@ interface SuggestionState {
   loading: boolean;
   error?: string;
   collapsed?: boolean;
+}
+
+interface ProjectInsight {
+  riskLevel: 'critical' | 'high' | 'moderate' | 'low';
+  headline: string;
+  summary: string;
+  priorities: { action: string; impact: 'critical' | 'high' | 'medium' | 'low'; effort: string }[];
+  riskScore: number;
+  migrationEstimate: string;
+}
+
+interface InsightState {
+  loading: boolean;
+  data?: ProjectInsight;
+  error?: string;
 }
 
 const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50];
@@ -185,6 +201,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
   const [basePath, setBasePath] = useState('');
   const [suggestions, setSuggestions] = useState<Record<string, SuggestionState>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [insight, setInsight] = useState<InsightState>({ loading: false });
 
   const effectiveBranch = branch === 'custom' ? customBranch : branch;
 
@@ -229,14 +246,69 @@ export default function AssetListView({ assets }: AssetListViewProps) {
     }
   }, []);
 
-  const fetchAllSuggestions = useCallback(async (assetList: CryptoAsset[]) => {
-    const pending = assetList.filter(a => !suggestions[a.id]?.fix && !suggestions[a.id]?.loading);
-    for (const asset of pending) {
-      fetchSuggestion(asset);
-      // stagger requests slightly
-      await new Promise(r => setTimeout(r, 150));
+  const fetchProjectInsight = useCallback(async () => {
+    setInsight({ loading: true });
+    try {
+      // Build aggregated stats from all assets
+      const counts = { notSafe: 0, conditional: 0, safe: 0, unknown: 0 };
+      const algoCount: Record<string, { count: number; status: QuantumSafetyStatus | undefined; recommendedPQC?: string }> = {};
+      const fileSet = new Set<string>();
+      const sourceCount: Record<string, number> = {};
+
+      for (const a of assets) {
+        switch (a.quantumSafety) {
+          case QuantumSafetyStatus.QUANTUM_SAFE: counts.safe++; break;
+          case QuantumSafetyStatus.NOT_QUANTUM_SAFE: counts.notSafe++; break;
+          case QuantumSafetyStatus.CONDITIONAL: counts.conditional++; break;
+          default: counts.unknown++;
+        }
+        const entry = algoCount[a.name] || { count: 0, status: a.quantumSafety, recommendedPQC: a.recommendedPQC };
+        entry.count++;
+        algoCount[a.name] = entry;
+        if (a.location?.fileName) fileSet.add(a.location.fileName);
+        const src = a.detectionSource || 'unknown';
+        sourceCount[src] = (sourceCount[src] || 0) + 1;
+      }
+
+      const topNotSafe = Object.entries(algoCount)
+        .filter(([, v]) => v.status === QuantumSafetyStatus.NOT_QUANTUM_SAFE)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 10)
+        .map(([name, v]) => ({ name, count: v.count, recommendedPQC: v.recommendedPQC }));
+
+      const topConditional = Object.entries(algoCount)
+        .filter(([, v]) => v.status === QuantumSafetyStatus.CONDITIONAL)
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 10)
+        .map(([name, v]) => ({ name, count: v.count }));
+
+      const unknownAlgos = Object.entries(algoCount)
+        .filter(([, v]) => !v.status || v.status === QuantumSafetyStatus.UNKNOWN)
+        .map(([name]) => name);
+
+      const res = await fetch('/api/ai-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          counts,
+          topNotSafe,
+          topConditional,
+          unknownAlgos,
+          totalAssets: assets.length,
+          uniqueFiles: fileSet.size,
+          detectionSources: sourceCount,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setInsight({ loading: false, data });
+      } else {
+        setInsight({ loading: false, error: data.error || 'Failed to generate insight' });
+      }
+    } catch {
+      setInsight({ loading: false, error: 'Failed to fetch project insight' });
     }
-  }, [suggestions, fetchSuggestion]);
+  }, [assets]);
 
   const toggleCollapse = useCallback((id: string) => {
     setSuggestions(prev => {
@@ -408,12 +480,13 @@ export default function AssetListView({ assets }: AssetListViewProps) {
             className="bg-qg-dark border border-qg-border rounded px-2 py-1 text-xs text-gray-300 w-48 focus:outline-none focus:border-qg-accent"
           />
           <button
-            onClick={() => fetchAllSuggestions(paged)}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600/80 to-blue-600/80 hover:from-purple-500 hover:to-blue-500 text-white text-[11px] font-medium px-3 py-1.5 rounded-md transition-all shadow-sm hover:shadow-purple-500/20 hover:shadow-md"
-            title="Get AI suggestions for all assets on this page"
+            onClick={fetchProjectInsight}
+            disabled={insight.loading}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600/80 to-blue-600/80 hover:from-purple-500 hover:to-blue-500 text-white text-[11px] font-medium px-3 py-1.5 rounded-md transition-all shadow-sm hover:shadow-purple-500/20 hover:shadow-md disabled:opacity-60"
+            title="Get a project-level quantum readiness insight"
           >
-            <Zap className="w-3 h-3" />
-            Scan Page
+            {insight.loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <BarChart3 className="w-3 h-3" />}
+            Project Insight
           </button>
           <SlidersHorizontal className="w-4 h-4 text-gray-500" />
         </div>
@@ -479,6 +552,120 @@ export default function AssetListView({ assets }: AssetListViewProps) {
             )}
           </div>
       </div>
+
+      {/* ── Project Insight Panel ─────────────────────────────── */}
+      {(insight.loading || insight.data || insight.error) && (
+        <div className="mx-4 my-3">
+          {insight.loading && (
+            <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-500/5 to-blue-500/5 border border-purple-500/20 rounded-lg">
+              <Loader2 className="w-5 h-5 text-purple-400 animate-spin flex-shrink-0" />
+              <div className="space-y-1.5 flex-1">
+                <div className="h-3 w-2/3 rounded bg-purple-500/10 animate-pulse" />
+                <div className="h-2 w-1/2 rounded bg-purple-500/10 animate-pulse" />
+              </div>
+            </div>
+          )}
+
+          {insight.error && (
+            <div className="flex items-center justify-between p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
+              <span className="text-xs text-red-400">{insight.error}</span>
+              <button onClick={() => setInsight({ loading: false })} className="text-gray-500 hover:text-gray-300">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {insight.data && (() => {
+            const d = insight.data!;
+            const riskColors: Record<string, { bg: string; ring: string; text: string; bar: string }> = {
+              critical: { bg: 'from-red-500/10 to-red-600/5', ring: 'border-red-500/30', text: 'text-red-400', bar: 'bg-red-500' },
+              high: { bg: 'from-orange-500/10 to-red-500/5', ring: 'border-orange-500/30', text: 'text-orange-400', bar: 'bg-orange-500' },
+              moderate: { bg: 'from-yellow-500/10 to-orange-500/5', ring: 'border-yellow-500/30', text: 'text-yellow-400', bar: 'bg-yellow-500' },
+              low: { bg: 'from-green-500/10 to-emerald-500/5', ring: 'border-green-500/30', text: 'text-green-400', bar: 'bg-green-500' },
+            };
+            const c = riskColors[d.riskLevel] || riskColors.moderate;
+            const impactColors: Record<string, string> = {
+              critical: 'bg-red-500/15 text-red-400 ring-red-500/30',
+              high: 'bg-orange-500/15 text-orange-400 ring-orange-500/30',
+              medium: 'bg-yellow-500/15 text-yellow-400 ring-yellow-500/30',
+              low: 'bg-green-500/15 text-green-400 ring-green-500/30',
+            };
+
+            return (
+              <div className={`bg-gradient-to-r ${c.bg} border ${c.ring} rounded-lg overflow-hidden`}>
+                {/* Top bar with risk score and dismiss */}
+                <div className="flex items-center justify-between px-4 pt-3 pb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className={`w-4 h-4 ${c.text}`} />
+                      <span className="text-xs font-semibold text-gray-200">Project Quantum Risk Assessment</span>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ring-1 uppercase tracking-wider ${impactColors[d.riskLevel] || impactColors.medium}`}>
+                      <AlertTriangle className="w-2.5 h-2.5" />
+                      {d.riskLevel}
+                    </span>
+                  </div>
+                  <button onClick={() => setInsight({ loading: false })} className="text-gray-500 hover:text-gray-300 p-0.5">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Risk score bar */}
+                <div className="px-4 pb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-1.5 bg-gray-700/50 rounded-full overflow-hidden">
+                      <div className={`h-full ${c.bar} rounded-full transition-all duration-700`} style={{ width: `${d.riskScore}%` }} />
+                    </div>
+                    <span className={`text-xs font-mono font-bold ${c.text}`}>{d.riskScore}/100</span>
+                  </div>
+                </div>
+
+                {/* Headline */}
+                <div className="px-4 pb-2">
+                  <p className={`text-sm font-medium ${c.text}`}>{d.headline}</p>
+                </div>
+
+                {/* Summary */}
+                <div className="px-4 pb-3">
+                  <p className="text-[11px] text-gray-300 leading-relaxed">{d.summary}</p>
+                </div>
+
+                {/* Priorities */}
+                <div className="px-4 pb-3">
+                  <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3" />
+                    Prioritized Actions
+                  </div>
+                  <div className="space-y-1.5">
+                    {d.priorities.map((p, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className={`flex-shrink-0 mt-0.5 inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded ring-1 ${impactColors[p.impact] || impactColors.medium}`}>
+                          {p.impact}
+                        </span>
+                        <span className="text-[11px] text-gray-300 leading-snug flex-1">{p.action}</span>
+                        <span className="flex-shrink-0 text-[9px] text-gray-500 font-medium flex items-center gap-0.5">
+                          <Clock className="w-2.5 h-2.5" />
+                          {p.effort}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Migration estimate */}
+                <div className="px-4 pb-3 border-t border-white/5 pt-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className={`w-3 h-3 ${c.text}`} />
+                    <span className="text-[10px] text-gray-400">
+                      <span className="font-medium text-gray-300">Migration Estimate:</span> {d.migrationEstimate}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Table */}
       <div style={{ overflowX: 'clip', overflowY: 'visible' }}>

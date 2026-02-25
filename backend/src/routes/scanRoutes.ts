@@ -131,6 +131,16 @@ router.post('/scan-code/full', async (req: Request, res: Response) => {
  * POST /api/ai-suggest
  * Get AI-powered suggested fix for a cryptographic asset via Bedrock.
  */
+router.post('/ai-summary', async (req: Request, res: Response) => {
+  try {
+    const { getProjectInsight } = await import('../services/bedrockService');
+    const insight = await getProjectInsight(req.body);
+    res.json({ success: true, ...insight });
+  } catch (error) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
 router.post('/ai-suggest', async (req: Request, res: Response) => {
   try {
     const {
