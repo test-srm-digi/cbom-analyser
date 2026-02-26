@@ -183,6 +183,83 @@ jobs:
 > `docker compose -f docker-compose.sonarqube.yml up -d` and use the URL of
 > a self-hosted runner or a tunnel (e.g. Tailscale) to connect.
 
+### Setting Up SonarQube Secrets for a New Repository
+
+To use the SonarQube integration you need a running SonarQube instance and a
+project token. Follow these steps **once per GitHub repository**:
+
+#### 1. Start SonarQube (self-hosted)
+
+```bash
+# From the cbom-analyser checkout — bundles the IBM sonar-cryptography plugin
+docker compose -f docker-compose.sonarqube.yml up -d
+
+# Wait for SonarQube to become ready (~60 s)
+until curl -sf http://localhost:9090/api/system/status | grep -q '"UP"'; do sleep 5; done
+echo "SonarQube is ready"
+```
+
+> Alternatively use an existing corporate SonarQube / SonarCloud instance —
+> ask your platform team for the URL and a token.
+
+#### 2. Generate a Token
+
+1. Open **http://localhost:9090** (default login: `admin` / `admin`, you'll be prompted to change the password).
+2. Go to **My Account → Security → Tokens**.
+3. Click **Generate Tokens**, enter a name (e.g. `cbom-ci`), and choose type **Project Analysis Token** for a specific project or **Global Analysis Token** for all projects.
+4. Copy the token string — it looks like `sqp_abc123…`.
+
+> The token is shown only once. If you lose it, revoke and generate a new one.
+
+#### 3. Add Secrets to Your GitHub Repository
+
+1. In your GitHub repository go to **Settings → Secrets and variables → Actions**.
+2. Click **New repository secret** and create:
+
+   | Secret name | Value |
+   |-------------|-------|
+   | `SONAR_HOST_URL` | Your SonarQube URL, e.g. `http://sonarqube.internal:9090` or `https://sonarcloud.io` |
+   | `SONAR_TOKEN` | The token from step 2, e.g. `sqp_abc123…` |
+
+3. (Optional) For **organization-wide** reuse, add these as **Organization secrets** under **Organization Settings → Secrets and variables → Actions** and grant access to selected repositories.
+
+#### 4. Reference in Your Workflow
+
+```yaml
+jobs:
+  cbom:
+    runs-on: ubuntu-latest    # or a self-hosted runner with network access to SonarQube
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: CBOM Analysis
+        uses: test-srm-digi/cbom-analyser@main
+        with:
+          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          output-format: sarif
+          fail-on-vulnerable: true
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: cbom.sarif
+```
+
+> **Network note:** The GitHub Actions runner must be able to reach the
+> SonarQube URL. For a locally hosted instance use a **self-hosted runner**
+> on the same network, or expose SonarQube via a tunnel (Tailscale, Cloudflare
+> Tunnel, ngrok, etc.).
+
+#### Without SonarQube (default)
+
+If you don't set the secrets the action uses the **built-in regex scanner**
+automatically — no SonarQube instance required. You can always add the secrets
+later to upgrade to deep analysis without changing the workflow file.
+
 ### Outputs
 
 | Output | Description |
