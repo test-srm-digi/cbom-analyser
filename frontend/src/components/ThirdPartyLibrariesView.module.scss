@@ -5,9 +5,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: 9999px;
   box-shadow: inset 0 0 0 1px $ring;
   background: $bg;
@@ -17,10 +17,10 @@
 @mixin smallBadge($bg, $text) {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  font-size: 9px;
+  gap: 3px;
+  font-size: 10px;
   font-weight: 500;
-  padding: 2px 4px;
+  padding: 2px 6px;
   border-radius: 4px;
   background: $bg;
   color: $text;
@@ -213,14 +213,14 @@
 }
 
 // ── Safety badges ────────────────────────────────────────────
-.safeBadge    { @include badge(rgba($dc1-success, 0.15), $dc1-success, rgba($dc1-success, 0.3)); }
-.notSafeBadge { @include badge(rgba($dc1-danger, 0.15), $dc1-danger, rgba($dc1-danger, 0.3)); }
-.condBadge    { @include badge(rgba($chart-cyan, 0.15), darken($chart-cyan, 15%), rgba($chart-cyan, 0.3)); }
-.unknownBadge { @include badge(rgba($dc1-text-secondary, 0.15), $dc1-text-secondary, rgba($dc1-text-secondary, 0.3)); }
+.safeBadge    { @include badge(rgba(#15803D, 0.14), #15803D, rgba(#15803D, 0.35)); }
+.notSafeBadge { @include badge(rgba(#C53030, 0.14), #C53030, rgba(#C53030, 0.35)); }
+.condBadge    { @include badge(rgba(#0E7490, 0.14), #0E7490, rgba(#0E7490, 0.35)); }
+.unknownBadge { @include badge(rgba(#4B5563, 0.12), #4B5563, rgba(#4B5563, 0.3)); }
 
 .badgeIcon {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
 }
 
 // ── Expanded details ─────────────────────────────────────────

@@ -5,9 +5,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: 9999px;
   box-shadow: inset 0 0 0 1px $ring;
   background: $bg;
@@ -17,10 +17,10 @@
 @mixin smallBadge($bg, $text) {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  font-size: 9px;
+  gap: 3px;
+  font-size: 10px;
   font-weight: 500;
-  padding: 2px 4px;
+  padding: 2px 6px;
   border-radius: 4px;
   background: $bg;
   color: $text;
@@ -202,9 +202,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10px;
-  font-weight: 500;
-  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
   border-radius: 9999px;
   box-shadow: inset 0 0 0 1px;
   cursor: pointer;
@@ -213,23 +213,23 @@
   background: none;
 }
 
-.chipNotSafe       { color: rgba($dc1-danger, 0.7);  box-shadow: inset 0 0 0 1px rgba($dc1-danger, 0.2);  background: rgba($dc1-danger, 0.08); }
-.chipNotSafeActive { color: $dc1-danger;              box-shadow: inset 0 0 0 1px rgba($dc1-danger, 0.6);  background: rgba($dc1-danger, 0.2); }
-.chipConditional       { color: rgba($chart-cyan, 0.7);  box-shadow: inset 0 0 0 1px rgba($chart-cyan, 0.2);  background: rgba($chart-cyan, 0.08); }
-.chipConditionalActive { color: darken($chart-cyan, 15%); box-shadow: inset 0 0 0 1px rgba($chart-cyan, 0.6);  background: rgba($chart-cyan, 0.2); }
-.chipSafe       { color: rgba($dc1-success, 0.7);  box-shadow: inset 0 0 0 1px rgba($dc1-success, 0.2);  background: rgba($dc1-success, 0.08); }
-.chipSafeActive { color: $dc1-success;              box-shadow: inset 0 0 0 1px rgba($dc1-success, 0.6);  background: rgba($dc1-success, 0.2); }
-.chipUnknown       { color: rgba($dc1-text-secondary, 0.7);  box-shadow: inset 0 0 0 1px rgba($dc1-text-secondary, 0.2);  background: rgba($dc1-text-secondary, 0.08); }
-.chipUnknownActive { color: $dc1-text-secondary;              box-shadow: inset 0 0 0 1px rgba($dc1-text-secondary, 0.6);  background: rgba($dc1-text-secondary, 0.2); }
+.chipNotSafe       { color: #C53030;  box-shadow: inset 0 0 0 1px rgba(#C53030, 0.3);  background: rgba(#C53030, 0.1); }
+.chipNotSafeActive { color: #fff;     box-shadow: none;  background: #DC2626; }
+.chipConditional       { color: #0E7490;  box-shadow: inset 0 0 0 1px rgba(#0E7490, 0.3);  background: rgba(#0E7490, 0.1); }
+.chipConditionalActive { color: #fff;    box-shadow: none;  background: #0891B2; }
+.chipSafe       { color: #15803D;  box-shadow: inset 0 0 0 1px rgba(#15803D, 0.3);  background: rgba(#15803D, 0.1); }
+.chipSafeActive { color: #fff;     box-shadow: none;  background: #16A34A; }
+.chipUnknown       { color: #4B5563;  box-shadow: inset 0 0 0 1px rgba(#4B5563, 0.3);  background: rgba(#4B5563, 0.08); }
+.chipUnknownActive { color: #fff;     box-shadow: none;  background: #6B7280; }
 
 .chipIcon {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
 }
 
 .chipCount {
-  font-size: 9px;
-  opacity: 0.7;
+  font-size: 10px;
+  opacity: 0.8;
 }
 
 .chipClear {
@@ -611,14 +611,14 @@
 }
 
 // ── Safety badge column ──────────────────────────────────────
-.safeBadge    { @include badge(rgba($dc1-success, 0.15), $dc1-success, rgba($dc1-success, 0.3)); }
-.notSafeBadge { @include badge(rgba($dc1-danger, 0.15), $dc1-danger, rgba($dc1-danger, 0.3)); }
-.condBadge    { @include badge(rgba($chart-cyan, 0.15), darken($chart-cyan, 15%), rgba($chart-cyan, 0.3)); }
-.unknownBadge { @include badge(rgba($dc1-text-secondary, 0.15), $dc1-text-secondary, rgba($dc1-text-secondary, 0.3)); }
+.safeBadge    { @include badge(rgba(#15803D, 0.14), #15803D, rgba(#15803D, 0.35)); }
+.notSafeBadge { @include badge(rgba(#C53030, 0.14), #C53030, rgba(#C53030, 0.35)); }
+.condBadge    { @include badge(rgba(#0E7490, 0.14), #0E7490, rgba(#0E7490, 0.35)); }
+.unknownBadge { @include badge(rgba(#4B5563, 0.12), #4B5563, rgba(#4B5563, 0.3)); }
 
 .badgeIcon {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
 }
 
 // ── Name column ──────────────────────────────────────────────
@@ -671,9 +671,9 @@
 }
 
 // PQC badge variants
-.pqcReady    { @include badge(rgba($dc1-success, 0.15), $dc1-success, rgba($dc1-success, 0.3)); }
-.pqcNotReady { @include badge(rgba($dc1-danger, 0.15), $dc1-danger, rgba($dc1-danger, 0.3)); }
-.pqcReview   { @include badge(rgba($dc1-warning, 0.15), darken($dc1-warning, 5%), rgba($dc1-warning, 0.3)); }
+.pqcReady    { @include badge(rgba(#15803D, 0.14), #15803D, rgba(#15803D, 0.35)); cursor: help; }
+.pqcNotReady { @include badge(rgba(#C53030, 0.14), #C53030, rgba(#C53030, 0.35)); cursor: help; }
+.pqcReview   { @include badge(rgba(#B45309, 0.14), #B45309, rgba(#B45309, 0.35)); cursor: help; }
 
 .pqcConfidence {
   font-size: 9px;
@@ -774,10 +774,10 @@
 }
 
 // Detection source badge
-.srcSonar      { @include smallBadge(rgba($dc1-blue, 0.08), rgba($dc1-blue, 0.7)); }
-.srcRegex      { @include smallBadge(rgba($dc1-text-secondary, 0.08), rgba($dc1-text-secondary, 0.7)); }
-.srcDependency { @include smallBadge(rgba(#D97706, 0.08), rgba(#D97706, 0.7)); }
-.srcNetwork    { @include smallBadge(rgba(#9333EA, 0.08), rgba(#9333EA, 0.7)); }
+.srcSonar      { @include smallBadge(rgba($dc1-blue, 0.1), $dc1-blue); }
+.srcRegex      { @include smallBadge(rgba(#4B5563, 0.1), #4B5563); }
+.srcDependency { @include smallBadge(rgba(#B45309, 0.1), #B45309); }
+.srcNetwork    { @include smallBadge(rgba(#7C3AED, 0.1), #7C3AED); }
 
 .srcIcon {
   width: 8px;
@@ -785,9 +785,9 @@
 }
 
 // Confidence badge
-.confHigh   { @include badge(rgba($dc1-success, 0.15), $dc1-success, rgba($dc1-success, 0.3)); }
-.confMedium { @include badge(rgba($dc1-warning, 0.15), darken($dc1-warning, 5%), rgba($dc1-warning, 0.3)); }
-.confLow    { @include badge(rgba($dc1-text-secondary, 0.15), $dc1-text-secondary, rgba($dc1-text-secondary, 0.3)); }
+.confHigh   { @include badge(rgba(#15803D, 0.14), #15803D, rgba(#15803D, 0.35)); }
+.confMedium { @include badge(rgba(#B45309, 0.14), #B45309, rgba(#B45309, 0.35)); }
+.confLow    { @include badge(rgba(#4B5563, 0.12), #4B5563, rgba(#4B5563, 0.3)); }
 
 // ── Location column ──────────────────────────────────────────
 .locationWrap {
