@@ -628,33 +628,169 @@ This helps reviewers understand the **full cryptographic picture** around certif
 
 ## Third-Party Dependency Scanning
 
-The full pipeline automatically discovers cryptographic libraries in your project's dependency manifests and resolves transitive dependencies.
+The full scan pipeline (`POST /api/scan-code/full`) automatically discovers
+cryptographic libraries declared in your project's dependency manifests,
+resolves transitive dependencies where tools are available, and converts every
+known algorithm into a first-class CBOM crypto-asset — all without touching
+source code.
+
+### How It Works — Step by Step
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. DISCOVER manifest files                                     │
+│     find <repoPath> … -name "pom.xml" -o -name "package.json"  │
+│     … skipping node_modules, .git, target, build, dist, vendor  │
+├─────────────────────────────────────────────────────────────────┤
+│  2. PARSE each manifest with an ecosystem-specific parser       │
+│     parseMavenPom()  → pom.xml                                  │
+│     parseGradleBuild() → build.gradle / build.gradle.kts        │
+│     parsePackageJson() → package.json                           │
+│     parseRequirementsTxt() → requirements.txt / requirements-*  │
+│     parseSetupPy() → setup.py (install_requires)                │
+│     parseGoMod() → go.mod                                       │
+├─────────────────────────────────────────────────────────────────┤
+│  3. MATCH against Known Crypto Library Database                 │
+│     groupId:artifactId prefix match (Maven/Gradle)              │
+│     exact package name match (npm, pip)                         │
+│     module path prefix match (Go)                               │
+├─────────────────────────────────────────────────────────────────┤
+│  4. RESOLVE transitive dependencies (best-effort)               │
+│     Maven  → mvn dependency:tree -DoutputType=text              │
+│     npm    → npm ls --json --all (walks up to depth 5)          │
+│     Others → manifest-level only (direct deps)                  │
+├─────────────────────────────────────────────────────────────────┤
+│  5. DEDUPLICATE by groupId:artifactId:packageManager            │
+│     keep the entry with the lowest dependency depth             │
+├─────────────────────────────────────────────────────────────────┤
+│  6. CONVERT to CBOM CryptoAssets via cryptoLibToCBOMAssets()    │
+│     each algorithm the library provides → separate crypto-asset │
+│     enriched with PQC verdict + quantum safety status           │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ### Supported Manifest Files
 
-| Ecosystem | Manifest File | Transitive Resolution |
-|-----------|--------------|----------------------|
-| **Maven** | `pom.xml` | Yes — via `mvn dependency:tree` |
-| **Gradle** | `build.gradle` / `build.gradle.kts` | Manifest-level only |
-| **npm** | `package.json` | Yes — via `npm ls --json` |
-| **pip** | `requirements.txt`, `setup.py` | Manifest-level only |
-| **Go** | `go.mod` | Manifest-level only |
+| Ecosystem | Manifest File(s) | Parser | Transitive Resolution |
+|-----------|------------------|--------|-----------------------|
+| **Maven** | `pom.xml` | `parseMavenPom()` — extracts `<dependency>` blocks with `<groupId>`, `<artifactId>`, `<version>` | Yes — `mvn dependency:tree` (120 s timeout) |
+| **Gradle** | `build.gradle` / `.kts` | `parseGradleBuild()` — matches `implementation`, `api`, `compileOnly`, `runtimeOnly`, `testImplementation` | Manifest-level only |
+| **npm** | `package.json` | `parsePackageJson()` — reads `dependencies` + `devDependencies` via `JSON.parse` | Yes — `npm ls --json --all` (depth ≤ 5) |
+| **pip** | `requirements.txt`, `requirements-*.txt` | `parseRequirementsTxt()` — handles `==`, `>=`, `~=` specifiers + comments/flags | Manifest-level only |
+| **pip** | `setup.py` | `parseSetupPy()` — extracts from `install_requires=[…]` | Manifest-level only |
+| **Go** | `go.mod` | `parseGoMod()` — parses `require` blocks + single require lines | Manifest-level only |
+
+> Every parser records the **line number** in the manifest file where the
+> dependency is declared, so the dashboard links directly to the right location.
 
 ### Known Crypto Library Database
 
-The scanner recognizes **50+** cryptographic libraries across ecosystems:
+The scanner ships a curated database of **50+ cryptographic libraries** across
+four ecosystems. Each entry stores the library's display name, known
+algorithms, quantum safety status, and a description.
 
-**Maven / Gradle (18 libraries):**
-`BouncyCastle` · `Google Tink` · `Conscrypt` · `JJWT` · `Jasypt` · `Spring Security Crypto` · `Apache Commons Crypto` · `AWS Encryption SDK` · `Nimbus JOSE+JWT` · `KeyStore Explorer` · `Themis` · `Keyczar` · `scrypt` · `bcrypt` · `jBCrypt` · and more
+**Maven / Gradle** — matched by `groupId:artifactId` prefix:
 
-**npm (18 libraries):**
-`crypto-js` · `node-forge` · `tweetnacl` · `jsonwebtoken` · `jose` · `bcryptjs` · `argon2` · `openpgp` · `libsodium-wrappers` · `elliptic` · `noble-curves` · `@aws-crypto/*` · `sodium-native` · `@noble/hashes` · and more
+| Library | Key | Quantum Safety | Algorithms |
+|---------|-----|---------------|------------|
+| BouncyCastle Provider | `org.bouncycastle:bcprov` | Conditional | RSA, ECDSA, AES, SHA-256, Ed25519, ML-KEM, ML-DSA |
+| BouncyCastle PKIX | `org.bouncycastle:bcpkix` | Not Quantum Safe | X.509, CMS, OCSP, RSA, ECDSA |
+| BouncyCastle PQC | `org.bouncycastle:bcpqc` | Quantum Safe | ML-KEM, ML-DSA, SLH-DSA, FALCON, SPHINCS+ |
+| BouncyCastle FIPS | `org.bouncycastle:bcfips` | Conditional | AES, SHA-256, RSA, ECDSA, HMAC, DRBG |
+| Google Tink | `com.google.crypto.tink:tink` | Not Quantum Safe | AES-GCM, ECDSA, Ed25519, RSA-SSA-PKCS1 |
+| Conscrypt | `org.conscrypt:conscrypt` | Not Quantum Safe | TLSv1.3, AES-GCM, ChaCha20-Poly1305, ECDHE |
+| Nimbus JOSE+JWT | `com.nimbusds:nimbus-jose-jwt` | Not Quantum Safe | RSA, ECDSA, AES, Ed25519 |
+| JJWT | `io.jsonwebtoken:jjwt` | Not Quantum Safe | HMAC-SHA256, RSA, ECDSA |
+| Apache Commons Crypto | `org.apache.commons:commons-crypto` | Quantum Safe | AES, AES-CTR, AES-CBC |
+| Spring Security Crypto | `…:spring-security-crypto` | Conditional | PBKDF2, BCrypt, SCrypt, AES-GCM, Argon2 |
+| Jasypt | `org.jasypt:jasypt` | Not Quantum Safe | PBKDF2, AES, DES, 3DES, MD5 |
+| Argon2 JVM | `de.mkammerer:argon2-jvm` | Quantum Safe | Argon2id, Argon2i, Argon2d |
 
-**pip (12 libraries):**
-`cryptography` · `pycryptodome` · `pynacl` · `bcrypt` · `paramiko` · `pyopenssl` · `jwcrypto` · `hashlib` · `hmac` · `python-jose` · `itsdangerous` · `passlib`
+**npm** — matched by exact package name:
 
-**Go (3 libraries):**
-`golang.org/x/crypto` · `circl` (Cloudflare) · `liboqs-go` (Open Quantum Safe)
+| Library | Package | Quantum Safety | Algorithms |
+|---------|---------|---------------|------------|
+| CryptoJS | `crypto-js` | Conditional | AES, DES, SHA-256, MD5, PBKDF2, RC4 |
+| Node Forge | `node-forge` | Not Quantum Safe | RSA, AES, DES, X.509, TLS |
+| TweetNaCl | `tweetnacl` | Not Quantum Safe | Curve25519, Ed25519, XSalsa20 |
+| libsodium | `libsodium-wrappers` | Not Quantum Safe | X25519, Ed25519, ChaCha20-Poly1305, Argon2id |
+| jsonwebtoken | `jsonwebtoken` | Not Quantum Safe | HMAC-SHA256, RSA, ECDSA |
+| jose | `jose` | Not Quantum Safe | RSA, ECDSA, Ed25519, AES-GCM |
+| elliptic | `elliptic` | Not Quantum Safe | ECDSA, ECDH, secp256k1 |
+| OpenPGP.js | `openpgp` | Not Quantum Safe | RSA, ECDSA, ECDH, AES |
+| @noble/curves | `@noble/curves` | Not Quantum Safe | secp256k1, Ed25519, P-256, P-384 |
+| @noble/hashes | `@noble/hashes` | Quantum Safe | SHA-256, SHA-3, BLAKE2, BLAKE3 |
+| bcrypt | `bcrypt` | Quantum Safe | BCrypt |
+| argon2 | `argon2` | Quantum Safe | Argon2id, Argon2i |
+| pqcrypto | `pqcrypto` | Quantum Safe | ML-KEM, ML-DSA, SLH-DSA |
+| crystals-kyber | `crystals-kyber` | Quantum Safe | ML-KEM |
+
+**pip** — matched by normalized package name (underscore → hyphen):
+
+| Library | Package | Quantum Safety | Algorithms |
+|---------|---------|---------------|------------|
+| cryptography | `cryptography` | Not Quantum Safe | RSA, ECDSA, AES, X.509, HKDF, PBKDF2 |
+| PyCryptodome | `pycryptodome` | Not Quantum Safe | RSA, AES, DES, ChaCha20, scrypt |
+| PyNaCl | `pynacl` | Not Quantum Safe | Curve25519, Ed25519, BLAKE2b |
+| pyOpenSSL | `pyopenssl` | Not Quantum Safe | RSA, ECDSA, TLS, X.509 |
+| PyJWT | `pyjwt` | Not Quantum Safe | HMAC-SHA256, RSA, ECDSA |
+| passlib | `passlib` | Conditional | BCrypt, SCrypt, Argon2, PBKDF2 |
+| bcrypt | `bcrypt` | Quantum Safe | BCrypt |
+| argon2-cffi | `argon2-cffi` | Quantum Safe | Argon2id, Argon2i |
+| pqcrypto | `pqcrypto` | Quantum Safe | ML-KEM, ML-DSA, SLH-DSA |
+| liboqs-python | `oqs` | Quantum Safe | ML-KEM, ML-DSA, FALCON |
+
+**Go** — matched by module path prefix:
+
+| Library | Module | Quantum Safety | Algorithms |
+|---------|--------|---------------|------------|
+| golang.org/x/crypto | `golang.org/x/crypto` | Not Quantum Safe | ChaCha20-Poly1305, Ed25519, Argon2, BCrypt |
+| Cloudflare CIRCL | `github.com/cloudflare/circl` | Quantum Safe | ML-KEM, ML-DSA, SLH-DSA, X25519, HPKE |
+| liboqs-go | `github.com/open-quantum-safe/liboqs-go` | Quantum Safe | ML-KEM, ML-DSA, FALCON |
+
+### Transitive Dependency Resolution
+
+When available tooling exists on the runner, the scanner resolves dependencies
+*beyond* the manifest file:
+
+**Maven** — runs `mvn dependency:tree -DoutputType=text -q` (120 s timeout),
+parses the indented tree output to calculate depth and identify crypto
+libraries hidden behind non-crypto intermediaries.
+
+**npm** — runs `npm ls --json --all` (60 s timeout), recursively walks the
+dependency tree up to **depth 5** with cycle detection (`visited` set).
+
+Both resolvers skip depth 0 entries (already captured by manifest parsing) and
+tag results with `isDirectDependency: false` and the actual depth number.
+
+> If Maven or npm are not installed (e.g. in the GitHub Action Docker image
+> before a `build` step), transitive resolution fails silently and the scanner
+> returns only direct dependencies.
+
+### From Library to CBOM Asset
+
+Each detected library is exploded into **one CryptoAsset per algorithm**. For
+example, `node-forge` in `package.json` produces separate assets for RSA, AES,
+DES, 3DES, SHA-256, MD5, HMAC, PBKDF2, X.509, and TLS — each with:
+
+| Field | Value |
+|-------|-------|
+| `name` | The algorithm name (e.g. `RSA`) |
+| `type` | `crypto-asset` |
+| `cryptoProperties.assetType` | `algorithm`, `certificate`, or `protocol` |
+| `location.fileName` | Manifest path (e.g. `package.json`) |
+| `location.lineNumber` | Line where the dependency is declared |
+| `provider` | Library display name (e.g. `Node Forge`) |
+| `detectionSource` | `dependency` |
+| `description` | "Provided by Node Forge v1.3.1 (npm: node-forge). Detected as a direct dependency in package.json:12." |
+| `quantumSafety` | Enriched by `enrichAssetWithPQCData()` from the PQC Risk Engine |
+
+### Deduplication
+
+After all parsers + transitive resolvers run, the scanner deduplicates by
+`groupId:artifactId:packageManager`. When duplicates exist (e.g. a library
+appears both as a direct and transitive dependency), the entry with the
+**lowest depth** wins, ensuring the most direct reference is kept.
 
 ### Dashboard View
 
