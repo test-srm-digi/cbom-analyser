@@ -1,4 +1,4 @@
-import { GitBranch, Package, Hash, Tag } from 'lucide-react';
+import { GitBranch, Package, Hash, Tag, ExternalLink } from 'lucide-react';
 import { CBOMDocument } from '../types';
 import styles from './CBOMHeader.module.scss';
 
@@ -10,6 +10,7 @@ export default function CBOMHeader({ cbom }: CBOMHeaderProps) {
   if (!cbom) return null;
 
   const component = cbom.metadata.component;
+  const repository = cbom.metadata.repository;
   const assetCount = cbom.cryptoAssets.length;
 
   return (
@@ -45,6 +46,24 @@ export default function CBOMHeader({ cbom }: CBOMHeaderProps) {
           <span className={styles.tag}>
             <Tag className={styles.tagIcon} />
             CycloneDX {cbom.specVersion}
+          </span>
+        )}
+        {repository?.url && (
+          <a
+            className={styles.tag}
+            href={repository.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={repository.url}
+          >
+            <ExternalLink className={styles.tagIcon} />
+            Repository
+          </a>
+        )}
+        {repository?.branch && (
+          <span className={styles.tag}>
+            <GitBranch className={styles.tagIcon} />
+            {repository.branch}
           </span>
         )}
       </div>

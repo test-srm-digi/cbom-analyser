@@ -72,7 +72,7 @@ jobs:
           sleep 5
           curl -s -X POST http://localhost:3001/api/scan-code \
             -H "Content-Type: application/json" \
-            -d '{"repoPath": "${{ github.workspace }}"}' > scan-result.json
+            -d '{"repoPath": "${{ github.workspace }}", "repoUrl": "${{ github.server_url }}/${{ github.repository }}", "branch": "${{ github.ref_name }}"}' > scan-result.json
           
           python3 -c "
           import json
@@ -82,6 +82,11 @@ jobs:
             json.dump(data.get('cbom', {}), f, indent=2)
           print(f'🎯 Quantum Readiness: {data.get(\"readinessScore\",{}).get(\"score\")}%')
           print(f'📦 Total Assets: {len(data.get(\"cbom\",{}).get(\"cryptoAssets\",[]))}')
+          repo = data.get('cbom',{}).get('metadata',{}).get('repository',{})
+          if repo.get('url'):
+            print(f'🔗 Repository: {repo[\"url\"]}')
+          if repo.get('branch'):
+            print(f'🌿 Branch: {repo[\"branch\"]}')
           "
 
       - name: Upload CBOM Report

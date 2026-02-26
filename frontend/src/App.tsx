@@ -128,7 +128,7 @@ export default function App() {
   function buildDoc(data: any): CBOMDocument {
     return {
       bomFormat: data.bomFormat || 'CycloneDX',
-      specVersion: data.specVersion || '1.6',
+      specVersion: data.specVersion || '1.7',
       serialNumber: data.serialNumber,
       version: data.version || 1,
       metadata: data.metadata || { timestamp: new Date().toISOString() },

@@ -2,7 +2,7 @@
  * Scanner Aggregator Service
  *
  * Orchestrates code scanning (sonar-cryptography) and network scanning,
- * then merges results into a unified CycloneDX 1.6 CBOM.
+ * then merges results into a unified CycloneDX 1.7 CBOM.
  */
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -17,6 +17,7 @@ import {
   CryptoFunction,
   QuantumSafetyStatus,
   CryptoDependency,
+  CBOMRepository,
 } from '../types';
 import { enrichAssetWithPQCData, calculateReadinessScore, checkNISTPQCCompliance, syncQuantumSafetyWithVerdict } from './pqcRiskEngine';
 import { scanNetworkCrypto, networkResultToCBOMAsset } from './networkScanner';
@@ -58,10 +59,14 @@ function shouldExcludeFile(filePath: string, excludePatterns: string[]): boolean
 /**
  * Create an empty CBOM document shell.
  */
-export function createEmptyCBOM(componentName: string, componentVersion?: string): CBOMDocument {
+export function createEmptyCBOM(
+  componentName: string,
+  componentVersion?: string,
+  repository?: CBOMRepository,
+): CBOMDocument {
   return {
     bomFormat: 'CycloneDX',
-    specVersion: '1.6',
+    specVersion: '1.7',
     serialNumber: `urn:uuid:${uuidv4()}`,
     version: 1,
     metadata: {
@@ -78,6 +83,7 @@ export function createEmptyCBOM(componentName: string, componentVersion?: string
         version: componentVersion,
         type: 'application',
       },
+      ...(repository ? { repository } : {}),
     },
     components: [],
     cryptoAssets: [],
@@ -87,7 +93,7 @@ export function createEmptyCBOM(componentName: string, componentVersion?: string
 
 /**
  * Parse and validate an uploaded CBOM JSON file.
- * Supports both standard CycloneDX 1.6 CBOM and custom formats.
+ * Supports both standard CycloneDX 1.6/1.7 CBOM and custom formats.
  */
 export function parseCBOMFile(jsonContent: string): CBOMDocument {
   let data = JSON.parse(jsonContent);
@@ -164,7 +170,7 @@ export function parseCBOMFile(jsonContent: string): CBOMDocument {
     return cbom;
   }
 
-  throw new Error('Invalid CBOM format. Expected CycloneDX 1.6 CBOM JSON.');
+  throw new Error('Invalid CBOM format. Expected CycloneDX CBOM JSON (1.6 or 1.7).');
 }
 
 // ─── Sonar-Cryptography Integration ─────────────────────────────────────────
@@ -176,11 +182,11 @@ export function parseCBOMFile(jsonContent: string): CBOMDocument {
  *   - SonarQube running with sonar-cryptography plugin
  *   - SONAR_HOST_URL and SONAR_TOKEN environment variables
  *
- * The plugin outputs a CycloneDX 1.6 CBOM as `cbom.json` in the project root.
+ * The plugin outputs a CycloneDX 1.7 CBOM as `cbom.json` in the project root.
  * Falls back to regex-based scanning if sonar-scanner is unavailable.
  */
-export async function runSonarCryptoScan(repoPath: string, excludePatterns?: string[]): Promise<CBOMDocument> {
-  const cbom = createEmptyCBOM(path.basename(repoPath));
+export async function runSonarCryptoScan(repoPath: string, excludePatterns?: string[], repository?: CBOMRepository): Promise<CBOMDocument> {
+  const cbom = createEmptyCBOM(path.basename(repoPath), undefined, repository);
 
   const sonarHostUrl = process.env.SONAR_HOST_URL || 'http://localhost:9090';
   const sonarToken = process.env.SONAR_TOKEN;
@@ -191,7 +197,7 @@ export async function runSonarCryptoScan(repoPath: string, excludePatterns?: str
 
     if (!sonarToken) {
       console.warn('SONAR_TOKEN not set — falling back to regex scanner.');
-      return runRegexCryptoScan(repoPath, excludePatterns);
+      return runRegexCryptoScan(repoPath, excludePatterns, repository);
     }
 
     const projectKey = `quantumguard-${path.basename(repoPath).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
@@ -259,7 +265,7 @@ export async function runSonarCryptoScan(repoPath: string, excludePatterns?: str
     }
 
     console.warn('No CBOM output file found after sonar scan. Falling back to regex.');
-    return runRegexCryptoScan(repoPath, excludePatterns);
+    return runRegexCryptoScan(repoPath, excludePatterns, repository);
   } catch (error) {
     // Clean up temp dir on failure
     const tempBinDir = path.join(repoPath, '.sonar-tmp-bin');
@@ -272,7 +278,7 @@ export async function runSonarCryptoScan(repoPath: string, excludePatterns?: str
       (error as Error).message
     );
     // Fall back to regex-based scanning
-    return runRegexCryptoScan(repoPath, excludePatterns);
+    return runRegexCryptoScan(repoPath, excludePatterns, repository);
   }
 
   return cbom;
@@ -282,8 +288,8 @@ export async function runSonarCryptoScan(repoPath: string, excludePatterns?: str
  * Fallback: Regex-based crypto detection for when sonar-scanner is unavailable.
  * Scans Java and Python files for common cryptographic patterns.
  */
-export async function runRegexCryptoScan(repoPath: string, excludePatterns?: string[]): Promise<CBOMDocument> {
-  const cbom = createEmptyCBOM(path.basename(repoPath));
+export async function runRegexCryptoScan(repoPath: string, excludePatterns?: string[], repository?: CBOMRepository): Promise<CBOMDocument> {
+  const cbom = createEmptyCBOM(path.basename(repoPath), undefined, repository);
 
   // Pattern type with optional asset-type override and algorithm extraction from capture group 1
   type CryptoPattern = {
@@ -1005,10 +1011,11 @@ export function mergeCBOMs(baseCBOM: CBOMDocument, ...additionalAssets: CryptoAs
  */
 export async function runFullScan(
   repoPath: string,
-  networkHosts?: string[]
+  networkHosts?: string[],
+  repository?: CBOMRepository,
 ): Promise<CBOMDocument> {
   // 1. Code scan (sonar or regex fallback)
-  const codeCBOM = await runSonarCryptoScan(repoPath);
+  const codeCBOM = await runSonarCryptoScan(repoPath, undefined, repository);
 
   // 2. Dependency scan — find crypto libs in pom.xml, package.json, etc.
   let depAssets: CryptoAsset[] = [];

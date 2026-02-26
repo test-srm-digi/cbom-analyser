@@ -1,8 +1,9 @@
 /**
- * CycloneDX 1.6 Cryptographic Bill of Materials (CBOM) Type Definitions
+ * CycloneDX 1.7 Cryptographic Bill of Materials (CBOM) Type Definitions
  *
  * Based on the CycloneDX ECMA standard with cryptographic extensions.
- * @see https://cyclonedx.org/
+ * @see https://cyclonedx.org/docs/1.7/json/
+ * @see https://github.com/CycloneDX/specification/releases/tag/1.7
  * @see https://github.com/IBM/CBOM
  */
 
@@ -55,8 +56,8 @@ export enum AssetType {
 }
 
 /**
- * CycloneDX 1.6 Related Crypto Material sub-types
- * @see CycloneDX 1.6 CBOM specification
+ * CycloneDX 1.7 Related Crypto Material sub-types
+ * @see CycloneDX 1.7 CBOM specification
  */
 export enum RelatedCryptoMaterialType {
   PUBLIC_KEY = 'public-key',
@@ -211,7 +212,7 @@ export interface CBOMComponent {
 // ─── Dependency Mapping ──────────────────────────────────────────────────────
 
 /**
- * CycloneDX 1.6 dependency relationships.
+ * CycloneDX 1.7 dependency relationships.
  * - dependsOn: this component depends on the listed refs
  * - provides: this component provides/exposes the listed refs
  */
@@ -240,11 +241,17 @@ export interface ThirdPartyCryptoLibrary {
 
 // ─── CBOM Metadata ───────────────────────────────────────────────────────────
 
+export interface CBOMRepository {
+  url: string;
+  branch?: string;
+}
+
 export interface CBOMMetadata {
   timestamp: string;
   tools?: CBOMTool[];
   component?: CBOMComponent;
   authors?: CBOMAuthor[];
+  repository?: CBOMRepository;
 }
 
 export interface CBOMTool {
@@ -262,7 +269,7 @@ export interface CBOMAuthor {
 
 export interface CBOMDocument {
   bomFormat: 'CycloneDX';
-  specVersion: '1.6';
+  specVersion: '1.7';
   serialNumber?: string;
   version: number;
   metadata: CBOMMetadata;
@@ -339,6 +346,10 @@ export interface ScanCodeRequest {
   language?: 'java' | 'python';
   /** Glob patterns to exclude from scanning (e.g., test directories, spec files) */
   excludePatterns?: string[];
+  /** Repository URL (e.g., https://github.com/org/repo) */
+  repoUrl?: string;
+  /** Branch name where the scan was performed */
+  branch?: string;
 }
 
 /** Default patterns to exclude test files */

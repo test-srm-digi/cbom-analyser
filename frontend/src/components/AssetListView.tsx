@@ -207,7 +207,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
           lineNumber: asset.location?.lineNumber,
           quantumSafety: asset.quantumSafety,
           recommendedPQC: asset.recommendedPQC,
-          // CycloneDX 1.6 fields
+          // CycloneDX 1.7 fields
           assetType: asset.cryptoProperties?.assetType,
           detectionSource: asset.detectionSource,
           description: asset.description,

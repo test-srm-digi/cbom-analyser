@@ -55,9 +55,9 @@ const mainNavItems: { id: NavPage; label: string; icon: typeof faGauge }[] = [
   { id: 'inventory', label: 'Inventory', icon: faTableCells },
   { id: 'visualize', label: 'Visualize', icon: faDiagramProject },
   { id: 'violations', label: 'Violations', icon: faTriangleExclamation },
+  { id: 'integrations', label: 'Integrations', icon: faPlug },
   { id: 'tracking', label: 'Tracking', icon: faListCheck },
   { id: 'policies', label: 'Policies', icon: faShieldHalved },
-  { id: 'integrations', label: 'Integrations', icon: faPlug },
   { id: 'settings', label: 'Settings', icon: faGear },
 ];
 
