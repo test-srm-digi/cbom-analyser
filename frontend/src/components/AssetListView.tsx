@@ -787,14 +787,17 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                           target="_blank"
                           rel="noopener noreferrer"
                           className={s.fileLink}
-                          title="View on GitHub"
+                          title={`${asset.location.fileName}${asset.location.lineNumber ? `:${asset.location.lineNumber}` : ''}`}
                         >
                           {asset.location.fileName}
                           {asset.location.lineNumber ? `:${asset.location.lineNumber}` : ''}
                           <ExternalLink className={s.ghLinkIcon} />
                         </a>
                       ) : (
-                        <span className={s.fileLink}>
+                        <span
+                          className={s.fileLink}
+                          title={`${asset.location.fileName}${asset.location.lineNumber ? `:${asset.location.lineNumber}` : ''}`}
+                        >
                           {asset.location.fileName}
                           {asset.location.lineNumber ? `:${asset.location.lineNumber}` : ''}
                         </span>
