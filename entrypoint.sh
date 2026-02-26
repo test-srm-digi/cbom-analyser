@@ -83,14 +83,26 @@ echo ""
 echo -e "${YELLOW}🔍 Scanning for cryptographic assets...${NC}"
 echo ""
 
-# Build the request JSON with optional excludePatterns
+# Derive repository URL and branch from standard GitHub Actions env vars
+REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+BRANCH="${GITHUB_REF_NAME}"
+
+# Build the request JSON with optional excludePatterns + repo metadata
 if [ -n "$EXCLUDE_PATTERNS" ]; then
   # Convert comma-separated patterns to JSON array
   EXCLUDE_JSON=$(echo "$EXCLUDE_PATTERNS" | tr ',' '\n' | jq -R . | jq -s .)
-  REQUEST_BODY=$(jq -n --arg path "$FULL_SCAN_PATH" --argjson exclude "$EXCLUDE_JSON" \
-    '{repoPath: $path, excludePatterns: $exclude}')
+  REQUEST_BODY=$(jq -n \
+    --arg path "$FULL_SCAN_PATH" \
+    --argjson exclude "$EXCLUDE_JSON" \
+    --arg repoUrl "$REPO_URL" \
+    --arg branch "$BRANCH" \
+    '{repoPath: $path, excludePatterns: $exclude, repoUrl: $repoUrl, branch: $branch}')
 else
-  REQUEST_BODY="{\"repoPath\": \"${FULL_SCAN_PATH}\"}"
+  REQUEST_BODY=$(jq -n \
+    --arg path "$FULL_SCAN_PATH" \
+    --arg repoUrl "$REPO_URL" \
+    --arg branch "$BRANCH" \
+    '{repoPath: $path, repoUrl: $repoUrl, branch: $branch}')
 fi
 
 SCAN_RESULT=$(curl -s -X POST http://localhost:3001/api/scan-code/full \
@@ -238,6 +250,8 @@ cat >> $GITHUB_STEP_SUMMARY << EOF
 | 📦 Total Cryptographic Assets | ${TOTAL_ASSETS} |
 | ✅ Quantum-Safe | ${QUANTUM_SAFE_ASSETS} |
 | ⚠️ Vulnerable | ${VULNERABLE_ASSETS} |
+| 🔗 Repository | [${GITHUB_REPOSITORY}](${REPO_URL}) |
+| 🌿 Branch | \`${BRANCH}\` |
 
 EOF
 

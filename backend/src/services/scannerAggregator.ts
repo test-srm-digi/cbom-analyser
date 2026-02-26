@@ -64,6 +64,19 @@ export function createEmptyCBOM(
   componentVersion?: string,
   repository?: CBOMRepository,
 ): CBOMDocument {
+  // When the scan path is "." or empty, derive a meaningful name from the
+  // repository URL (e.g. "https://github.com/org/repo" → "repo") or fall back
+  // to a generic label.
+  let resolvedName = componentName;
+  if (!resolvedName || resolvedName === '.') {
+    if (repository?.url) {
+      const urlSegments = repository.url.replace(/\/+$/, '').split('/');
+      resolvedName = urlSegments[urlSegments.length - 1] || 'Unknown Project';
+    } else {
+      resolvedName = 'Unknown Project';
+    }
+  }
+
   return {
     bomFormat: 'CycloneDX',
     specVersion: '1.7',
@@ -79,7 +92,7 @@ export function createEmptyCBOM(
         },
       ],
       component: {
-        name: componentName,
+        name: resolvedName,
         version: componentVersion,
         type: 'application',
       },
