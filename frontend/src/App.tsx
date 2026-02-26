@@ -185,31 +185,31 @@ export default function App() {
       case 'private-ca':
         return (
           <PlaceholderPage
-            section="DigiCert ONE"
+            section="Quantum Readiness Advisor"
             title="Private CA"
             icon={ShieldHalf}
-            description="Deploy and manage private Certificate Authorities for internal TLS, mTLS, and device identity use cases."
-            features={['Private root & issuing CAs', 'Certificate templates', 'CRL & OCSP responder', 'Policy enforcement']}
+            description="Assess private CA certificates for quantum vulnerability, migrate issuing CAs to PQC-ready algorithms, and enforce post-quantum policies across internal PKI."
+            features={['CA algorithm audit', 'PQC migration planner', 'Quantum-safe policy enforcement', 'CBOM generation for CA chains']}
           />
         );
       case 'device-trust':
         return (
           <PlaceholderPage
-            section="DigiCert ONE"
+            section="Quantum Readiness Advisor"
             title="Device Trust"
             icon={Tablet}
-            description="Secure IoT and device identities with certificate-based authentication, firmware signing, and lifecycle management."
-            features={['Device identity enrollment', 'Firmware signing', 'Certificate lifecycle', 'Fleet management']}
+            description="Inventory cryptographic algorithms embedded in IoT firmware, identify harvest-now-decrypt-later risks, and plan quantum-safe certificate rollouts for device fleets."
+            features={['Firmware crypto scanning', 'HNDL risk assessment', 'Fleet PQC migration plan', 'Device CBOM inventory']}
           />
         );
       case 'document-trust':
         return (
           <PlaceholderPage
-            section="DigiCert ONE"
+            section="Quantum Readiness Advisor"
             title="Document Trust"
             icon={FileSignature}
-            description="Apply trusted digital signatures to documents and verify document authenticity with DigiCert-issued signing certificates."
-            features={['eSignature workflows', 'PDF signing & sealing', 'Timestamp authority', 'Signature validation']}
+            description="Evaluate document-signing certificates for quantum vulnerability, migrate to ML-DSA / SLH-DSA signatures, and verify long-term document integrity against future quantum threats."
+            features={['Signature algorithm audit', 'ML-DSA migration path', 'Long-term integrity check', 'Quantum-safe timestamping']}
           />
         );
 

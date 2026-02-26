@@ -71,11 +71,11 @@ interface SidebarSection {
 }
 
 const sidebarSections: SidebarSection[] = [
-  { label: 'Private CA',      icon: faShieldCheck,        navPage: 'private-ca',    description: 'Deploy and manage private Certificate Authorities for internal TLS, mTLS, and device identity use cases.' },
-  { label: 'Trust Lifecycle', icon: faArrowsRotate,       comingSoon: true,         description: 'Manage the full certificate lifecycle — from discovery and issuance to renewal and revocation — across your entire organisation.' },
-  { label: 'Software Trust',  icon: faLock,               comingSoon: true,         description: 'Secure your software supply chain with code-signing keypairs, release validation, and tamper-evidence workflows.' },
-  { label: 'Device Trust',    icon: faTabletScreenButton, navPage: 'device-trust',  description: 'Secure IoT and device identities with certificate-based authentication and firmware signing.' },
-  { label: 'Document Trust',  icon: faFileSignature,      navPage: 'document-trust',description: 'Apply trusted digital signatures to documents and verify authenticity with DigiCert-issued certificates.' },
+  { label: 'Private CA',      icon: faShieldCheck,        navPage: 'private-ca',    description: 'Assess private CA certificates for quantum vulnerability, migrate issuing CAs to PQC-ready algorithms, and enforce post-quantum policies across internal PKI.' },
+  { label: 'Trust Lifecycle', icon: faArrowsRotate,       comingSoon: true,         description: 'Track every cryptographic asset from discovery through remediation — automate PQC migration workflows, schedule algorithm upgrades, and maintain a continuous crypto inventory across your organisation.' },
+  { label: 'Software Trust',  icon: faLock,               comingSoon: true,         description: 'Scan software dependencies for weak or non-quantum-safe cryptographic primitives, generate CBOM reports for each release, and enforce PQC-readiness gates in your CI/CD pipeline.' },
+  { label: 'Device Trust',    icon: faTabletScreenButton, navPage: 'device-trust',  description: 'Inventory cryptographic algorithms embedded in IoT firmware, identify harvest-now-decrypt-later risks, and plan quantum-safe certificate rollouts for device fleets.' },
+  { label: 'Document Trust',  icon: faFileSignature,      navPage: 'document-trust',description: 'Evaluate document-signing certificates for quantum vulnerability, migrate to ML-DSA / SLH-DSA signatures, and verify long-term document integrity against future quantum threats.' },
 ];
 
 /* ─── Component ─────────────────────────────────────────────── */
@@ -188,7 +188,7 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
             <p className="dc1-cs-desc">{comingSoonModal.description}</p>
             <div className="dc1-cs-divider" />
             <p className="dc1-cs-note">
-              This module is under active development and will be available in a future release of DigiCert ONE.
+              This module is under active development as part of the Quantum Readiness Advisor and will be available in a future release.
             </p>
             <button className="dc1-cs-btn" onClick={() => setComingSoonModal(null)}>Got it</button>
           </div>
