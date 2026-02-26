@@ -18,7 +18,7 @@
   --dc1-text-muted: #A0AAB0;
 
   /* Sidebar */
-  --dc1-sidebar-bg: #1B2A4A;
+  --dc1-sidebar-bg: #102240;
   --dc1-sidebar-active: rgba(255,255,255,0.12);
   --dc1-sidebar-hover: rgba(255,255,255,0.07);
   --dc1-sidebar-text: rgba(255,255,255,0.7);
@@ -35,7 +35,7 @@
   --dc1-info-bg: #E8F4FC;
 
   /* Sizing */
-  --dc1-sidebar-w: 260px;
+  --dc1-sidebar-w: 240px;
   --dc1-topbar-h: 48px;
   --dc1-radius: 8px;
   --dc1-radius-sm: 4px;
@@ -82,24 +82,24 @@ body {
 }
 
 .dc1-sidebar-brand {
-  padding: 18px 20px 16px;
+  padding: 20px 20px 18px;
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
   flex-shrink: 0;
 }
 .dc1-brand-text {
   color: #FFFFFF;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 400;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 .dc1-brand-one {
-  color: #0174C3;
-  font-size: 20px;
+  color: #FFFFFF;
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 /* Sidebar scrollable area */
@@ -107,6 +107,7 @@ body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  padding-top: 4px;
 }
 .dc1-sidebar-scroll::-webkit-scrollbar { width: 4px; }
 .dc1-sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -115,20 +116,20 @@ body {
 
 /* Nav sections */
 .dc1-nav-section {
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 6px 0;
 }
 .dc1-nav-section-header {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: none;
   border: none;
   color: var(--dc1-sidebar-text-active);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   text-align: left;
   border-radius: 6px;
@@ -141,30 +142,31 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  color: rgba(255,255,255,0.6);
+  width: 22px;
+  height: 22px;
+  color: rgba(255,255,255,0.7);
+  font-size: 16px;
 }
 .dc1-nav-section-label { flex: 1; }
-.dc1-nav-chevron { font-size: 10px; color: rgba(255,255,255,0.4); transition: transform 0.2s; }
+.dc1-nav-chevron { font-size: 11px; color: rgba(255,255,255,0.45); transition: transform 0.2s; }
 
 .dc1-nav-list {
   list-style: none;
-  padding: 0 0 4px;
+  padding: 2px 0 6px;
   margin: 0;
 }
 
 .dc1-nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px 8px 20px;
+  gap: 11px;
+  padding: 9px 14px 9px 22px;
   margin: 1px 8px;
   background: none;
   border: none;
   color: var(--dc1-sidebar-text);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   text-align: left;
   transition: background 0.15s, color 0.15s;
@@ -176,22 +178,22 @@ body {
   color: var(--dc1-sidebar-text-active);
 }
 .dc1-nav-active {
-  background: rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.12);
   color: var(--dc1-sidebar-text-active);
   font-weight: 500;
 }
-.dc1-nav-icon { width: 16px; text-align: center; font-size: 14px; }
+.dc1-nav-icon { width: 18px; text-align: center; font-size: 16px; }
 
 /* Other sidebar nav sections (Private CA, Trust Lifecycle, etc.) */
 .dc1-nav-section-other {
   border-bottom: none;
-  padding: 2px 0;
+  padding: 3px 0;
 }
 .dc1-nav-section-header-other {
-  padding: 10px 16px;
+  padding: 10px 14px;
   font-weight: 500;
-  font-size: 13px;
-  color: rgba(255,255,255,0.65);
+  font-size: 14px;
+  color: rgba(255,255,255,0.75);
   border-radius: 6px;
   margin: 0 8px;
   width: calc(100% - 16px);
@@ -204,12 +206,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  opacity: 0.55;
+  width: 22px;
+  height: 22px;
+  font-size: 15px;
+  opacity: 0.6;
 }
 .dc1-nav-section-label-other { flex: 1; }
-.dc1-nav-chevron-small { font-size: 9px; transition: transform 0.2s; }
+.dc1-nav-chevron-small { font-size: 10px; transition: transform 0.2s; }
 .dc1-nav-chevron-expanded { transform: rotate(90deg); }
 
 /* Sub-nav items for other sections */
@@ -222,23 +225,23 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 14px 7px 48px;
+  padding: 8px 14px 8px 48px;
   margin: 1px 8px;
   background: none;
   border: none;
-  color: rgba(255,255,255,0.5);
+  color: rgba(255,255,255,0.75);
   cursor: default;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
   text-align: left;
   border-radius: 6px;
   width: calc(100% - 16px);
 }
 .dc1-subnav-icon {
-  width: 14px;
+  width: 16px;
   text-align: center;
-  font-size: 12px;
-  opacity: 0.6;
+  font-size: 13px;
+  opacity: 0.7;
 }
 
 /* ── Main area ─────────────────────────────────────────────── */
