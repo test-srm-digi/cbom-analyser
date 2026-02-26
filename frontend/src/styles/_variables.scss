@@ -1,38 +1,130 @@
 // ══════════════════════════════════════════════════════════════
 //  DigiCert ONE — Quantum Readiness Advisor  ·  Design Tokens
-//  Follows the snowbird-securesigning variable pattern
+//  Mirrors @digicert/dcone-common-ui/src/styles/_variables.scss
+//  so colors stay in sync with the design system.
 // ══════════════════════════════════════════════════════════════
 
+// ── dcone-common-ui base palette (verbatim) ─────────────────
+// Brand
+$digicert-blue: #0174C3;
+$digicert-cyan: #20CCDE;
+
+// Blue (Brand Primary)
+$blue-50:  #EDF6FC;
+$blue-100: #94D2FC;
+$blue-200: #1297F3;
+$blue-300: #0174C3;
+$blue-400: #0165AC;
+$blue-500: #015A99;
+$blue-600: #004A80;
+$blue-700: #003E6B;
+$blue-800: #002947;
+$blue-900: #002036;
+
+// Neutral
+$neutral-50:  #F9FAFB;
+$neutral-100: #F0F3F5;
+$neutral-200: #E7EBEF;
+$neutral-300: #D6DCE1;
+$neutral-400: #C1C8CD;
+$neutral-500: #A0AAB0;
+$neutral-600: #757D82;
+$neutral-700: #636A6E;
+$neutral-800: #44484A;
+$neutral-900: #353535;
+
+// Success
+$success-50:  #DEF8DE;
+$success-100: #27A872;
+$success-200: #1C7852;
+
+// Error
+$error-50:  #FFE6E5;
+$pale-red:  #FFB5A9;
+$error-100: #DC2626;
+$error-200: #AD0C0C;
+
+// Warning
+$warning-50:  #FEEFCB;
+$warning-100: #F5B517;
+$warning-200: #955925;
+
+// Info
+$info-50:  #E2EEFF;
+$info-100: #0F73FF;
+$info-200: #0048AC;
+
+// Black & White
+$white: #FFFFFF;
+$black: #000000;
+
+// ── QRA colour scheme (maps DS tokens → app aliases) ────────
+// Following the snowbird-securesigning pattern:
+//   $c-primary-blue: $digicert-blue;
+//   $c-dark-blue: $blue-500;   etc.
+$c-primary-blue:   $digicert-blue;
+$c-dark-blue:      $blue-500;
+$c-electric-blue:  $blue-200;
+$c-bright-blue:    $blue-100;
+$c-light-blue:     $blue-50;
+$c-custom-blue:    $blue-400;
+$c-info-blue:      $info-100;
+$c-digicert-blue:  $digicert-blue;
+
+$c-light-gray:     $neutral-400;
+$c-gray-2:         $neutral-200;
+$c-gray-3:         $neutral-500;
+$c-gray-4:         $neutral-600;
+$c-gray-5:         $neutral-300;
+$charcoal-gray:    $neutral-800;
+$c-dark-gray:      $neutral-900;
+$c-disabled-gray:  $neutral-100;
+$c-medium-gray:    $neutral-700;
+$c-off-white:      $neutral-50;
+
+$c-white:  $white;
+$c-black:  $black;
+$c-red:    $error-100;
+$c-red-critical: $error-200;
+$c-green:  $success-100;
+$c-pale-green: $success-50;
+$c-yellow: $warning-100;
+$c-brown:  $warning-200;
+$c-warning: $warning-50;
+$c-light-pink: $error-50;
+$c-pale-red: $pale-red;
+
+// ── App-level semantic tokens ───────────────────────────────
 // Primary palette
-$dc1-blue:        #0174C3;
-$dc1-blue-dark:   #005EA2;
-$dc1-blue-light:  #E8F4FC;
+$dc1-blue:        $digicert-blue;        // #0174C3
+$dc1-blue-dark:   $blue-500;             // #015A99
+$dc1-blue-light:  $blue-50;              // #EDF6FC
 
 // Neutrals
-$dc1-white:    #FFFFFF;
+$dc1-white:    $white;
 $dc1-bg:       #F5F6F8;
-$dc1-card:     #FFFFFF;
-$dc1-border:   #E2E5EA;
-$dc1-text:     #353535;
-$dc1-text-secondary: #636A6E;
-$dc1-text-muted:     #A0AAB0;
+$dc1-card:     $white;
+$dc1-border:   $neutral-200;             // #E7EBEF
+$dc1-text:     $neutral-900;             // #353535
+$dc1-text-secondary: $neutral-700;       // #636A6E
+$dc1-text-muted:     $neutral-500;       // #A0AAB0
 
-// Sidebar
-$dc1-sidebar-bg:          #002947;
-$dc1-sidebar-active:      rgba(255,255,255,0.12);
-$dc1-sidebar-hover:       rgba(255,255,255,0.07);
-$dc1-sidebar-text:        rgba(255,255,255,0.7);
-$dc1-sidebar-text-active: #FFFFFF;
+// Sidebar (uses blue-800 per DS palette)
+$dc1-sidebar-bg:          $blue-800;     // #002947
+$dc1-sidebar-active:      rgba($white, 0.12);
+$dc1-sidebar-hover:       rgba($white, 0.07);
+$dc1-sidebar-text:        rgba($white, 0.7);
+$dc1-sidebar-text-active: $white;
 
 // Semantic
-$dc1-success:    #27A872;
+$dc1-success:    $success-100;           // #27A872
 $dc1-success-bg: #E8FAF0;
-$dc1-danger:     #DC2626;
+$dc1-danger:     $error-100;             // #DC2626
 $dc1-danger-bg:  #FEF2F2;
-$dc1-warning:    #F5B517;
+$dc1-warning:    $warning-100;           // #F5B517
 $dc1-warning-bg: #FFFBEB;
-$dc1-info:       #0174C3;
-$dc1-info-bg:    #E8F4FC;
+$dc1-info:       $digicert-blue;         // #0174C3
+$dc1-info-bg:    $blue-50;              // #EDF6FC
 
 // Chart palette
 $chart-blue:    #58a6ff;
@@ -42,7 +134,7 @@ $chart-green:   #3fb950;
 $chart-red:     #f85149;
 $chart-yellow:  #d29922;
 $chart-pink:    #f778ba;
-$chart-cyan:    #22d3ee;
+$chart-cyan:    $digicert-cyan;          // #20CCDE
 $chart-gray:    #8b949e;
 
 // Sizing
@@ -55,40 +147,21 @@ $dc1-radius-lg: 12px;
 // Font
 $dc1-font: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-// Spacing (8pt grid)
+// Spacing (8pt grid — matches dcone-common-ui)
 $spacing-0: 4px;
 $spacing-1: 8px;
 $spacing-2: 16px;
 $spacing-3: 24px;
 $spacing-4: 32px;
+$spacing-5: 40px;
+$spacing-6: 48px;
 
 // Transition
+$transition: all 0.3s;
 $transition-fast: 0.15s ease;
-$transition-medium: 0.3s ease;
+$transition-cubic: 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
 
-// ── CSS custom properties (for runtime theming) ─────────────
-:root {
-  --dc1-blue: #{$dc1-blue};
-  --dc1-blue-dark: #{$dc1-blue-dark};
-  --dc1-blue-light: #{$dc1-blue-light};
-  --dc1-white: #{$dc1-white};
-  --dc1-bg: #{$dc1-bg};
-  --dc1-card: #{$dc1-card};
-  --dc1-border: #{$dc1-border};
-  --dc1-text: #{$dc1-text};
-  --dc1-text-secondary: #{$dc1-text-secondary};
-  --dc1-text-muted: #{$dc1-text-muted};
-  --dc1-sidebar-bg: #{$dc1-sidebar-bg};
-  --dc1-sidebar-active: #{$dc1-sidebar-active};
-  --dc1-sidebar-hover: #{$dc1-sidebar-hover};
-  --dc1-sidebar-text: #{$dc1-sidebar-text};
-  --dc1-sidebar-text-active: #{$dc1-sidebar-text-active};
-  --dc1-success: #{$dc1-success};
-  --dc1-success-bg: #{$dc1-success-bg};
-  --dc1-danger: #{$dc1-danger};
-  --dc1-danger-bg: #{$dc1-danger-bg};
-  --dc1-warning: #{$dc1-warning};
-  --dc1-warning-bg: #{$dc1-warning-bg};
-  --dc1-info: #{$dc1-info};
-  --dc1-info-bg: #{$dc1-info-bg};
-}
+// Border radius (matches dcone-common-ui)
+$border-radius: 3px;
+$border-radius-4px: 4px;
+$border-radius-8px: 8px;

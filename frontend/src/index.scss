@@ -1,48 +1,49 @@
 // ═══════════════════════════════════════════════════════════════
 //  DigiCert ONE — Quantum Readiness Advisor  ·  Main Stylesheet
 // ═══════════════════════════════════════════════════════════════
+@use './styles/variables' as *;
 @use './styles/global';
 :root {
   /* Primary palette */
-  --dc1-blue: #0174C3;
-  --dc1-blue-dark: #005EA2;
-  --dc1-blue-light: #E8F4FC;
+  --dc1-blue: #{$dc1-blue};
+  --dc1-blue-dark: #{$dc1-blue-dark};
+  --dc1-blue-light: #{$dc1-blue-light};
 
   /* Neutrals */
-  --dc1-white: #FFFFFF;
-  --dc1-bg: #F5F6F8;
-  --dc1-card: #FFFFFF;
-  --dc1-border: #E2E5EA;
-  --dc1-text: #353535;
-  --dc1-text-secondary: #636A6E;
-  --dc1-text-muted: #A0AAB0;
+  --dc1-white: #{$dc1-white};
+  --dc1-bg: #{$dc1-bg};
+  --dc1-card: #{$dc1-card};
+  --dc1-border: #{$dc1-border};
+  --dc1-text: #{$dc1-text};
+  --dc1-text-secondary: #{$dc1-text-secondary};
+  --dc1-text-muted: #{$dc1-text-muted};
 
   /* Sidebar */
-  --dc1-sidebar-bg: #002947;
-  --dc1-sidebar-active: rgba(255,255,255,0.12);
-  --dc1-sidebar-hover: rgba(255,255,255,0.07);
-  --dc1-sidebar-text: rgba(255,255,255,0.7);
-  --dc1-sidebar-text-active: #FFFFFF;
+  --dc1-sidebar-bg: #{$dc1-sidebar-bg};
+  --dc1-sidebar-active: #{$dc1-sidebar-active};
+  --dc1-sidebar-hover: #{$dc1-sidebar-hover};
+  --dc1-sidebar-text: #{$dc1-sidebar-text};
+  --dc1-sidebar-text-active: #{$dc1-sidebar-text-active};
 
   /* Semantic */
-  --dc1-success: #27A872;
-  --dc1-success-bg: #E8FAF0;
-  --dc1-danger: #DC2626;
-  --dc1-danger-bg: #FEF2F2;
-  --dc1-warning: #F5B517;
-  --dc1-warning-bg: #FFFBEB;
-  --dc1-info: #0174C3;
-  --dc1-info-bg: #E8F4FC;
+  --dc1-success: #{$dc1-success};
+  --dc1-success-bg: #{$dc1-success-bg};
+  --dc1-danger: #{$dc1-danger};
+  --dc1-danger-bg: #{$dc1-danger-bg};
+  --dc1-warning: #{$dc1-warning};
+  --dc1-warning-bg: #{$dc1-warning-bg};
+  --dc1-info: #{$dc1-info};
+  --dc1-info-bg: #{$dc1-info-bg};
 
   /* Sizing */
-  --dc1-sidebar-w: 260px;
-  --dc1-topbar-h: 48px;
-  --dc1-radius: 8px;
-  --dc1-radius-sm: 4px;
-  --dc1-radius-lg: 12px;
+  --dc1-sidebar-w: #{$dc1-sidebar-w};
+  --dc1-topbar-h: #{$dc1-topbar-h};
+  --dc1-radius: #{$dc1-radius};
+  --dc1-radius-sm: #{$dc1-radius-sm};
+  --dc1-radius-lg: #{$dc1-radius-lg};
 
   /* Font */
-  --dc1-font: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --dc1-font: #{$dc1-font};
 }
 
 /* ── Reset & base ──────────────────────────────────────────── */
