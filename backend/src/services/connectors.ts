@@ -227,55 +227,134 @@ export async function fetchDevices(
 }
 
 /* ══════════════════════════════════════════════════════════════
- *  5. GitHub Scanner — Code Finding Connector
+ *  6. CBOM Import Connector
  * ══════════════════════════════════════════════════════════════ */
 
-export async function fetchCodeFindings(
-  _config: ConnectorConfig,
-  integrationId: string,
-): Promise<ConnectorResult<Record<string, unknown>>> {
-  const repos = ['frontend-app', 'backend-api', 'auth-service', 'payment-gateway', 'mobile-sdk'];
-  const languages = ['Java', 'TypeScript', 'Python', 'Go', 'C#'];
-  const apis = [
-    'KeyPairGenerator.getInstance',
-    'Cipher.getInstance',
-    'MessageDigest.getInstance',
-    'crypto.createHash',
-    'hashlib.sha256',
-    'tls.createSecureContext',
-    'Signature.getInstance',
-  ];
-  const algorithms = ['RSA', 'AES', 'SHA-256', 'ECDSA', 'DES', 'MD5', 'ChaCha20', 'ML-KEM'];
-  const severities = ['critical', 'high', 'medium', 'low', 'info'] as const;
+/** Algorithm pools used to generate realistic CBOM content */
+const QS_ALGORITHMS = [
+  { name: 'ML-KEM-768',        assetType: 'algorithm', primitive: 'key-encapsulation', fn: 'key-exchange' },
+  { name: 'ML-DSA-65',         assetType: 'algorithm', primitive: 'signature',          fn: 'sign' },
+  { name: 'SLH-DSA-SHA2-128s', assetType: 'algorithm', primitive: 'signature',          fn: 'sign' },
+  { name: 'AES-256-GCM',       assetType: 'algorithm', primitive: 'block-cipher',       fn: 'encrypt' },
+  { name: 'SHA-3-256',         assetType: 'algorithm', primitive: 'hash',               fn: 'hash-function' },
+  { name: 'SHA-256',           assetType: 'algorithm', primitive: 'hash',               fn: 'hash-function' },
+  { name: 'SHA-384',           assetType: 'algorithm', primitive: 'hash',               fn: 'hash-function' },
+  { name: 'SHAKE-256',         assetType: 'algorithm', primitive: 'hash',               fn: 'digest' },
+];
 
-  const count = randInt(5, 18);
-  const data: Record<string, unknown>[] = [];
+const NON_QS_ALGORITHMS = [
+  { name: 'RSA-2048',          assetType: 'algorithm', primitive: 'pke',                fn: 'encrypt' },
+  { name: 'ECDSA-P256',        assetType: 'algorithm', primitive: 'signature',          fn: 'sign' },
+  { name: 'ECDH-P256',         assetType: 'algorithm', primitive: 'key-agreement',      fn: 'key-exchange' },
+  { name: 'AES-128-CBC',       assetType: 'algorithm', primitive: 'block-cipher',       fn: 'encrypt' },
+  { name: 'HMAC-SHA-256',      assetType: 'algorithm', primitive: 'mac',                fn: 'tag' },
+  { name: 'RSA-4096',          assetType: 'algorithm', primitive: 'signature',          fn: 'sign' },
+  { name: 'DES-EDE3',          assetType: 'algorithm', primitive: 'block-cipher',       fn: 'encrypt' },
+  { name: 'MD5',               assetType: 'algorithm', primitive: 'hash',               fn: 'digest' },
+  { name: 'SHA-1',             assetType: 'algorithm', primitive: 'hash',               fn: 'hash-function' },
+  { name: 'ChaCha20-Poly1305', assetType: 'algorithm', primitive: 'ae',                fn: 'encrypt' },
+];
 
-  for (let i = 0; i < count; i++) {
-    const algo = pick(algorithms);
-    data.push({
-      id: uuidv4(),
-      integrationId,
-      repository: pick(repos),
-      filePath: `src/${pick(['services', 'utils', 'crypto', 'auth', 'config'])}/${pick(['CryptoService', 'AuthHelper', 'TLSConfig', 'KeyManager', 'HashUtil'])}.${pick(['java', 'ts', 'py', 'go'])}`,
-      lineNumber: randInt(10, 500),
-      language: pick(languages),
-      cryptoApi: pick(apis),
-      algorithm: algo,
-      keySize: ['RSA', 'AES'].includes(algo) ? pick(['128', '256', '2048', '4096']) : null,
-      quantumSafe: ['ChaCha20', 'ML-KEM', 'AES'].includes(algo),
-      severity: pick([...severities]),
-      source: 'GitHub Scanner',
-      detectedAt: new Date().toISOString(),
+const JAVA_FILES = [
+  'AbstractIdentityProvider.java', 'KeycloakModelUtils.java', 'PkceUtils.java',
+  'TokenVerifier.java', 'MutualTLSUtils.java', 'OIDCLoginProtocol.java',
+  'S256CodeChallenge.java', 'LegacyHashProvider.java', 'CryptoProvider.java',
+  'SSLContextFactory.java', 'JWKParser.java', 'KeyWrapper.java',
+  'JWETokenProcessor.java', 'PBKDF2PasswordHashProvider.java', 'HmacUtil.java',
+];
+
+function buildCbomContent(
+  appName: string,
+  qsSafe: number,
+  nonQsSafe: number,
+  totalCrypto: number,
+): Buffer {
+  const cryptoAssets: Record<string, unknown>[] = [];
+
+  // Quantum-safe assets
+  for (let i = 0; i < qsSafe; i++) {
+    const algo = QS_ALGORITHMS[i % QS_ALGORITHMS.length];
+    cryptoAssets.push({
+      id: `asset-qs-${i + 1}`,
+      name: algo.name,
+      type: 'crypto-asset',
+      cryptoProperties: {
+        assetType: algo.assetType,
+        algorithmProperties: {
+          primitive: algo.primitive,
+          cryptoFunctions: [algo.fn],
+        },
+      },
+      location: { fileName: pick(JAVA_FILES), lineNumber: randInt(10, 500) },
+      quantumSafety: 'quantum-safe',
+      detectionSource: pick(['sonar', 'regex']),
     });
   }
 
-  return { success: true, data, errors: [] };
-}
+  // Non-quantum-safe assets
+  for (let i = 0; i < nonQsSafe; i++) {
+    const algo = NON_QS_ALGORITHMS[i % NON_QS_ALGORITHMS.length];
+    cryptoAssets.push({
+      id: `asset-nqs-${i + 1}`,
+      name: algo.name,
+      type: 'crypto-asset',
+      cryptoProperties: {
+        assetType: algo.assetType,
+        algorithmProperties: {
+          primitive: algo.primitive,
+          cryptoFunctions: [algo.fn],
+        },
+      },
+      location: { fileName: pick(JAVA_FILES), lineNumber: randInt(10, 500) },
+      quantumSafety: 'not-quantum-safe',
+      detectionSource: pick(['sonar', 'regex']),
+    });
+  }
 
-/* ══════════════════════════════════════════════════════════════
- *  6. CBOM Import Connector
- * ══════════════════════════════════════════════════════════════ */
+  // Unknown assets (fill remainder)
+  const unknownCount = totalCrypto - qsSafe - nonQsSafe;
+  for (let i = 0; i < unknownCount; i++) {
+    const pool = [...QS_ALGORITHMS, ...NON_QS_ALGORITHMS];
+    const algo = pool[i % pool.length];
+    cryptoAssets.push({
+      id: `asset-unk-${i + 1}`,
+      name: algo.name,
+      type: 'crypto-asset',
+      cryptoProperties: {
+        assetType: algo.assetType,
+        algorithmProperties: {
+          primitive: algo.primitive,
+          cryptoFunctions: [algo.fn],
+        },
+      },
+      location: { fileName: pick(JAVA_FILES), lineNumber: randInt(10, 500) },
+      quantumSafety: 'unknown',
+      detectionSource: 'regex',
+    });
+  }
+
+  const cbom = {
+    bomFormat: 'CycloneDX',
+    specVersion: pick(['1.6', '1.7']),
+    serialNumber: `urn:uuid:${uuidv4()}`,
+    version: 1,
+    metadata: {
+      timestamp: new Date().toISOString(),
+      tools: [
+        { vendor: 'QuantumGuard', name: 'CBOM Hub', version: '2.0.0' },
+        { vendor: 'IBM', name: 'sonar-cryptography', version: '1.4.0' },
+      ],
+      component: {
+        name: appName,
+        type: 'application',
+      },
+    },
+    components: [],
+    cryptoAssets,
+  };
+
+  return Buffer.from(JSON.stringify(cbom), 'utf-8');
+}
 
 export async function fetchCbomImports(
   _config: ConnectorConfig,
@@ -293,20 +372,24 @@ export async function fetchCbomImports(
     const total = randInt(10, 80);
     const crypto = randInt(5, total);
     const qsSafe = randInt(0, crypto);
+    const nonQsSafe = crypto - qsSafe;
+    const appName = pick(apps);
     data.push({
       id: uuidv4(),
       integrationId,
-      fileName: `${pick(apps).toLowerCase().replace(/ /g, '-')}-cbom-${randInt(1, 99)}.json`,
+      fileName: `${appName.toLowerCase().replace(/ /g, '-')}-cbom-${randInt(1, 99)}.json`,
       format: pick(formats),
       specVersion: pick(versions),
       totalComponents: total,
       cryptoComponents: crypto,
       quantumSafeComponents: qsSafe,
-      nonQuantumSafeComponents: crypto - qsSafe,
+      nonQuantumSafeComponents: nonQsSafe,
       importDate: new Date().toISOString(),
       status: pick([...statuses]),
       source: 'CBOM Import',
-      applicationName: pick(apps),
+      applicationName: appName,
+      cbomFile: buildCbomContent(appName, qsSafe, nonQsSafe, crypto),
+      cbomFileType: 'application/json',
     });
   }
 
@@ -333,6 +416,5 @@ export const CONNECTOR_REGISTRY: Record<
   'network-scanner': { fetch: fetchEndpoints, model: 'Endpoint', label: 'Network Scanner (Endpoints)' },
   'digicert-stm': { fetch: fetchSoftware, model: 'Software', label: 'DigiCert STM (Software)' },
   'digicert-dtm': { fetch: fetchDevices, model: 'Device', label: 'DigiCert DTM (Devices)' },
-  'github-scanner': { fetch: fetchCodeFindings, model: 'CodeFinding', label: 'GitHub Scanner (Code Findings)' },
   'cbom-import': { fetch: fetchCbomImports, model: 'CbomImport', label: 'CBOM Import' },
 };

@@ -17,9 +17,10 @@ interface Props<T> {
   columns: Column<T>[];
   data: T[];
   rowKey: (item: T) => string;
+  onRowClick?: (item: T) => void;
 }
 
-export default function DataTable<T>({ title, count, columns, data, rowKey }: Props<T>) {
+export default function DataTable<T>({ title, count, columns, data, rowKey, onRowClick }: Props<T>) {
   return (
     <div className={s.tableCard}>
       <h3 className={s.tableTitle}>{title} ({count})</h3>
@@ -36,7 +37,11 @@ export default function DataTable<T>({ title, count, columns, data, rowKey }: Pr
         </thead>
         <tbody>
           {data.map((item) => (
-            <tr key={rowKey(item)}>
+            <tr
+              key={rowKey(item)}
+              onClick={onRowClick ? () => onRowClick(item) : undefined}
+              style={onRowClick ? { cursor: 'pointer' } : undefined}
+            >
               {columns.map((col) => (
                 <td key={col.key} style={col.cellStyle}>
                   {col.render(item)}

@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Eye, ExternalLink, Zap } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, LibChips, EmptyState } from '../components';
 import type { IntegrationStep } from '../components';
 import { SOFTWARE } from '../data';
+import { useGetSoftwareListQuery, useBulkCreateSoftwareMutation } from '../../../store/api';
 import type { DiscoverySoftware, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
 
@@ -19,7 +20,9 @@ const STEPS: IntegrationStep[] = [
 ];
 
 export default function SoftwareTab({ search, setSearch }: Props) {
-  const [data, setData] = useState<DiscoverySoftware[]>([]);
+  const { data: apiData = [], isLoading } = useGetSoftwareListQuery();
+  const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateSoftwareMutation();
+  const data = apiData;
   const loaded = data.length > 0;
 
   const total      = data.length;
@@ -73,6 +76,8 @@ export default function SoftwareTab({ search, setSearch }: Props) {
     },
   ];
 
+  if (isLoading) return null;
+
   if (!loaded) {
     return (
       <EmptyState
@@ -80,7 +85,8 @@ export default function SoftwareTab({ search, setSearch }: Props) {
         integrationName="DigiCert Software Trust Manager"
         integrationDescription="Import code signing certificates, software hashes, and SBOM-linked cryptographic assets from STM. Analyze signing algorithms used across your software supply chain and plan PQC migration."
         steps={STEPS}
-        onLoadSample={() => setData([...SOFTWARE])}
+        loading={isSampleLoading}
+        onLoadSample={() => bulkCreate({ integrationId: 'sample', items: SOFTWARE.map(({ id, ...rest }) => rest) })}
       />
     );
   }

@@ -6,7 +6,6 @@ export { default as certificateRoutes } from './certificateRoutes';
 export { default as endpointRoutes } from './endpointRoutes';
 export { default as softwareRoutes } from './softwareRoutes';
 export { default as deviceRoutes } from './deviceRoutes';
-export { default as codeFindingRoutes } from './codeFindingRoutes';
 export { default as cbomImportRoutes } from './cbomImportRoutes';
 export { default as syncLogRoutes } from './syncLogRoutes';
 export { default as schedulerRoutes } from './schedulerRoutes';

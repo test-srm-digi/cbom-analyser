@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 //  Discovery Module — Sample Data
-//  Realistic data for all 6 integration-sourced tabs
+//  Realistic data for all 5 integration-sourced tabs
 // ══════════════════════════════════════════════════════════════
 
 import type {
@@ -8,7 +8,6 @@ import type {
   DiscoveryEndpoint,
   DiscoverySoftware,
   DiscoveryDevice,
-  DiscoveryCodeFinding,
   DiscoveryCbomImport,
 } from './types';
 
@@ -125,32 +124,7 @@ export const DEVICES: DiscoveryDevice[] = [
 ];
 
 /* ═══════════════════════════════════════════════════════════════
-   5. Code Analysis — GitHub Repository Scanner
-   ═══════════════════════════════════════════════════════════════ */
-
-export const CODE_FINDINGS: DiscoveryCodeFinding[] = [
-  { id: 'cf1',  repository: 'acme/payment-service',      filePath: 'src/crypto/tls.go',                lineNumber: 42,  language: 'Go',         cryptoApi: 'tls.Config',             algorithm: 'RSA-2048',     keySize: '2048 bits', quantumSafe: false, severity: 'high',     source: 'GitHub Scanner', detectedAt: '2026-02-24T10:00:00Z' },
-  { id: 'cf2',  repository: 'acme/payment-service',      filePath: 'src/crypto/tls.go',                lineNumber: 87,  language: 'Go',         cryptoApi: 'crypto/ecdsa.Sign',      algorithm: 'ECDSA P-256',  keySize: 'P-256',     quantumSafe: false, severity: 'medium',   source: 'GitHub Scanner', detectedAt: '2026-02-24T10:00:00Z' },
-  { id: 'cf3',  repository: 'acme/auth-gateway',         filePath: 'src/main/java/Auth.java',          lineNumber: 156, language: 'Java',       cryptoApi: 'KeyPairGenerator',       algorithm: 'RSA-2048',     keySize: '2048 bits', quantumSafe: false, severity: 'high',     source: 'GitHub Scanner', detectedAt: '2026-02-24T10:05:00Z' },
-  { id: 'cf4',  repository: 'acme/auth-gateway',         filePath: 'src/main/java/JwtService.java',    lineNumber: 23,  language: 'Java',       cryptoApi: 'Cipher.getInstance',     algorithm: 'AES-256-GCM',  keySize: 'N/A',       quantumSafe: true,  severity: 'info',     source: 'GitHub Scanner', detectedAt: '2026-02-24T10:05:00Z' },
-  { id: 'cf5',  repository: 'acme/web-portal',           filePath: 'src/utils/crypto.ts',              lineNumber: 18,  language: 'TypeScript', cryptoApi: 'crypto.subtle.generateKey', algorithm: 'RSA-OAEP',  keySize: '2048 bits', quantumSafe: false, severity: 'high',     source: 'GitHub Scanner', detectedAt: '2026-02-24T10:10:00Z' },
-  { id: 'cf6',  repository: 'acme/web-portal',           filePath: 'src/utils/crypto.ts',              lineNumber: 45,  language: 'TypeScript', cryptoApi: 'crypto.subtle.sign',     algorithm: 'ECDSA P-256',  keySize: 'P-256',     quantumSafe: false, severity: 'medium',   source: 'GitHub Scanner', detectedAt: '2026-02-24T10:10:00Z' },
-  { id: 'cf7',  repository: 'acme/infra-agent',          filePath: 'agent/tls_config.py',              lineNumber: 33,  language: 'Python',     cryptoApi: 'ssl.SSLContext',         algorithm: 'TLS 1.2',      keySize: 'N/A',       quantumSafe: false, severity: 'medium',   source: 'GitHub Scanner', detectedAt: '2026-02-24T10:15:00Z' },
-  { id: 'cf8',  repository: 'acme/infra-agent',          filePath: 'agent/certs.py',                   lineNumber: 71,  language: 'Python',     cryptoApi: 'cryptography.hazmat.RSA', algorithm: 'RSA-2048',    keySize: '2048 bits', quantumSafe: false, severity: 'high',     source: 'GitHub Scanner', detectedAt: '2026-02-24T10:15:00Z' },
-  { id: 'cf9',  repository: 'acme/data-pipeline',        filePath: 'src/main/scala/Encrypt.scala',     lineNumber: 92,  language: 'Scala',      cryptoApi: 'javax.crypto.Cipher',    algorithm: 'AES-128-CBC',  keySize: 'N/A',       quantumSafe: true,  severity: 'low',      source: 'GitHub Scanner', detectedAt: '2026-02-24T10:20:00Z' },
-  { id: 'cf10', repository: 'acme/data-pipeline',        filePath: 'src/main/scala/Hash.scala',        lineNumber: 15,  language: 'Scala',      cryptoApi: 'MessageDigest',          algorithm: 'SHA-1',        keySize: 'N/A',       quantumSafe: false, severity: 'critical', source: 'GitHub Scanner', detectedAt: '2026-02-24T10:20:00Z' },
-  { id: 'cf11', repository: 'acme/mobile-app',           filePath: 'ios/Security/KeyChain.swift',      lineNumber: 67,  language: 'Swift',      cryptoApi: 'SecKeyCreateRandomKey',  algorithm: 'RSA-2048',     keySize: '2048 bits', quantumSafe: false, severity: 'high',     source: 'GitHub Scanner', detectedAt: '2026-02-24T10:25:00Z' },
-  { id: 'cf12', repository: 'acme/mobile-app',           filePath: 'android/CryptoManager.kt',         lineNumber: 34,  language: 'Kotlin',     cryptoApi: 'KeyGenerator.getInstance', algorithm: 'AES-256',    keySize: 'N/A',       quantumSafe: true,  severity: 'info',     source: 'GitHub Scanner', detectedAt: '2026-02-24T10:25:00Z' },
-  { id: 'cf13', repository: 'acme/pqc-toolkit',          filePath: 'src/pqc/keygen.rs',                lineNumber: 12,  language: 'Rust',       cryptoApi: 'oqs::sig::Sig::new',     algorithm: 'ML-DSA-65',    keySize: '65 bytes',  quantumSafe: true,  severity: 'info',     source: 'GitHub Scanner', detectedAt: '2026-02-24T10:30:00Z' },
-  { id: 'cf14', repository: 'acme/pqc-toolkit',          filePath: 'src/pqc/kem.rs',                   lineNumber: 28,  language: 'Rust',       cryptoApi: 'oqs::kem::Kem::new',     algorithm: 'ML-KEM-768',   keySize: '768',       quantumSafe: true,  severity: 'info',     source: 'GitHub Scanner', detectedAt: '2026-02-24T10:30:00Z' },
-  { id: 'cf15', repository: 'acme/compliance-reporter',  filePath: 'lib/crypto_utils.rb',              lineNumber: 55,  language: 'Ruby',       cryptoApi: 'OpenSSL::PKey::RSA.new', algorithm: 'RSA-2048',     keySize: '2048 bits', quantumSafe: false, severity: 'high',     source: 'GitHub Scanner', detectedAt: '2026-02-24T10:35:00Z' },
-  { id: 'cf16', repository: 'acme/secrets-service',      filePath: 'src/vault/seal.go',                lineNumber: 104, language: 'Go',         cryptoApi: 'aes.NewCipher',          algorithm: 'AES-256-GCM',  keySize: 'N/A',       quantumSafe: true,  severity: 'info',     source: 'GitHub Scanner', detectedAt: '2026-02-24T10:40:00Z' },
-  { id: 'cf17', repository: 'acme/secrets-service',      filePath: 'src/vault/unseal.go',              lineNumber: 78,  language: 'Go',         cryptoApi: 'rsa.DecryptOAEP',        algorithm: 'RSA-4096',     keySize: '4096 bits', quantumSafe: false, severity: 'medium',   source: 'GitHub Scanner', detectedAt: '2026-02-24T10:40:00Z' },
-  { id: 'cf18', repository: 'acme/container-security',   filePath: 'pkg/sign/cosign.go',               lineNumber: 21,  language: 'Go',         cryptoApi: 'ecdsa.GenerateKey',      algorithm: 'ECDSA P-256',  keySize: 'P-256',     quantumSafe: false, severity: 'medium',   source: 'GitHub Scanner', detectedAt: '2026-02-24T10:45:00Z' },
-];
-
-/* ═══════════════════════════════════════════════════════════════
-   6. CBOM Imports — CycloneDX CBOM File Import
+   5. CBOM Imports — CycloneDX CBOM File Import
    ═══════════════════════════════════════════════════════════════ */
 
 export const CBOM_IMPORTS: DiscoveryCbomImport[] = [

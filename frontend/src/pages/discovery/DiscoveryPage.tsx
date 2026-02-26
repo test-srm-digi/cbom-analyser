@@ -5,7 +5,6 @@ import {
   EndpointsTab,
   SoftwareTab,
   DevicesTab,
-  CodeAnalysisTab,
   CbomImportsTab,
 } from './tabs';
 import s from './DiscoveryPage.module.scss';
@@ -19,7 +18,6 @@ const TAB_META: Record<DiscoveryTab, { title: string; subtitle: string }> = {
   endpoints:      { title: 'Endpoints',     subtitle: 'Network endpoints scanned for TLS configuration, cipher suites, and key-agreement protocols used in transit encryption.' },
   software:       { title: 'Software',      subtitle: 'Software releases and signing artifacts discovered via DigiCert STM — signing algorithm and PQC migration status.' },
   devices:        { title: 'Devices',       subtitle: 'IoT and managed devices discovered via DigiCert DTM — firmware crypto, certificate enrollment, and key-strength audit.' },
-  'code-analysis': { title: 'Code Analysis', subtitle: 'Cryptographic API usage detected in source repositories by the GitHub Scanner — algorithm, key size, and severity.' },
   'cbom-imports':  { title: 'CBOM Imports',  subtitle: 'CycloneDX CBOM files imported from CI/CD pipelines — crypto component inventory and PQC-readiness breakdown.' },
 };
 
@@ -29,9 +27,10 @@ const TAB_META: Record<DiscoveryTab, { title: string; subtitle: string }> = {
 
 interface Props {
   tab: DiscoveryTab;
+  onViewCbom?: (id: string) => void;
 }
 
-export default function DiscoveryPage({ tab }: Props) {
+export default function DiscoveryPage({ tab, onViewCbom }: Props) {
   const [search, setSearch] = useState('');
   const meta = TAB_META[tab];
 
@@ -41,8 +40,7 @@ export default function DiscoveryPage({ tab }: Props) {
       case 'endpoints':      return <EndpointsTab    search={search} setSearch={setSearch} />;
       case 'software':       return <SoftwareTab     search={search} setSearch={setSearch} />;
       case 'devices':        return <DevicesTab      search={search} setSearch={setSearch} />;
-      case 'code-analysis':  return <CodeAnalysisTab search={search} setSearch={setSearch} />;
-      case 'cbom-imports':   return <CbomImportsTab  search={search} setSearch={setSearch} />;
+      case 'cbom-imports':   return <CbomImportsTab  search={search} setSearch={setSearch} onViewCbom={onViewCbom} />;
     }
   };
 

@@ -17,6 +17,7 @@ import {
   faTableCells,
   faBullseyeArrow,
   faMagnifyingGlass,
+  faFlask,
 } from '@fortawesome/pro-light-svg-icons';
 import {
   faChevronDown,
@@ -27,13 +28,13 @@ import {
   faWifi,
   faBox,
   faMicrochip,
-  faCode,
   faFileCode,
 } from '@fortawesome/pro-light-svg-icons';
 
 /* ─── Types ─────────────────────────────────────────────────── */
 
 export type NavPage =
+  | 'cbom-analyzer'
   | 'dashboard'
   | 'inventory'
   | 'visualize'
@@ -46,8 +47,8 @@ export type NavPage =
   | 'discovery-endpoints'
   | 'discovery-software'
   | 'discovery-devices'
-  | 'discovery-code-analysis'
   | 'discovery-cbom-imports'
+  | 'cbom-detail'
   | 'network'
   | 'settings'
   /* Other products */
@@ -71,10 +72,15 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: faGrid2 },
-  { id: 'inventory', label: 'Inventory', icon: faTableCells },
-  { id: 'visualize', label: 'Visualize', icon: faDiagramProject },
-  { id: 'violations', label: 'Violations', icon: faTriangleExclamation },
+  {
+    id: 'cbom-analyzer', label: 'CBOM Analyzer', icon: faFlask,
+    children: [
+      { id: 'dashboard',  label: 'Dashboard',  icon: faGrid2 },
+      { id: 'inventory',  label: 'Inventory',  icon: faTableCells },
+      { id: 'visualize',  label: 'Visualize',  icon: faDiagramProject },
+    ],
+  },
+  // { id: 'violations', label: 'Violations', icon: faTriangleExclamation },
   { id: 'integrations', label: 'Integrations', icon: faPlug },
   {
     id: 'discovery', label: 'Discovery', icon: faMagnifyingGlass,
@@ -83,7 +89,6 @@ const mainNavItems: NavItem[] = [
       { id: 'discovery-endpoints',       label: 'Endpoints',     icon: faWifi },
       { id: 'discovery-software',        label: 'Software',      icon: faBox },
       { id: 'discovery-devices',         label: 'Devices',       icon: faMicrochip },
-      { id: 'discovery-code-analysis',   label: 'Code Analysis', icon: faCode },
       { id: 'discovery-cbom-imports',    label: 'CBOM Imports',  icon: faFileCode },
     ],
   },
@@ -115,9 +120,12 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
   const [qraExpanded, setQraExpanded] = useState(true);
   const [comingSoonModal, setComingSoonModal] = useState<SidebarSection | null>(null);
   const [expandedParents, setExpandedParents] = useState<Set<NavPage>>(() => {
-    // auto-expand Discovery if a child page is active on mount
     const set = new Set<NavPage>();
-    if (activePage.startsWith('discovery-')) set.add('discovery');
+    for (const item of mainNavItems) {
+      if (item.children?.some((c) => c.id === activePage)) {
+        set.add(item.id);
+      }
+    }
     return set;
   });
 

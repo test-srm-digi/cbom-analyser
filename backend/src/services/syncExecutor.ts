@@ -15,17 +15,16 @@
  *   - integrationRoutes POST /sync (manual trigger)
  */
 import { v4 as uuidv4 } from 'uuid';
-import { Integration, SyncLog, Certificate, Endpoint, Software, Device, CodeFinding, CbomImport } from '../models';
+import { Integration, SyncLog, Certificate, Endpoint, Software, Device, CbomImport } from '../models';
 import { CONNECTOR_REGISTRY, ConnectorConfig } from './connectors';
 
 /* ── Model lookup map ──────────────────────────────────────── */
 
-const MODEL_MAP: Record<string, typeof Certificate | typeof Endpoint | typeof Software | typeof Device | typeof CodeFinding | typeof CbomImport> = {
+const MODEL_MAP: Record<string, typeof Certificate | typeof Endpoint | typeof Software | typeof Device | typeof CbomImport> = {
   Certificate,
   Endpoint,
   Software,
   Device,
-  CodeFinding,
   CbomImport,
 };
 
@@ -139,14 +138,14 @@ export async function executeSyncForIntegration(
   if (TargetModel) {
     try {
       // Full refresh: delete old → insert new
-      deletedCount = await TargetModel.destroy({
-        where: { integrationId } as Record<string, unknown>,
+      deletedCount = await (TargetModel as any).destroy({
+        where: { integrationId },
       });
 
       if (fetchedRecords.length > 0) {
-        const created = await TargetModel.bulkCreate(
-          fetchedRecords as unknown[],
-          { validate: true } as Record<string, unknown>,
+        const created = await (TargetModel as any).bulkCreate(
+          fetchedRecords,
+          { validate: true },
         );
         createdCount = created.length;
       }

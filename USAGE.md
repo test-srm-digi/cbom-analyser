@@ -769,12 +769,11 @@ digicert ONE
    ├─ Visualize              — Dependency & algorithm graphs
    ├─ Violations             — Policy violations & compliance gaps
    ├─ Integrations           — Configure data sources (see below)
-   ├─ Discovery              — Expandable parent with 6 child pages:
+   ├─ Discovery              — Expandable parent with 5 child pages:
    │  ├─ Certificates        — TLS / PKI certificates (from DigiCert TLM)
    │  ├─ Endpoints           — Network TLS endpoints (from Network Scanner)
    │  ├─ Software            — Signing artifacts (from DigiCert STM)
    │  ├─ Devices             — IoT / OT devices (from DigiCert DTM)
-   │  ├─ Code Analysis       — Crypto API calls (from GitHub Scanner)
    │  └─ CBOM Imports        — CycloneDX CBOM files (from CI/CD)
    ├─ Network Scanner        — Live TLS endpoint scanner
    ├─ Tracking               — Migration task tracking
@@ -810,7 +809,6 @@ Six pre-built integration templates are available:
 | **DigiCert Device Trust Manager** | DigiCert | `digicert` | Import IoT device certificates and embedded crypto configurations. Track quantum readiness of device fleets and firmware crypto. |
 | **Network TLS Scanner** | Built-in | `scanner` | Scan your network to discover TLS endpoints, cipher suites, certificate chains, and key exchange algorithms. |
 | **CBOM File Import** | CycloneDX | `import` | Upload or link CycloneDX CBOM files from CI/CD pipelines, SBOM tools, or manual audits. |
-| **GitHub Repository Scanner** | GitHub | `repository` | Scan GitHub repos for crypto API usage, hardcoded keys, certificate files, and crypto library dependencies. |
 
 ### Configuration Workflow
 
@@ -886,15 +884,6 @@ Each integration type has unique import scope options that reflect the actual da
 | Keys | Key material and parameters in the CBOM |
 | Dependencies | Crypto library dependencies and versions |
 
-**GitHub Repository Scanner:**
-
-| Scope | Description |
-|-------|-------------|
-| Crypto API Calls | Detect cryptographic function calls in source code |
-| Dependencies | Crypto library imports and version tracking |
-| Key & Cert Files | Certificate and key files in the repository |
-| Configurations | Crypto-related config files (TLS, SSH, etc.) |
-
 ### Integration Card States
 
 Once configured, each integration appears as a card on the Integrations page showing:
@@ -951,7 +940,6 @@ When no data has been imported, each discovery page shows an **EmptyState** comp
 | **Endpoints** | Network Scanner | Hostname, IP, Port, TLS Version, Cipher Suite, Key Agreement, Quantum Safe | Network endpoints — TLS config, cipher suites, key-agreement protocols |
 | **Software** | DigiCert STM | Name, Version, Vendor, Signing Algorithm, Key Length, Hash, Quantum Safe | Software releases — signing algorithm and PQC migration status |
 | **Devices** | DigiCert DTM | Device Name, Type, Manufacturer, Firmware, Cert Algorithm, Key Length, Enrollment | IoT devices — firmware crypto, certificate enrollment, key-strength audit |
-| **Code Analysis** | GitHub Scanner | Finding, Severity, Algorithm, Key Size, File Path, Language | Crypto API calls in source code — algorithm, key size, severity classification |
 | **CBOM Imports** | CBOM File Import | Component Name, Type, Algorithm, Version, Quantum Safe, Spec Version | CycloneDX CBOM contents — crypto component inventory and PQC breakdown |
 
 ### Integration → Discovery Data Flow
@@ -971,7 +959,6 @@ Each integration type feeds into its corresponding Discovery page:
 - **Network TLS Scanner** → Endpoints page
 - **DigiCert STM** → Software page
 - **DigiCert DTM** → Devices page
-- **GitHub Repository Scanner** → Code Analysis page
 - **CBOM File Import** → CBOM Imports page
 
 ---
@@ -1044,11 +1031,10 @@ pool: {
 | `Endpoint` | `endpoints` | TLS endpoints discovered via Network Scanner |
 | `Software` | `software` | Software signing data from DigiCert Software Trust Manager |
 | `Device` | `devices` | IoT/industrial devices from DigiCert Device Trust Manager |
-| `CodeFinding` | `code_findings` | Crypto API findings from GitHub Repository Scanner |
 | `CbomImport` | `cbom_imports` | CycloneDX CBOM file import records |
 | `SyncLog` | `sync_logs` | Audit trail of every sync run (scheduled or manual) |
 
-> All six discovery tables and `sync_logs` have an `integration_id` foreign key referencing `integrations.id` with `ON DELETE CASCADE` — deleting an integration removes all its discovered data and sync history.
+> All five discovery tables and `sync_logs` have an `integration_id` foreign key referencing `integrations.id` with `ON DELETE CASCADE` — deleting an integration removes all its discovered data and sync history.
 
 #### Integration Table Schema
 
@@ -1146,26 +1132,6 @@ pool: {
 | `last_checkin` | `VARCHAR(100)` | Timestamp of last device check-in |
 | `source` | `VARCHAR(100)` | Data source identifier |
 | `device_group` | `VARCHAR(100)` | Logical device group (nullable) |
-| `created_at` | `DATETIME` | Auto-managed by Sequelize |
-| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
-
-#### Code Findings Table Schema
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | `VARCHAR(36)` PK | UUID v4 |
-| `integration_id` | `VARCHAR(36)` FK | References `integrations.id` (CASCADE) |
-| `repository` | `VARCHAR(255)` | Repository name |
-| `file_path` | `VARCHAR(500)` | Path to the source file |
-| `line_number` | `INTEGER` | Line number of the finding |
-| `language` | `VARCHAR(50)` | Programming language |
-| `crypto_api` | `VARCHAR(100)` | Crypto API call detected |
-| `algorithm` | `VARCHAR(100)` | Algorithm name resolved |
-| `key_size` | `VARCHAR(50)` | Key size if detected (nullable) |
-| `quantum_safe` | `BOOLEAN` | Whether the algorithm is PQC-safe |
-| `severity` | `ENUM` | `critical`, `high`, `medium`, `low`, `info` |
-| `source` | `VARCHAR(100)` | Data source identifier |
-| `detected_at` | `VARCHAR(100)` | Detection timestamp (nullable) |
 | `created_at` | `DATETIME` | Auto-managed by Sequelize |
 | `updated_at` | `DATETIME` | Auto-managed by Sequelize |
 
@@ -1307,11 +1273,11 @@ curl -X DELETE http://localhost:3001/api/integrations/<id>
 
 ## Discovery Data REST API
 
-Each discovery tab has a dedicated CRUD REST API. All six resources follow the same 8-endpoint pattern with a `{ success, data, message }` response envelope.
+Each discovery tab has a dedicated CRUD REST API. All five resources follow the same 8-endpoint pattern with a `{ success, data, message }` response envelope.
 
 ### Shared Endpoint Pattern
 
-Every discovery resource (`certificates`, `endpoints`, `software`, `devices`, `code-findings`, `cbom-imports`) exposes:
+Every discovery resource (`certificates`, `endpoints`, `software`, `devices`, `cbom-imports`) exposes:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -1332,7 +1298,6 @@ Every discovery resource (`certificates`, `endpoints`, `software`, `devices`, `c
 | Endpoints | `/api/endpoints` | `Endpoint` | Endpoints (Network Scanner) |
 | Software | `/api/software` | `Software` | Software (STM) |
 | Devices | `/api/devices` | `Device` | Devices (DTM) |
-| Code Findings | `/api/code-findings` | `CodeFinding` | Code Analysis (GitHub) |
 | CBOM Imports | `/api/cbom-imports` | `CbomImport` | CBOM Imports |
 
 ### Response Format
@@ -1464,7 +1429,6 @@ Each integration `templateType` maps to a connector in the `CONNECTOR_REGISTRY`:
 | `network-scanner` | `fetchEndpoints()` | `endpoints` | Network Scanner (Endpoints) |
 | `digicert-stm` | `fetchSoftware()` | `software` | DigiCert STM (Software) |
 | `digicert-dtm` | `fetchDevices()` | `devices` | DigiCert DTM (Devices) |
-| `github-scanner` | `fetchCodeFindings()` | `code_findings` | GitHub Scanner (Code Findings) |
 | `cbom-import` | `fetchCbomImports()` | `cbom_imports` | CBOM Import (CBOM Files) |
 
 > **Simulated data**: Connectors currently return realistic simulated data so the full pipeline can be exercised end-to-end without real external API credentials. Replace the `fetch*` functions with real API calls when ready.
@@ -1640,7 +1604,6 @@ frontend/src/store/
     ├── endpointsApi.ts      — Endpoints CRUD (8 hooks)
     ├── softwareApi.ts       — Software CRUD (8 hooks)
     ├── devicesApi.ts        — Devices CRUD (8 hooks)
-    ├── codeFindingsApi.ts   — Code Findings CRUD (8 hooks)
     ├── cbomImportsApi.ts    — CBOM Imports CRUD (8 hooks)
     ├── syncLogsApi.ts       — Sync Logs (4 hooks)
     ├── schedulerApi.ts      — Scheduler status & control (3 hooks)
@@ -1664,7 +1627,7 @@ The `integrationsApi` slice generates the following hooks, ready to use in any c
 
 ### Discovery API Hooks
 
-Each of the six discovery API slices generates 8 hooks following the same pattern. The table below shows the hook names for each resource:
+Each of the five discovery API slices generates 8 hooks following the same pattern. The table below shows the hook names for each resource:
 
 | Resource | List All | List by Integration | Get One | Create | Bulk Create | Update | Delete | Delete by Integration |
 |----------|----------|-------------------|---------|--------|-------------|--------|--------|----------------------|
@@ -1672,7 +1635,6 @@ Each of the six discovery API slices generates 8 hooks following the same patter
 | **Endpoints** | `useGetEndpointsQuery()` | `useGetEndpointsByIntegrationQuery(id)` | `useGetEndpointQuery(id)` | `useCreateEndpointMutation()` | `useBulkCreateEndpointsMutation()` | `useUpdateEndpointMutation()` | `useDeleteEndpointMutation()` | `useDeleteEndpointsByIntegrationMutation()` |
 | **Software** | `useGetSoftwareListQuery()` | `useGetSoftwareByIntegrationQuery(id)` | `useGetSoftwareQuery(id)` | `useCreateSoftwareMutation()` | `useBulkCreateSoftwareMutation()` | `useUpdateSoftwareMutation()` | `useDeleteSoftwareMutation()` | `useDeleteSoftwareByIntegrationMutation()` |
 | **Devices** | `useGetDevicesQuery()` | `useGetDevicesByIntegrationQuery(id)` | `useGetDeviceQuery(id)` | `useCreateDeviceMutation()` | `useBulkCreateDevicesMutation()` | `useUpdateDeviceMutation()` | `useDeleteDeviceMutation()` | `useDeleteDevicesByIntegrationMutation()` |
-| **Code Findings** | `useGetCodeFindingsQuery()` | `useGetCodeFindingsByIntegrationQuery(id)` | `useGetCodeFindingQuery(id)` | `useCreateCodeFindingMutation()` | `useBulkCreateCodeFindingsMutation()` | `useUpdateCodeFindingMutation()` | `useDeleteCodeFindingMutation()` | `useDeleteCodeFindingsByIntegrationMutation()` |
 | **CBOM Imports** | `useGetCbomImportsQuery()` | `useGetCbomImportsByIntegrationQuery(id)` | `useGetCbomImportQuery(id)` | `useCreateCbomImportMutation()` | `useBulkCreateCbomImportsMutation()` | `useUpdateCbomImportMutation()` | `useDeleteCbomImportMutation()` | `useDeleteCbomImportsByIntegrationMutation()` |
 
 ### Sync Logs API Hooks
@@ -1707,7 +1669,7 @@ RTK Query uses **tags** for automatic cache invalidation across all 9 API slices
 - Mutations (create, bulk create, update, delete) **invalidate** both the specific tag and the list tag
 - This means any list query auto-refetches after any mutation — no manual refetch needed
 
-**Tag types:** `Integration`, `Certificate`, `Endpoint`, `Software`, `Device`, `CodeFinding`, `CbomImport`, `SyncLog`, `Scheduler`
+**Tag types:** `Integration`, `Certificate`, `Endpoint`, `Software`, `Device`, `CbomImport`, `SyncLog`, `Scheduler`
 
 ### Usage in Components
 

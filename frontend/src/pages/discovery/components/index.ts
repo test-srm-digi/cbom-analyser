@@ -9,7 +9,6 @@ export {
   CertStatusBadge,
   DeviceStatusBadge,
   CbomStatusBadge,
-  SeverityBadge,
   TlsPill,
   LibChips,
   ProgressBar,

@@ -1,4 +1,4 @@
-import type { CertificateStatus, DeviceEnrollmentStatus, CbomImportStatus, CodeFindingSeverity } from '../types';
+import type { CertificateStatus, DeviceEnrollmentStatus, CbomImportStatus } from '../types';
 import s from './shared.module.scss';
 
 /* ── Quantum-safe badge ───────────────────────────────────── */
@@ -53,20 +53,6 @@ export function CbomStatusBadge({ status }: { status: CbomImportStatus }) {
   return <span className={cbomStatusClass[status] ?? s.badgePartial}>{status}</span>;
 }
 
-/* ── Code finding severity badge ──────────────────────────── */
-
-const severityClass: Record<CodeFindingSeverity, string> = {
-  critical: s.severityCritical,
-  high:     s.severityHigh,
-  medium:   s.severityMedium,
-  low:      s.severityLow,
-  info:     s.severityInfo,
-};
-
-export function SeverityBadge({ severity }: { severity: CodeFindingSeverity }) {
-  const label = severity.charAt(0).toUpperCase() + severity.slice(1);
-  return <span className={severityClass[severity]}>{label}</span>;
-}
 
 /* ── TLS version pill ─────────────────────────────────────── */
 

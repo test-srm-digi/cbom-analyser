@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Zap, Eye, ExternalLink } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, CertStatusBadge, EmptyState } from '../components';
 import type { IntegrationStep } from '../components';
 import { CERTIFICATES } from '../data';
+import { useGetCertificatesQuery, useBulkCreateCertificatesMutation } from '../../../store/api';
 import type { DiscoveryCertificate, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
 
@@ -20,7 +21,9 @@ const STEPS: IntegrationStep[] = [
 ];
 
 export default function CertificatesTab({ search, setSearch }: Props) {
-  const [data, setData] = useState<DiscoveryCertificate[]>([]);
+  const { data: apiData = [], isLoading } = useGetCertificatesQuery();
+  const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateCertificatesMutation();
+  const data = apiData;
   const loaded = data.length > 0;
 
   const total      = data.length;
@@ -76,6 +79,8 @@ export default function CertificatesTab({ search, setSearch }: Props) {
     },
   ];
 
+  if (isLoading) return null;
+
   if (!loaded) {
     return (
       <EmptyState
@@ -83,7 +88,8 @@ export default function CertificatesTab({ search, setSearch }: Props) {
         integrationName="DigiCert Trust Lifecycle Manager"
         integrationDescription="Import TLS/PKI certificates, CA hierarchies, and endpoint data via the TLM REST API. Automatically track key algorithms, expiry dates, and PQC-readiness across your managed certificate infrastructure."
         steps={STEPS}
-        onLoadSample={() => setData([...CERTIFICATES])}
+        loading={isSampleLoading}
+        onLoadSample={() => bulkCreate({ integrationId: 'sample', items: CERTIFICATES.map(({ id, ...rest }) => rest) })}
       />
     );
   }

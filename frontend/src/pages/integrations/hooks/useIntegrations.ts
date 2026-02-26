@@ -76,7 +76,15 @@ export function useIntegrations() {
     setTestStatus('testing');
     setTimeout(() => {
       const hasRequiredFields = configPanel?.template.fields
-        .filter((f) => f.required)
+        .filter((f) => {
+          if (!f.required) return false;
+          // Skip fields hidden by visibleWhen
+          if (f.visibleWhen) {
+            const depValue = configValues[f.visibleWhen.field] || '';
+            if (!f.visibleWhen.values.includes(depValue)) return false;
+          }
+          return true;
+        })
         .every((f) => configValues[f.key]?.trim());
       setTestStatus(hasRequiredFields ? 'success' : 'error');
     }, 2000);

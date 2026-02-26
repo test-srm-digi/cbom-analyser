@@ -69,20 +69,6 @@ export {
 export type { CreateDeviceRequest, UpdateDeviceRequest } from './devicesApi';
 
 export {
-  codeFindingsApi,
-  useGetCodeFindingsQuery,
-  useGetCodeFindingsByIntegrationQuery,
-  useGetCodeFindingQuery,
-  useCreateCodeFindingMutation,
-  useBulkCreateCodeFindingsMutation,
-  useUpdateCodeFindingMutation,
-  useDeleteCodeFindingMutation,
-  useDeleteCodeFindingsByIntegrationMutation,
-} from './codeFindingsApi';
-
-export type { CreateCodeFindingRequest, UpdateCodeFindingRequest } from './codeFindingsApi';
-
-export {
   cbomImportsApi,
   useGetCbomImportsQuery,
   useGetCbomImportsByIntegrationQuery,

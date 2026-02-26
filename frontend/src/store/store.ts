@@ -7,7 +7,6 @@ import { certificatesApi } from './api/certificatesApi';
 import { endpointsApi } from './api/endpointsApi';
 import { softwareApi } from './api/softwareApi';
 import { devicesApi } from './api/devicesApi';
-import { codeFindingsApi } from './api/codeFindingsApi';
 import { cbomImportsApi } from './api/cbomImportsApi';
 import { syncLogsApi } from './api/syncLogsApi';
 import { schedulerApi } from './api/schedulerApi';
@@ -19,7 +18,6 @@ export const store = configureStore({
     [endpointsApi.reducerPath]: endpointsApi.reducer,
     [softwareApi.reducerPath]: softwareApi.reducer,
     [devicesApi.reducerPath]: devicesApi.reducer,
-    [codeFindingsApi.reducerPath]: codeFindingsApi.reducer,
     [cbomImportsApi.reducerPath]: cbomImportsApi.reducer,
     [syncLogsApi.reducerPath]: syncLogsApi.reducer,
     [schedulerApi.reducerPath]: schedulerApi.reducer,
@@ -31,7 +29,6 @@ export const store = configureStore({
       .concat(endpointsApi.middleware)
       .concat(softwareApi.middleware)
       .concat(devicesApi.middleware)
-      .concat(codeFindingsApi.middleware)
       .concat(cbomImportsApi.middleware)
       .concat(syncLogsApi.middleware)
       .concat(schedulerApi.middleware),

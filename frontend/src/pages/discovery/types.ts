@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 //  Discovery Module — Type Definitions
-//  Types for all 6 integration-sourced discovery tabs
+//  Types for all 5 integration-sourced discovery tabs
 // ══════════════════════════════════════════════════════════════
 
 export type DiscoveryTab =
@@ -8,7 +8,6 @@ export type DiscoveryTab =
   | 'endpoints'
   | 'software'
   | 'devices'
-  | 'code-analysis'
   | 'cbom-imports';
 
 // ── Tab metadata ─────────────────────────────────────────────
@@ -96,24 +95,6 @@ export interface DiscoveryDevice {
   deviceGroup?: string;
 }
 
-// ── Code Analysis (from GitHub Repository Scanner) ───────────
-
-export type CodeFindingSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
-
-export interface DiscoveryCodeFinding {
-  id: string;
-  repository: string;
-  filePath: string;
-  lineNumber: number;
-  language: string;
-  cryptoApi: string;
-  algorithm: string;
-  keySize?: string;
-  quantumSafe: boolean;
-  severity: CodeFindingSeverity;
-  source: string;
-  detectedAt?: string;
-}
 
 // ── CBOM Imports (from CycloneDX CBOM File Import) ───────────
 //    CBOM imports ingest pre-generated CycloneDX 1.6+ crypto
@@ -139,6 +120,10 @@ export interface DiscoveryCbomImport {
   status: CbomImportStatus;
   source: string;
   applicationName?: string;
+  /** Base64-encoded artifact file (JSON or ZIP) — only present on single-item GET */
+  cbomFile?: string;
+  /** MIME type of the stored file: application/json or application/zip */
+  cbomFileType?: string;
 }
 
 // ── Stat card config ─────────────────────────────────────────

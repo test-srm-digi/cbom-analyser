@@ -18,7 +18,6 @@ import {
   endpointRoutes,
   softwareRoutes,
   deviceRoutes,
-  codeFindingRoutes,
   cbomImportRoutes,
   syncLogRoutes,
   schedulerRoutes,
@@ -46,7 +45,6 @@ app.use('/api', certificateRoutes);
 app.use('/api', endpointRoutes);
 app.use('/api', softwareRoutes);
 app.use('/api', deviceRoutes);
-app.use('/api', codeFindingRoutes);
 app.use('/api', cbomImportRoutes);
 app.use('/api', syncLogRoutes);
 app.use('/api', schedulerRoutes);

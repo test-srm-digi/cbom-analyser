@@ -1,14 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Eye, ExternalLink } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, CbomStatusBadge, ProgressBar, EmptyState } from '../components';
 import type { IntegrationStep } from '../components';
 import { CBOM_IMPORTS } from '../data';
+import { useGetCbomImportsQuery, useBulkCreateCbomImportsMutation } from '../../../store/api';
 import type { DiscoveryCbomImport, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
 
 interface Props {
   search: string;
   setSearch: (v: string) => void;
+  onViewCbom?: (id: string) => void;
 }
 
 const STEPS: IntegrationStep[] = [
@@ -18,8 +20,10 @@ const STEPS: IntegrationStep[] = [
   { step: 4, title: 'Review imported data', description: 'Component counts, crypto algorithms, PQC readiness scores, and processing status will appear here after import.' },
 ];
 
-export default function CbomImportsTab({ search, setSearch }: Props) {
-  const [data, setData] = useState<DiscoveryCbomImport[]>([]);
+export default function CbomImportsTab({ search, setSearch, onViewCbom }: Props) {
+  const { data: apiData = [], isLoading } = useGetCbomImportsQuery();
+  const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateCbomImportsMutation();
+  const data = apiData;
   const loaded = data.length > 0;
 
   const total         = data.length;
@@ -75,6 +79,8 @@ export default function CbomImportsTab({ search, setSearch }: Props) {
     },
   ];
 
+  if (isLoading) return null;
+
   if (!loaded) {
     return (
       <EmptyState
@@ -82,7 +88,8 @@ export default function CbomImportsTab({ search, setSearch }: Props) {
         integrationName="CBOM File Import"
         integrationDescription="Import Cryptography Bill of Materials (CBOM) files in CycloneDX or SPDX format. Parse, validate, and analyze cryptographic component inventories to assess PQC readiness across your applications."
         steps={STEPS}
-        onLoadSample={() => setData([...CBOM_IMPORTS])}
+        loading={isSampleLoading}
+        onLoadSample={() => bulkCreate({ integrationId: 'sample', items: CBOM_IMPORTS.map(({ id, ...rest }) => rest) })}
       />
     );
   }
@@ -110,6 +117,7 @@ export default function CbomImportsTab({ search, setSearch }: Props) {
         columns={columns}
         data={filtered}
         rowKey={(cb) => cb.id}
+        onRowClick={onViewCbom ? (cb) => onViewCbom(cb.id) : undefined}
       />
     </>
   );

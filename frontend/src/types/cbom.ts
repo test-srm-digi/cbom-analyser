@@ -310,6 +310,10 @@ export interface IntegrationField {
   required: boolean;
   helpText?: string;
   options?: { value: string; label: string }[];
+  /** Conditional visibility — show this field only when another field has one of the specified values */
+  visibleWhen?: { field: string; values: string[] };
+  /** Accepted file types for type='file' (e.g. '.json,.xml') */
+  accept?: string;
 }
 
 /** A user-configured integration instance */

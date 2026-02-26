@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Eye, ExternalLink } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, DeviceStatusBadge, EmptyState } from '../components';
 import type { IntegrationStep } from '../components';
 import { DEVICES } from '../data';
+import { useGetDevicesQuery, useBulkCreateDevicesMutation } from '../../../store/api';
 import type { DiscoveryDevice, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
 
@@ -19,7 +20,9 @@ const STEPS: IntegrationStep[] = [
 ];
 
 export default function DevicesTab({ search, setSearch }: Props) {
-  const [data, setData] = useState<DiscoveryDevice[]>([]);
+  const { data: apiData = [], isLoading } = useGetDevicesQuery();
+  const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateDevicesMutation();
+  const data = apiData;
   const loaded = data.length > 0;
 
   const total      = data.length;
@@ -69,6 +72,8 @@ export default function DevicesTab({ search, setSearch }: Props) {
     },
   ];
 
+  if (isLoading) return null;
+
   if (!loaded) {
     return (
       <EmptyState
@@ -76,7 +81,8 @@ export default function DevicesTab({ search, setSearch }: Props) {
         integrationName="DigiCert Device Trust Manager"
         integrationDescription="Import your IoT and OT device fleet from DTM. Discover device certificates, firmware crypto capabilities, enrollment status, and identify devices needing PQC migration."
         steps={STEPS}
-        onLoadSample={() => setData([...DEVICES])}
+        loading={isSampleLoading}
+        onLoadSample={() => bulkCreate({ integrationId: 'sample', items: DEVICES.map(({ id, ...rest }) => rest) })}
       />
     );
   }

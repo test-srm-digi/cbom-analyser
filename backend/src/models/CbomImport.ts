@@ -21,12 +21,14 @@ export interface CbomImportAttributes {
   status: 'Processed' | 'Processing' | 'Failed' | 'Partial';
   source: string;
   applicationName: string | null;
+  cbomFile: Buffer | null;
+  cbomFileType: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CbomImportCreationAttributes
-  extends Optional<CbomImportAttributes, 'id' | 'applicationName' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<CbomImportAttributes, 'id' | 'applicationName' | 'cbomFile' | 'cbomFileType' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -47,6 +49,8 @@ class CbomImport
   declare status: CbomImportAttributes['status'];
   declare source: string;
   declare applicationName: string | null;
+  declare cbomFile: Buffer | null;
+  declare cbomFileType: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -121,6 +125,16 @@ CbomImport.init(
       type: DataTypes.STRING(255),
       allowNull: true,
       field: 'application_name',
+    },
+    cbomFile: {
+      type: DataTypes.BLOB('long'),
+      allowNull: true,
+      field: 'cbom_file',
+    },
+    cbomFileType: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      field: 'cbom_file_type',
     },
     createdAt: {
       type: DataTypes.DATE,

@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Eye, ExternalLink } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, TlsPill, EmptyState } from '../components';
 import type { IntegrationStep } from '../components';
 import { ENDPOINTS } from '../data';
+import { useGetEndpointsQuery, useBulkCreateEndpointsMutation } from '../../../store/api';
 import type { DiscoveryEndpoint, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
 
@@ -19,7 +20,9 @@ const STEPS: IntegrationStep[] = [
 ];
 
 export default function EndpointsTab({ search, setSearch }: Props) {
-  const [data, setData] = useState<DiscoveryEndpoint[]>([]);
+  const { data: apiData = [], isLoading } = useGetEndpointsQuery();
+  const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateEndpointsMutation();
+  const data = apiData;
   const loaded = data.length > 0;
 
   const total      = data.length;
@@ -68,6 +71,8 @@ export default function EndpointsTab({ search, setSearch }: Props) {
     },
   ];
 
+  if (isLoading) return null;
+
   if (!loaded) {
     return (
       <EmptyState
@@ -75,7 +80,8 @@ export default function EndpointsTab({ search, setSearch }: Props) {
         integrationName="Network TLS Scanner"
         integrationDescription="Scan your network to discover TLS endpoints, cipher suites, certificate chains, and key exchange algorithms. Identify hosts using quantum-vulnerable cryptography before Q-Day."
         steps={STEPS}
-        onLoadSample={() => setData([...ENDPOINTS])}
+        loading={isSampleLoading}
+        onLoadSample={() => bulkCreate({ integrationId: 'sample', items: ENDPOINTS.map(({ id, ...rest }) => rest) })}
       />
     );
   }

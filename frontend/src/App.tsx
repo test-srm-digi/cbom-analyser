@@ -7,6 +7,7 @@ import ViolationsPage from './pages/ViolationsPage';
 import NetworkPage from './pages/NetworkPage';
 import IntegrationsPage from './pages/integrations';
 import DiscoveryPage from './pages/discovery';
+import CbomDetailPage from './pages/discovery/CbomDetailPage';
 import type { DiscoveryTab } from './pages/discovery/types';
 import PlaceholderPage from './pages/PlaceholderPage';
 import {
@@ -28,6 +29,7 @@ export default function App() {
   const [readinessScore, setReadinessScore] = useState<QuantumReadinessScore | null>(null);
   const [compliance, setCompliance] = useState<ComplianceSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedCbomId, setSelectedCbomId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* ── Upload ──────────────────────────────────────────── */
@@ -158,6 +160,10 @@ export default function App() {
 
   function renderPage() {
     switch (activePage) {
+      case 'cbom-analyzer':
+        // bare parent → redirect to first child
+        setActivePage('dashboard');
+        return null;
       case 'dashboard':
         return (
           <DashboardPage
@@ -173,8 +179,10 @@ export default function App() {
         return <InventoryPage cbom={cbom} readinessScore={readinessScore} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
       case 'visualize':
         return <VisualizePage cbom={cbom} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
-      case 'violations':
-        return <ViolationsPage cbom={cbom} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
+            case 'network':
+        return <NetworkPage />;
+      // case 'violations':
+      //   return <ViolationsPage cbom={cbom} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
       case 'integrations':
         return <IntegrationsPage />;
       case 'discovery':
@@ -185,11 +193,21 @@ export default function App() {
       case 'discovery-endpoints':
       case 'discovery-software':
       case 'discovery-devices':
-      case 'discovery-code-analysis':
       case 'discovery-cbom-imports':
-        return <DiscoveryPage tab={activePage.replace('discovery-', '') as DiscoveryTab} />;
-      case 'network':
-        return <NetworkPage />;
+        return (
+          <DiscoveryPage
+            tab={activePage.replace('discovery-', '') as DiscoveryTab}
+            onViewCbom={(id) => { setSelectedCbomId(id); setActivePage('cbom-detail'); }}
+          />
+        );
+      case 'cbom-detail':
+        return selectedCbomId ? (
+          <CbomDetailPage
+            cbomImportId={selectedCbomId}
+            onBack={() => { setSelectedCbomId(null); setActivePage('discovery-cbom-imports'); }}
+          />
+        ) : null;
+  
 
       /* ── Other product placeholders ──────────────── */
       case 'private-ca':

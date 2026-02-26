@@ -136,9 +136,11 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
     ],
     fields: [
       { key: 'importMethod', label: 'Import Method', type: 'select', required: true, options: [{ value: 'upload', label: 'File Upload' }, { value: 'url', label: 'URL Fetch' }, { value: 'artifact', label: 'CI/CD Artifact (GitHub Actions)' }] },
-      { key: 'url', label: 'CBOM URL', type: 'url', placeholder: 'https://example.com/cbom.json', required: false, helpText: 'Direct link to a CycloneDX CBOM JSON or XML file' },
-      { key: 'githubRepo', label: 'GitHub Repository', type: 'text', placeholder: 'owner/repo', required: false, helpText: 'For artifact import — GitHub repository (e.g., acme/my-app)' },
-      { key: 'githubToken', label: 'GitHub Token', type: 'password', placeholder: 'ghp_xxxxxxxxxxxx', required: false, helpText: 'Personal access token with actions:read scope' },
+      { key: 'cbomFile', label: 'CBOM File', type: 'file', required: true, helpText: 'Select a CycloneDX CBOM file (JSON or XML)', accept: '.json,.xml', visibleWhen: { field: 'importMethod', values: ['upload'] } },
+      { key: 'url', label: 'CBOM URL', type: 'url', placeholder: 'https://example.com/cbom.json', required: true, helpText: 'Direct link to a CycloneDX CBOM JSON or XML file', visibleWhen: { field: 'importMethod', values: ['url'] } },
+      { key: 'githubRepo', label: 'GitHub Repository', type: 'text', placeholder: 'owner/repo', required: true, helpText: 'GitHub repository (e.g., acme/my-app)', visibleWhen: { field: 'importMethod', values: ['artifact'] } },
+      { key: 'githubToken', label: 'GitHub Token', type: 'password', placeholder: 'ghp_xxxxxxxxxxxx', required: true, helpText: 'Personal access token with actions:read scope', visibleWhen: { field: 'importMethod', values: ['artifact'] } },
+      { key: 'artifactName', label: 'Artifact Name', type: 'text', placeholder: 'cbom-report', required: false, helpText: 'GitHub Actions artifact name (defaults to latest)', visibleWhen: { field: 'importMethod', values: ['artifact'] } },
     ],
     scopeOptions: [
       { value: 'crypto-components', label: 'Crypto Components', description: 'Algorithms, protocols, and crypto primitives from CBOM' },
@@ -147,35 +149,6 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
       { value: 'dependencies',      label: 'Dependencies',      description: 'Crypto library dependencies and versions' },
     ],
     defaultScope: ['crypto-components', 'certificates', 'keys', 'dependencies'],
-  },
-  {
-    type: 'github-scanner',
-    name: 'GitHub Repository Scanner',
-    vendor: 'GitHub',
-    category: 'repository',
-    description:
-      'Scan GitHub repositories for cryptographic API usage, hardcoded keys, certificate files, and crypto library dependencies. Generates a CBOM from source code analysis.',
-    docsUrl: '',
-    capabilities: [
-      'Source code crypto-API call detection',
-      'Crypto library dependency mapping',
-      'Certificate & key file discovery',
-      'Algorithm parameter extraction (key sizes, modes)',
-      'CBOM auto-generation from source analysis',
-    ],
-    fields: [
-      { key: 'repoUrl', label: 'Repository URL', type: 'url', placeholder: 'https://github.com/org/repo', required: true },
-      { key: 'accessToken', label: 'Access Token', type: 'password', placeholder: 'ghp_xxxxxxxxxxxx or fine-grained PAT', required: true, helpText: 'Needs contents:read scope' },
-      { key: 'branch', label: 'Branch', type: 'text', placeholder: 'main', required: false, helpText: 'Defaults to the default branch' },
-      { key: 'scanPaths', label: 'Paths to Scan', type: 'text', placeholder: 'src/, lib/ (blank = entire repo)', required: false },
-    ],
-    scopeOptions: [
-      { value: 'crypto-api-calls', label: 'Crypto API Calls',   description: 'Detect cryptographic function calls in source code' },
-      { value: 'dependencies',     label: 'Dependencies',       description: 'Crypto library imports and version tracking' },
-      { value: 'key-cert-files',   label: 'Key & Cert Files',   description: 'Certificate and key files in the repository' },
-      { value: 'configurations',   label: 'Configurations',     description: 'Crypto-related config files (TLS, SSH, etc.)' },
-    ],
-    defaultScope: ['crypto-api-calls', 'dependencies', 'key-cert-files', 'configurations'],
   },
 ];
 

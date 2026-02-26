@@ -89,14 +89,20 @@ export default function ConfigDrawer({
             )}
 
             <div className={s.configFields}>
-              {template.fields.map((field) => (
-                <ConfigField
-                  key={field.key}
-                  field={field}
-                  value={configValues[field.key] || ''}
-                  onChange={(val) => onConfigValuesChange((prev) => ({ ...prev, [field.key]: val }))}
-                />
-              ))}
+              {template.fields
+                .filter((field) => {
+                  if (!field.visibleWhen) return true;
+                  const depValue = configValues[field.visibleWhen.field] || '';
+                  return field.visibleWhen.values.includes(depValue);
+                })
+                .map((field) => (
+                  <ConfigField
+                    key={field.key}
+                    field={field}
+                    value={configValues[field.key] || ''}
+                    onChange={(val) => onConfigValuesChange((prev) => ({ ...prev, [field.key]: val }))}
+                  />
+                ))}
             </div>
 
             {/* Test Connection */}

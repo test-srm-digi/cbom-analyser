@@ -126,7 +126,7 @@ export function scheduleJob(
   }, {
     scheduled: true,
     timezone: process.env.TZ || undefined,
-  });
+  } as any);
 
   jobEntry.task = task;
   activeJobs.set(integrationId, jobEntry);
