@@ -146,6 +146,42 @@ jobs:
 | `fail-on-vulnerable` | Fail if non-quantum-safe algorithms found | `false` |
 | `quantum-safe-threshold` | Minimum quantum readiness score (0-100) to pass | `0` |
 | `exclude-patterns` | Comma-separated glob patterns to exclude, or `default` | (none) |
+| `sonar-host-url` | SonarQube server URL (enables IBM sonar-cryptography deep analysis) | (none) |
+| `sonar-token` | SonarQube authentication token (required when `sonar-host-url` is set) | (none) |
+
+### SonarQube Integration (Optional)
+
+By default the action uses a fast built-in **regex scanner**.
+To enable IBM **sonar-cryptography** deep analysis set the two optional
+Sonar inputs — the action image ships with `sonar-scanner` pre-installed.
+
+```yaml
+jobs:
+  cbom:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: CBOM Analysis (SonarQube)
+        uses: test-srm-digi/cbom-analyser@main
+        with:
+          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          output-format: sarif
+          fail-on-vulnerable: true
+```
+
+> **How it works:** When both `sonar-host-url` and `sonar-token` are set the
+> backend's scanner aggregator runs `sonar-scanner` against the checkout,
+> fetches the resulting CycloneDX 1.6 CBOM from SonarQube, and merges it
+> with the regex + dependency + network scan results. When the inputs are
+> absent the scanner falls back to regex mode automatically.
+
+> **Tip:** You can host SonarQube + the IBM sonar-cryptography plugin with
+> `docker compose -f docker-compose.sonarqube.yml up -d` and use the URL of
+> a self-hosted runner or a tunnel (e.g. Tailscale) to connect.
 
 ### Outputs
 
@@ -425,6 +461,10 @@ curl -X POST http://localhost:3001/api/scan-code \
 
 Uses SonarQube with IBM's cryptography plugin for deep static analysis.
 Generates CycloneDX 1.6 CBOM with precise algorithm detection, key sizes, and OIDs.
+
+> **GitHub Actions:** You can also enable sonar-cryptography in the GitHub
+> Action by setting the `sonar-host-url` and `sonar-token` inputs — see
+> [SonarQube Integration](#sonarqube-integration-optional) above.
 
 **Quick Setup:**
 

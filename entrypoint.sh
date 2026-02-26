@@ -52,6 +52,11 @@ echo -e "${BLUE}📄 Output file: ${OUTPUT_FILE}${NC}"
 if [ -n "$EXCLUDE_PATTERNS" ]; then
   echo -e "${BLUE}🚫 Excluding: ${EXCLUDE_PATTERNS}${NC}"
 fi
+if [ -n "$SONAR_HOST_URL" ] && [ -n "$SONAR_TOKEN" ]; then
+  echo -e "${BLUE}🔬 SonarQube: ${SONAR_HOST_URL} (sonar-cryptography enabled)${NC}"
+else
+  echo -e "${BLUE}🔬 Scanner: regex (set sonar-host-url + sonar-token to enable sonar-cryptography)${NC}"
+fi
 echo ""
 
 # Start the backend server in background

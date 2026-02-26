@@ -30,6 +30,14 @@ inputs:
     description: 'Comma-separated glob patterns to exclude (e.g., "**/test/**,**/*.test.ts"). Use "default" to exclude common test patterns.'
     required: false
     default: ''
+  sonar-host-url:
+    description: 'SonarQube server URL (enables IBM sonar-cryptography deep analysis). Requires sonar-token.'
+    required: false
+    default: ''
+  sonar-token:
+    description: 'SonarQube authentication token. Required when sonar-host-url is set.'
+    required: false
+    default: ''
 
 outputs:
   readiness-score:
@@ -48,6 +56,9 @@ outputs:
 runs:
   using: 'docker'
   image: 'Dockerfile.action'
+  env:
+    SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
+    SONAR_TOKEN: ${{ inputs.sonar-token }}
   args:
     - ${{ inputs.fail-on-vulnerable }}
     - ${{ inputs.output-format }}
