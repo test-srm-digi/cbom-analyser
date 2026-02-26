@@ -1,4 +1,5 @@
 import { QuantumReadinessScore } from '../types';
+import { DC1_SUCCESS, DC1_WARNING, DC1_DANGER, NEUTRAL_200 } from '../styles/dsTokens';
 import styles from './ReadinessScoreCard.module.scss';
 
 interface ReadinessScoreCardProps {
@@ -6,9 +7,9 @@ interface ReadinessScoreCardProps {
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 80) return '#27A872';
-  if (score >= 50) return '#F5B517';
-  return '#DC2626';
+  if (score >= 80) return DC1_SUCCESS;
+  if (score >= 50) return DC1_WARNING;
+  return DC1_DANGER;
 }
 
 function getScoreLabel(score: number): string {
@@ -31,7 +32,7 @@ export default function ReadinessScoreCard({ score }: ReadinessScoreCardProps) {
       <div className={styles.body}>
         <div className={styles.gauge}>
           <svg className={styles.gaugeSvg} viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="45" fill="none" stroke="#E2E5EA" strokeWidth="8" />
+            <circle cx="50" cy="50" r="45" fill="none" stroke={NEUTRAL_200} strokeWidth="8" />
             <circle
               cx="50" cy="50" r="45"
               fill="none"

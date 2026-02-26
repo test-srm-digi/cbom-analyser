@@ -9,6 +9,7 @@ import {
   Cell,
 } from 'recharts';
 import { CryptoAsset } from '../types';
+import { TOOLTIP_STYLE, CHART_BLUE, CHART_PURPLE, CHART_ORANGE, CHART_GREEN, CHART_RED, CHART_YELLOW, CHART_PINK } from '../styles/dsTokens';
 import styles from './ChartCard.module.scss';
 
 interface CryptoBubbleChartProps {
@@ -16,8 +17,8 @@ interface CryptoBubbleChartProps {
 }
 
 const BUBBLE_COLORS = [
-  '#58a6ff', '#bc8cff', '#f0883e', '#3fb950', '#f85149',
-  '#d29922', '#f778ba', '#79c0ff', '#56d364', '#a371f7',
+  CHART_BLUE, CHART_PURPLE, CHART_ORANGE, CHART_GREEN, CHART_RED,
+  CHART_YELLOW, CHART_PINK, '#79c0ff', '#56d364', '#a371f7',
   '#7ee787', '#ffa657',
 ];
 
@@ -52,11 +53,8 @@ function BubbleTooltip({ active, payload }: BubbleTooltipProps) {
   return (
     <div
       style={{
-        backgroundColor: '#FFFFFF',
-        border: '1px solid #E2E5EA',
-        borderRadius: '8px',
+        ...TOOLTIP_STYLE,
         padding: '8px 12px',
-        color: '#353535',
       }}
     >
       <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>

@@ -142,11 +142,15 @@
 }
 
 // ── Insight button ───────────────────────────────────────────
+// AI insight gradient (purple → brand blue)
+$_ai-purple: #9333EA;
+$_ai-blue:   $blue-200;  // #1297F3
+
 .insightBtn {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(to right, rgba(#9333EA, 0.15), rgba(#2563EB, 0.15));
+  background: linear-gradient(to right, rgba($_ai-purple, 0.15), rgba($_ai-blue, 0.15));
   color: $dc1-text;
   font-size: 11px;
   font-weight: 500;
@@ -157,8 +161,8 @@
   transition: all $transition-fast;
 
   &:hover {
-    background: linear-gradient(to right, rgba(#9333EA, 0.3), rgba(#2563EB, 0.3));
-    box-shadow: 0 2px 8px rgba(#9333EA, 0.15);
+    background: linear-gradient(to right, rgba($_ai-purple, 0.3), rgba($_ai-blue, 0.3));
+    box-shadow: 0 2px 8px rgba($_ai-purple, 0.15);
   }
 
   &:disabled {
@@ -213,14 +217,24 @@
   background: none;
 }
 
-.chipNotSafe       { color: #C53030;  box-shadow: inset 0 0 0 1px rgba(#C53030, 0.3);  background: rgba(#C53030, 0.1); }
-.chipNotSafeActive { color: #fff;     box-shadow: none;  background: #DC2626; }
-.chipConditional       { color: #0E7490;  box-shadow: inset 0 0 0 1px rgba(#0E7490, 0.3);  background: rgba(#0E7490, 0.1); }
-.chipConditionalActive { color: #fff;    box-shadow: none;  background: #0891B2; }
-.chipSafe       { color: #15803D;  box-shadow: inset 0 0 0 1px rgba(#15803D, 0.3);  background: rgba(#15803D, 0.1); }
-.chipSafeActive { color: #fff;     box-shadow: none;  background: #16A34A; }
-.chipUnknown       { color: #4B5563;  box-shadow: inset 0 0 0 1px rgba(#4B5563, 0.3);  background: rgba(#4B5563, 0.08); }
-.chipUnknownActive { color: #fff;     box-shadow: none;  background: #6B7280; }
+// Chip color helpers (derived from DS palette)
+$_chip-danger:      $error-100;      // #DC2626
+$_chip-danger-dark: $error-200;      // #AD0C0C
+$_chip-teal:        #0E7490;         // conditional (no DS teal)
+$_chip-teal-active: #0891B2;
+$_chip-success:     $success-200;    // #1C7852
+$_chip-success-active: $success-100; // #27A872
+$_chip-neutral:     $neutral-800;    // #44484A
+$_chip-neutral-active: $neutral-700; // #636A6E
+
+.chipNotSafe       { color: $_chip-danger;  box-shadow: inset 0 0 0 1px rgba($_chip-danger, 0.3);  background: rgba($_chip-danger, 0.1); }
+.chipNotSafeActive { color: $white;         box-shadow: none;  background: $_chip-danger; }
+.chipConditional       { color: $_chip-teal;   box-shadow: inset 0 0 0 1px rgba($_chip-teal, 0.3);   background: rgba($_chip-teal, 0.1); }
+.chipConditionalActive { color: $white;        box-shadow: none;  background: $_chip-teal-active; }
+.chipSafe       { color: $_chip-success;       box-shadow: inset 0 0 0 1px rgba($_chip-success, 0.3);  background: rgba($_chip-success, 0.1); }
+.chipSafeActive { color: $white;               box-shadow: none;  background: $_chip-success-active; }
+.chipUnknown       { color: $_chip-neutral;    box-shadow: inset 0 0 0 1px rgba($_chip-neutral, 0.3);  background: rgba($_chip-neutral, 0.08); }
+.chipUnknownActive { color: $white;            box-shadow: none;  background: $_chip-neutral-active; }
 
 .chipIcon {
   width: 11px;
@@ -256,15 +270,15 @@
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: linear-gradient(to right, rgba(#9333EA, 0.04), rgba(#2563EB, 0.04));
-  border: 1px solid rgba(#9333EA, 0.15);
+  background: linear-gradient(to right, rgba($_ai-purple, 0.04), rgba($_ai-blue, 0.04));
+  border: 1px solid rgba($_ai-purple, 0.15);
   border-radius: $dc1-radius;
 }
 
 .insightLoadIcon {
   width: 20px;
   height: 20px;
-  color: #9333EA;
+  color: $_ai-purple;
   animation: spin 1s linear infinite;
   flex-shrink: 0;
 }
@@ -277,7 +291,7 @@
   height: 12px;
   width: 66%;
   border-radius: $dc1-radius-sm;
-  background: rgba(#9333EA, 0.08);
+  background: rgba($_ai-purple, 0.08);
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -285,7 +299,7 @@
   height: 8px;
   width: 50%;
   border-radius: $dc1-radius-sm;
-  background: rgba(#9333EA, 0.08);
+  background: rgba($_ai-purple, 0.08);
   animation: pulse 2s ease-in-out infinite;
   margin-top: 6px;
 }
@@ -384,7 +398,7 @@
 .insightTrack {
   flex: 1;
   height: 6px;
-  background: rgba(#D1D5DB, 0.5);
+  background: rgba($neutral-300, 0.5);
   border-radius: 9999px;
   overflow: hidden;
 }
@@ -509,11 +523,12 @@
 .riskBarCritical   { background: $dc1-danger; }
 .riskBadgeCritical { background: rgba($dc1-danger, 0.08); color: $dc1-danger; box-shadow: inset 0 0 0 1px rgba($dc1-danger, 0.3); }
 
-// High
-.riskBgHigh    { background: linear-gradient(to right, rgba(#F97316, 0.08), rgba(#F97316, 0.03)); border: 1px solid rgba(#F97316, 0.3); }
-.riskTextHigh  { color: #F97316; }
-.riskBarHigh   { background: #F97316; }
-.riskBadgeHigh { background: rgba(#F97316, 0.08); color: #F97316; box-shadow: inset 0 0 0 1px rgba(#F97316, 0.3); }
+// High — use warning-100 (#F5B517) as closest DS token for orange risk
+$_risk-high: $warning-100;
+.riskBgHigh    { background: linear-gradient(to right, rgba($_risk-high, 0.08), rgba($_risk-high, 0.03)); border: 1px solid rgba($_risk-high, 0.3); }
+.riskTextHigh  { color: $_risk-high; }
+.riskBarHigh   { background: $_risk-high; }
+.riskBadgeHigh { background: rgba($_risk-high, 0.08); color: $_risk-high; box-shadow: inset 0 0 0 1px rgba($_risk-high, 0.3); }
 
 // Moderate
 .riskBgModerate    { background: linear-gradient(to right, rgba($dc1-warning, 0.08), rgba($dc1-warning, 0.03)); border: 1px solid rgba($dc1-warning, 0.3); }
@@ -579,11 +594,11 @@
 .aiSparkle {
   width: 12px;
   height: 12px;
-  color: #A78BFA;
+  color: $_ai-purple;
 }
 
 .aiLabel {
-  background: linear-gradient(to right, #A78BFA, #60A5FA);
+  background: linear-gradient(to right, $_ai-purple, $blue-100);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -611,10 +626,10 @@
 }
 
 // ── Safety badge column ──────────────────────────────────────
-.safeBadge    { @include badge(rgba(#15803D, 0.14), #15803D, rgba(#15803D, 0.35)); }
-.notSafeBadge { @include badge(rgba(#C53030, 0.14), #C53030, rgba(#C53030, 0.35)); }
-.condBadge    { @include badge(rgba(#0E7490, 0.14), #0E7490, rgba(#0E7490, 0.35)); }
-.unknownBadge { @include badge(rgba(#4B5563, 0.12), #4B5563, rgba(#4B5563, 0.3)); }
+.safeBadge    { @include badge(rgba($_chip-success, 0.14), $_chip-success, rgba($_chip-success, 0.35)); }
+.notSafeBadge { @include badge(rgba($_chip-danger, 0.14), $_chip-danger, rgba($_chip-danger, 0.35)); }
+.condBadge    { @include badge(rgba($_chip-teal, 0.14), $_chip-teal, rgba($_chip-teal, 0.35)); }
+.unknownBadge { @include badge(rgba($_chip-neutral, 0.12), $_chip-neutral, rgba($_chip-neutral, 0.3)); }
 
 .badgeIcon {
   width: 11px;
@@ -671,9 +686,10 @@
 }
 
 // PQC badge variants
-.pqcReady    { @include badge(rgba(#15803D, 0.14), #15803D, rgba(#15803D, 0.35)); cursor: help; }
-.pqcNotReady { @include badge(rgba(#C53030, 0.14), #C53030, rgba(#C53030, 0.35)); cursor: help; }
-.pqcReview   { @include badge(rgba(#B45309, 0.14), #B45309, rgba(#B45309, 0.35)); cursor: help; }
+$_pqc-review: $warning-200; // #955925
+.pqcReady    { @include badge(rgba($_chip-success, 0.14), $_chip-success, rgba($_chip-success, 0.35)); cursor: help; }
+.pqcNotReady { @include badge(rgba($_chip-danger, 0.14), $_chip-danger, rgba($_chip-danger, 0.35)); cursor: help; }
+.pqcReview   { @include badge(rgba($_pqc-review, 0.14), $_pqc-review, rgba($_pqc-review, 0.35)); cursor: help; }
 
 .pqcConfidence {
   font-size: 9px;
@@ -775,9 +791,9 @@
 
 // Detection source badge
 .srcSonar      { @include smallBadge(rgba($dc1-blue, 0.1), $dc1-blue); }
-.srcRegex      { @include smallBadge(rgba(#4B5563, 0.1), #4B5563); }
-.srcDependency { @include smallBadge(rgba(#B45309, 0.1), #B45309); }
-.srcNetwork    { @include smallBadge(rgba(#7C3AED, 0.1), #7C3AED); }
+.srcRegex      { @include smallBadge(rgba($_chip-neutral, 0.1), $_chip-neutral); }
+.srcDependency { @include smallBadge(rgba($_pqc-review, 0.1), $_pqc-review); }
+.srcNetwork    { @include smallBadge(rgba($_ai-purple, 0.1), $_ai-purple); }
 
 .srcIcon {
   width: 8px;
@@ -785,9 +801,9 @@
 }
 
 // Confidence badge
-.confHigh   { @include badge(rgba(#15803D, 0.14), #15803D, rgba(#15803D, 0.35)); }
-.confMedium { @include badge(rgba(#B45309, 0.14), #B45309, rgba(#B45309, 0.35)); }
-.confLow    { @include badge(rgba(#4B5563, 0.12), #4B5563, rgba(#4B5563, 0.3)); }
+.confHigh   { @include badge(rgba($_chip-success, 0.14), $_chip-success, rgba($_chip-success, 0.35)); }
+.confMedium { @include badge(rgba($_pqc-review, 0.14), $_pqc-review, rgba($_pqc-review, 0.35)); }
+.confLow    { @include badge(rgba($_chip-neutral, 0.12), $_chip-neutral, rgba($_chip-neutral, 0.3)); }
 
 // ── Location column ──────────────────────────────────────────
 .locationWrap {
@@ -801,7 +817,7 @@
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  color: rgba(#D97706, 0.9);
+  color: rgba($warning-200, 0.9);
   font-weight: 500;
 }
 
@@ -835,7 +851,7 @@
 .suggSpinner {
   width: 14px;
   height: 14px;
-  color: #A78BFA;
+  color: $_ai-purple;
   animation: spin 1s linear infinite;
 }
 
@@ -847,7 +863,7 @@
   height: 8px;
   width: 75%;
   border-radius: $dc1-radius-sm;
-  background: rgba(#9333EA, 0.08);
+  background: rgba($_ai-purple, 0.08);
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -855,7 +871,7 @@
   height: 8px;
   width: 50%;
   border-radius: $dc1-radius-sm;
-  background: rgba(#9333EA, 0.08);
+  background: rgba($_ai-purple, 0.08);
   animation: pulse 2s ease-in-out infinite;
   margin-top: 6px;
 }
@@ -863,7 +879,7 @@
 // Result
 .suggResult {
   position: relative;
-  border-left: 2px solid rgba(#9333EA, 0.6);
+  border-left: 2px solid rgba($_ai-purple, 0.6);
   padding: 2px 4px 2px 12px;
 }
 
@@ -1019,19 +1035,19 @@
   width: fit-content;
   font-size: 11px;
   font-weight: 500;
-  background: linear-gradient(to right, rgba(#9333EA, 0.15), rgba(#2563EB, 0.15));
+  background: linear-gradient(to right, rgba($_ai-purple, 0.15), rgba($_ai-blue, 0.15));
   color: $dc1-text-secondary;
-  border: 1px solid rgba(#9333EA, 0.15);
+  border: 1px solid rgba($_ai-purple, 0.15);
   border-radius: 6px;
   padding: 4px 10px;
   cursor: pointer;
   transition: all $transition-fast;
 
   &:hover {
-    background: linear-gradient(to right, rgba(#9333EA, 0.3), rgba(#2563EB, 0.3));
-    border-color: rgba(#9333EA, 0.3);
+    background: linear-gradient(to right, rgba($_ai-purple, 0.3), rgba($_ai-blue, 0.3));
+    border-color: rgba($_ai-purple, 0.3);
     color: $dc1-text;
-    box-shadow: 0 2px 6px rgba(#9333EA, 0.1);
+    box-shadow: 0 2px 6px rgba($_ai-purple, 0.1);
   }
 }
 

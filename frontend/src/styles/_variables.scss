@@ -109,8 +109,8 @@ $dc1-text:     $neutral-900;             // #353535
 $dc1-text-secondary: $neutral-700;       // #636A6E
 $dc1-text-muted:     $neutral-500;       // #A0AAB0
 
-// Sidebar (uses blue-800 per DS palette)
-$dc1-sidebar-bg:          $blue-800;     // #002947
+// Sidebar (uses blue-700 per DS palette — matches production ONE nav)
+$dc1-sidebar-bg:          $blue-700;     // #003E6B
 $dc1-sidebar-active:      rgba($white, 0.12);
 $dc1-sidebar-hover:       rgba($white, 0.07);
 $dc1-sidebar-text:        rgba($white, 0.7);
@@ -138,7 +138,7 @@ $chart-cyan:    $digicert-cyan;          // #20CCDE
 $chart-gray:    #8b949e;
 
 // Sizing
-$dc1-sidebar-w: 260px;
+$dc1-sidebar-w: 360px;
 $dc1-topbar-h:  48px;
 $dc1-radius:    8px;
 $dc1-radius-sm: 4px;

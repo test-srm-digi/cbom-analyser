@@ -85,7 +85,7 @@
 .headerTitleIcon {
   width: 16px;
   height: 16px;
-  color: #D97706; // amber
+  color: $warning-200; // amber
 }
 
 .headerCount {
@@ -195,11 +195,19 @@
   gap: 8px;
 }
 
+// Tailwind-free local vars for status badges
+$_safe-color:    $success-200;
+$_danger-color:  $error-100;
+$_cond-color:    #0E7490; // conditional teal (no DS equivalent)
+$_unknown-color: $neutral-800;
+$_amber:         $warning-100;
+$_amber-dark:    $warning-200;
+
 .transitiveBadge {
-  @include smallBadge(rgba(#F59E0B, 0.1), rgba(#D97706, 0.8));
+  @include smallBadge(rgba($_amber, 0.1), rgba($_amber-dark, 0.8));
 }
 
-.pkgMaven   { @include smallBadge(rgba(#F59E0B, 0.1), #F59E0B); }
+.pkgMaven   { @include smallBadge(rgba($_amber, 0.1), $_amber); }
 .pkgGradle  { @include smallBadge(rgba($dc1-success, 0.1), $dc1-success); }
 .pkgNpm     { @include smallBadge(rgba($dc1-danger, 0.1), $dc1-danger); }
 .pkgPip     { @include smallBadge(rgba($dc1-blue, 0.1), $dc1-blue); }
@@ -213,10 +221,10 @@
 }
 
 // ── Safety badges ────────────────────────────────────────────
-.safeBadge    { @include badge(rgba(#15803D, 0.14), #15803D, rgba(#15803D, 0.35)); }
-.notSafeBadge { @include badge(rgba(#C53030, 0.14), #C53030, rgba(#C53030, 0.35)); }
-.condBadge    { @include badge(rgba(#0E7490, 0.14), #0E7490, rgba(#0E7490, 0.35)); }
-.unknownBadge { @include badge(rgba(#4B5563, 0.12), #4B5563, rgba(#4B5563, 0.3)); }
+.safeBadge    { @include badge(rgba($_safe-color, 0.14), $_safe-color, rgba($_safe-color, 0.35)); }
+.notSafeBadge { @include badge(rgba($_danger-color, 0.14), $_danger-color, rgba($_danger-color, 0.35)); }
+.condBadge    { @include badge(rgba($_cond-color, 0.14), $_cond-color, rgba($_cond-color, 0.35)); }
+.unknownBadge { @include badge(rgba($_unknown-color, 0.12), $_unknown-color, rgba($_unknown-color, 0.3)); }
 
 .badgeIcon {
   width: 11px;

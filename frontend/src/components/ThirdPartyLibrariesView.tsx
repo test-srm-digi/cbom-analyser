@@ -4,6 +4,7 @@ import {
   ShieldQuestion, ExternalLink, GitBranch, Layers,
 } from 'lucide-react';
 import { ThirdPartyCryptoLibrary, QuantumSafetyStatus } from '../types';
+import { DC1_TEXT_SECONDARY, DC1_TEXT_MUTED, DC1_SUCCESS, DC1_DANGER, DIGICERT_CYAN, WARNING_200 } from '../styles/dsTokens';
 import styles from './ThirdPartyLibrariesView.module.scss';
 
 interface ThirdPartyLibrariesViewProps {
@@ -68,9 +69,9 @@ export default function ThirdPartyLibrariesView({ libraries }: ThirdPartyLibrari
   if (libraries.length === 0) {
     return (
       <div className={styles.emptyCard}>
-        <Package style={{ width: 32, height: 32, color: '#6B7280', margin: '0 auto 8px' }} />
-        <p style={{ fontSize: 14, color: '#6B7280' }}>No crypto libraries detected in project dependencies</p>
-        <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>
+        <Package style={{ width: 32, height: 32, color: DC1_TEXT_SECONDARY, margin: '0 auto 8px' }} />
+        <p style={{ fontSize: 14, color: DC1_TEXT_SECONDARY }}>No crypto libraries detected in project dependencies</p>
+        <p style={{ fontSize: 12, color: DC1_TEXT_MUTED, marginTop: 4 }}>
           Ensure your project has a manifest file (pom.xml, package.json, requirements.txt, go.mod)
         </p>
       </div>
@@ -83,20 +84,20 @@ export default function ThirdPartyLibrariesView({ libraries }: ThirdPartyLibrari
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <h3 className={styles.headerTitle}>
-            <Layers style={{ width: 16, height: 16, color: '#D97706' }} />
+            <Layers style={{ width: 16, height: 16, color: WARNING_200 }} />
             Third-Party Crypto Libraries
           </h3>
           <span className={styles.headerCount}>{summary.total} libraries</span>
         </div>
         <div className={styles.headerRight}>
           <div className={styles.summaryBadges}>
-            <span style={{ color: '#27A872' }}>{summary.safe} safe</span>
-            <span style={{ color: '#6B7280' }}>|</span>
-            <span style={{ color: '#DC2626' }}>{summary.vulnerable} vulnerable</span>
-            <span style={{ color: '#6B7280' }}>|</span>
-            <span style={{ color: '#22d3ee' }}>{summary.conditional} conditional</span>
-            <span style={{ color: '#6B7280' }}>|</span>
-            <span style={{ color: '#6B7280' }}>{summary.direct} direct / {summary.transitive} transitive</span>
+            <span style={{ color: DC1_SUCCESS }}>{summary.safe} safe</span>
+            <span style={{ color: DC1_TEXT_SECONDARY }}>|</span>
+            <span style={{ color: DC1_DANGER }}>{summary.vulnerable} vulnerable</span>
+            <span style={{ color: DC1_TEXT_SECONDARY }}>|</span>
+            <span style={{ color: DIGICERT_CYAN }}>{summary.conditional} conditional</span>
+            <span style={{ color: DC1_TEXT_SECONDARY }}>|</span>
+            <span style={{ color: DC1_TEXT_SECONDARY }}>{summary.direct} direct / {summary.transitive} transitive</span>
           </div>
 
           <select
@@ -126,7 +127,7 @@ export default function ThirdPartyLibrariesView({ libraries }: ThirdPartyLibrari
             <div key={idx} className={styles.libRow}>
               <div className={styles.libMain} onClick={() => setExpandedLib(expanded ? null : key)}>
                 <div className={styles.libLeft}>
-                  <Package style={{ width: 16, height: 16, color: '#6B7280', flexShrink: 0 }} />
+                  <Package style={{ width: 16, height: 16, color: DC1_TEXT_SECONDARY, flexShrink: 0 }} />
                   <div>
                     <div className={styles.nameRow}>
                       <span className={styles.libName}>{lib.name}</span>
@@ -136,10 +137,10 @@ export default function ThirdPartyLibrariesView({ libraries }: ThirdPartyLibrari
                         <span className={styles.transitiveBadge}>transitive (depth {lib.depth})</span>
                       )}
                     </div>
-                    <div style={{ fontSize: 10, color: '#6B7280', marginTop: 2 }}>
+                    <div style={{ fontSize: 10, color: DC1_TEXT_SECONDARY, marginTop: 2 }}>
                       {lib.groupId && <span>{lib.groupId}:</span>}
                       <span>{lib.artifactId}</span>
-                      <span style={{ color: '#9CA3AF', marginLeft: 8 }}>from {lib.manifestFile}</span>
+                      <span style={{ color: DC1_TEXT_MUTED, marginLeft: 8 }}>from {lib.manifestFile}</span>
                     </div>
                   </div>
                 </div>
@@ -149,13 +150,13 @@ export default function ThirdPartyLibrariesView({ libraries }: ThirdPartyLibrari
                     <Icon style={{ width: 10, height: 10 }} />
                     {safetyLabel(lib.quantumSafety)}
                   </span>
-                  <span style={{ fontSize: 10, color: '#6B7280' }}>
+                  <span style={{ fontSize: 10, color: DC1_TEXT_SECONDARY }}>
                     {lib.cryptoAlgorithms.length} algorithms
                   </span>
                   {expanded ? (
-                    <ChevronUp style={{ width: 14, height: 14, color: '#6B7280' }} />
+                    <ChevronUp style={{ width: 14, height: 14, color: DC1_TEXT_SECONDARY }} />
                   ) : (
-                    <ChevronDown style={{ width: 14, height: 14, color: '#6B7280' }} />
+                    <ChevronDown style={{ width: 14, height: 14, color: DC1_TEXT_SECONDARY }} />
                   )}
                 </div>
               </div>
@@ -168,7 +169,7 @@ export default function ThirdPartyLibrariesView({ libraries }: ThirdPartyLibrari
                       <span>Dependency path: </span>
                       {lib.dependencyPath.map((seg, i) => (
                         <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          {i > 0 && <span style={{ color: '#9CA3AF' }}>→</span>}
+                          {i > 0 && <span style={{ color: DC1_TEXT_MUTED }}>→</span>}
                           <span>{seg}</span>
                         </span>
                       ))}

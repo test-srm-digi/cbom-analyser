@@ -1,5 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { CryptoAsset } from '../types';
+import { TOOLTIP_STYLE, CHART_BLUE, CHART_PURPLE, CHART_ORANGE, CHART_YELLOW, CHART_GREEN, CHART_PINK, CHART_GRAY } from '../styles/dsTokens';
 import styles from './ChartCard.module.scss';
 
 interface PrimitivesDonutProps {
@@ -7,18 +8,18 @@ interface PrimitivesDonutProps {
 }
 
 const PRIMITIVE_COLORS: Record<string, string> = {
-  'hash': '#58a6ff',
-  'block-cipher': '#bc8cff',
-  'pke': '#f0883e',
-  'signature': '#d29922',
-  'keygen': '#3fb950',
+  'hash': CHART_BLUE,
+  'block-cipher': CHART_PURPLE,
+  'pke': CHART_ORANGE,
+  'signature': CHART_YELLOW,
+  'keygen': CHART_GREEN,
   'digest': '#56d364',
-  'mac': '#f778ba',
+  'mac': CHART_PINK,
   'stream-cipher': '#79c0ff',
   'key-encapsulation': '#a371f7',
   'key-agreement': '#7ee787',
   'ae': '#ffa657',
-  'other': '#8b949e',
+  'other': CHART_GRAY,
 };
 
 function computePrimitiveData(assets: CryptoAsset[]) {
@@ -31,7 +32,7 @@ function computePrimitiveData(assets: CryptoAsset[]) {
     .map(([name, value]) => ({
       name,
       value,
-      color: PRIMITIVE_COLORS[name] || '#8b949e',
+      color: PRIMITIVE_COLORS[name] || CHART_GRAY,
     }))
     .sort((a, b) => b.value - a.value);
 }
@@ -78,12 +79,7 @@ export default function PrimitivesDonut({ assets }: PrimitivesDonutProps) {
               ))}
             </Pie>
             <Tooltip
-              contentStyle={{
-                  backgroundColor: '#FFFFFF',
-                border: '1px solid #E2E5EA',
-                borderRadius: '8px',
-                color: '#353535',
-              }}
+              contentStyle={TOOLTIP_STYLE}
               formatter={(value: number, name: string) => [value, getPrimitiveLabel(name)]}
             />
           </PieChart>

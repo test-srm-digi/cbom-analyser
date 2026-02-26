@@ -1,5 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { CryptoAsset } from '../types';
+import { TOOLTIP_STYLE, CHART_BLUE, CHART_PURPLE, CHART_ORANGE, CHART_YELLOW, CHART_GREEN, CHART_PINK, CHART_GRAY } from '../styles/dsTokens';
 import styles from './ChartCard.module.scss';
 
 interface FunctionsDonutProps {
@@ -7,16 +8,16 @@ interface FunctionsDonutProps {
 }
 
 const FUNCTION_COLORS: Record<string, string> = {
-  'Hash Function': '#58a6ff',
-  'Keygen': '#3fb950',
-  'Encrypt': '#f0883e',
-  'Decrypt': '#d29922',
-  'Sign': '#bc8cff',
+  'Hash Function': CHART_BLUE,
+  'Keygen': CHART_GREEN,
+  'Encrypt': CHART_ORANGE,
+  'Decrypt': CHART_YELLOW,
+  'Sign': CHART_PURPLE,
   'Verify': '#a371f7',
   'Key Exchange': '#7ee787',
   'Digest': '#56d364',
-  'Tag': '#f778ba',
-  'Other': '#8b949e',
+  'Tag': CHART_PINK,
+  'Other': CHART_GRAY,
 };
 
 function computeFunctionData(assets: CryptoAsset[]) {
@@ -65,14 +66,7 @@ export default function FunctionsDonut({ assets }: FunctionsDonutProps) {
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
               ))}
             </Pie>
-            <Tooltip
-              contentStyle={{
-                 backgroundColor: '#FFFFFF',
-                border: '1px solid #E2E5EA',
-                borderRadius: '8px',
-                color: '#353535',
-              }}
-            />
+            <Tooltip contentStyle={TOOLTIP_STYLE} />
           </PieChart>
         </ResponsiveContainer>
         <div className={styles.centerLabel}>

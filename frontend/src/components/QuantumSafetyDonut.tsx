@@ -1,5 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { CryptoAsset, QuantumSafetyStatus, DonutChartData } from '../types';
+import { DC1_SUCCESS, DC1_DANGER, DIGICERT_CYAN, CHART_GRAY, TOOLTIP_STYLE } from '../styles/dsTokens';
 import styles from './ChartCard.module.scss';
 
 interface QuantumSafetyDonutProps {
@@ -7,10 +8,10 @@ interface QuantumSafetyDonutProps {
 }
 
 const COLORS: Record<string, string> = {
-  'Quantum Safe': '#27A872',
-  'Not Quantum Safe': '#DC2626',
-  'Conditional': '#22d3ee',
-  'Unknown': '#8b949e',
+  'Quantum Safe': DC1_SUCCESS,
+  'Not Quantum Safe': DC1_DANGER,
+  'Conditional': DIGICERT_CYAN,
+  'Unknown': CHART_GRAY,
 };
 
 function computeData(assets: CryptoAsset[]): DonutChartData[] {
@@ -57,14 +58,7 @@ export default function QuantumSafetyDonut({ assets }: QuantumSafetyDonutProps) 
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
               ))}
             </Pie>
-            <Tooltip
-              contentStyle={{
-                  backgroundColor: '#FFFFFF',
-                border: '1px solid #E2E5EA',
-                borderRadius: '8px',
-                color: '#353535',
-              }}
-            />
+            <Tooltip contentStyle={TOOLTIP_STYLE} />
           </PieChart>
         </ResponsiveContainer>
         <div className={styles.centerLabel}>

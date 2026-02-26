@@ -36,5 +36,5 @@ body {
 // ── Scrollbar ────────────────────────────────────────────────
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: $dc1-bg; }
-::-webkit-scrollbar-thumb { background: #C4C9D0; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #A0AAB0; }
+::-webkit-scrollbar-thumb { background: $neutral-400; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: $neutral-500; }
