@@ -2,21 +2,36 @@ import { useState, useCallback } from 'react';
 import type {
   Integration,
   IntegrationTemplate,
-  IntegrationStatus,
   ImportScope,
   SyncSchedule,
   ConfigPanelState,
   TestStatus,
-  IntegrationsActions,
 } from '../types';
 import { INTEGRATION_CATALOG } from '../constants';
+import {
+  useGetIntegrationsQuery,
+  useCreateIntegrationMutation,
+  useUpdateIntegrationMutation,
+  useDeleteIntegrationMutation,
+  useToggleIntegrationMutation,
+  useSyncIntegrationMutation,
+} from '../../../store';
 
 /**
  * Central state & actions for the Integrations page.
- * Keeps IntegrationsPage.tsx focused on layout & rendering only.
+ * Uses RTK Query for server-persisted integration data (MariaDB)
+ * and local state for UI-only concerns (config drawer, catalog overlay).
  */
 export function useIntegrations() {
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  /* ── RTK Query: server state ────────────────────────────── */
+  const { data: integrations = [], isLoading, refetch } = useGetIntegrationsQuery();
+  const [createIntegration] = useCreateIntegrationMutation();
+  const [updateIntegration] = useUpdateIntegrationMutation();
+  const [deleteIntegrationMut] = useDeleteIntegrationMutation();
+  const [toggleIntegrationMut] = useToggleIntegrationMutation();
+  const [syncIntegrationMut] = useSyncIntegrationMutation();
+
+  /* ── Local UI state ─────────────────────────────────────── */
   const [showCatalog, setShowCatalog] = useState(false);
   const [configPanel, setConfigPanel] = useState<ConfigPanelState | null>(null);
   const [configValues, setConfigValues] = useState<Record<string, string>>({});
@@ -56,7 +71,7 @@ export function useIntegrations() {
     setTestStatus('idle');
   }, []);
 
-  /* ── Test connection ────────────────────────────────────── */
+  /* ── Test connection (client-side validation) ───────────── */
   const testConnection = useCallback(() => {
     setTestStatus('testing');
     setTimeout(() => {
@@ -67,89 +82,66 @@ export function useIntegrations() {
     }, 2000);
   }, [configPanel, configValues]);
 
-  /* ── Save integration ───────────────────────────────────── */
-  const saveIntegration = useCallback(() => {
+  /* ── Save integration → API ─────────────────────────────── */
+  const saveIntegration = useCallback(async () => {
     if (!configPanel) return;
     const { template, integration } = configPanel;
 
-    if (integration) {
-      setIntegrations((prev) =>
-        prev.map((i) =>
-          i.id === integration.id
-            ? {
-                ...i,
-                name: configName,
-                config: configValues,
-                importScope: configScope,
-                syncSchedule: configSchedule,
-                status: testStatus === 'success' ? 'connected' : i.status,
-              }
-            : i,
-        ),
-      );
-    } else {
-      const newIntegration: Integration = {
-        id: `intg-${Date.now()}`,
-        templateType: template.type,
-        name: configName,
-        description: template.description,
-        status: testStatus === 'success' ? 'connected' : 'not_configured',
-        enabled: true,
-        config: configValues,
-        importScope: configScope,
-        syncSchedule: configSchedule,
-        createdAt: new Date().toISOString(),
-      };
-      setIntegrations((prev) => [...prev, newIntegration]);
+    try {
+      if (integration) {
+        await updateIntegration({
+          id: integration.id,
+          name: configName,
+          config: configValues,
+          importScope: configScope,
+          syncSchedule: configSchedule,
+          status: testStatus === 'success' ? 'connected' : undefined,
+        }).unwrap();
+      } else {
+        await createIntegration({
+          templateType: template.type,
+          name: configName,
+          description: template.description,
+          status: testStatus === 'success' ? 'connected' : 'not_configured',
+          config: configValues,
+          importScope: configScope,
+          syncSchedule: configSchedule,
+        }).unwrap();
+      }
+      closeConfig();
+    } catch (err) {
+      console.error('Failed to save integration:', err);
     }
-    closeConfig();
-  }, [configPanel, configName, configValues, configScope, configSchedule, testStatus, closeConfig]);
+  }, [configPanel, configName, configValues, configScope, configSchedule, testStatus, closeConfig, createIntegration, updateIntegration]);
 
-  /* ── Delete integration ─────────────────────────────────── */
-  const deleteIntegration = useCallback((id: string) => {
-    setIntegrations((prev) => prev.filter((i) => i.id !== id));
-  }, []);
+  /* ── Delete integration → API ───────────────────────────── */
+  const deleteIntegration = useCallback(async (id: string) => {
+    try {
+      await deleteIntegrationMut(id).unwrap();
+    } catch (err) {
+      console.error('Failed to delete integration:', err);
+    }
+  }, [deleteIntegrationMut]);
 
-  /* ── Toggle enabled ─────────────────────────────────────── */
-  const toggleEnabled = useCallback((id: string) => {
-    setIntegrations((prev) =>
-      prev.map((i) =>
-        i.id === id
-          ? {
-              ...i,
-              enabled: !i.enabled,
-              status: i.enabled
-                ? ('disabled' as IntegrationStatus)
-                : i.status === 'disabled'
-                  ? ('connected' as IntegrationStatus)
-                  : i.status,
-            }
-          : i,
-      ),
-    );
-  }, []);
+  /* ── Toggle enabled → API ───────────────────────────────── */
+  const toggleEnabled = useCallback(async (id: string) => {
+    try {
+      await toggleIntegrationMut(id).unwrap();
+    } catch (err) {
+      console.error('Failed to toggle integration:', err);
+    }
+  }, [toggleIntegrationMut]);
 
-  /* ── Trigger manual sync ────────────────────────────────── */
-  const triggerSync = useCallback((id: string) => {
-    setIntegrations((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, status: 'testing' as IntegrationStatus } : i)),
-    );
-    setTimeout(() => {
-      setIntegrations((prev) =>
-        prev.map((i) =>
-          i.id === id
-            ? {
-                ...i,
-                status: 'connected' as IntegrationStatus,
-                lastSync: new Date().toLocaleString(),
-                lastSyncItems: Math.floor(Math.random() * 80) + 20,
-                lastSyncErrors: 0,
-              }
-            : i,
-        ),
-      );
-    }, 3000);
-  }, []);
+  /* ── Trigger manual sync → API ──────────────────────────── */
+  const triggerSync = useCallback(async (id: string) => {
+    try {
+      await syncIntegrationMut(id).unwrap();
+      // Refetch after sync completes server-side (simulated 3s)
+      setTimeout(() => refetch(), 3500);
+    } catch (err) {
+      console.error('Failed to trigger sync:', err);
+    }
+  }, [syncIntegrationMut, refetch]);
 
   /* ── Computed values ────────────────────────────────────── */
   const configuredCount = integrations.filter((i) => i.status === 'connected').length;
@@ -158,6 +150,7 @@ export function useIntegrations() {
   return {
     /* state */
     integrations,
+    isLoading,
     showCatalog,
     configPanel,
     configValues,

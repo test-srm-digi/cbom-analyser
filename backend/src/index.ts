@@ -9,7 +9,8 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 import express from 'express';
 import cors from 'cors';
-import { cbomRoutes, networkRoutes, scanRoutes } from './routes';
+import { cbomRoutes, networkRoutes, scanRoutes, integrationRoutes } from './routes';
+import { initDatabase } from './config/database';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -26,6 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api', cbomRoutes);
 app.use('/api', networkRoutes);
 app.use('/api', scanRoutes);
+app.use('/api', integrationRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -43,13 +45,16 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`
   ╔═══════════════════════════════════════════════╗
   ║   QuantumGuard CBOM Hub – Backend             ║
   ║   Running on http://localhost:${PORT}            ║
   ╚═══════════════════════════════════════════════╝
   `);
+
+  // Initialize database
+  await initDatabase();
 });
 
 export default app;

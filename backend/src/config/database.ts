@@ -1,0 +1,38 @@
+/**
+ * Sequelize database configuration & connection
+ * Database: MariaDB — dcone-quantum-gaurd
+ */
+import { Sequelize } from 'sequelize';
+
+const sequelize = new Sequelize({
+  database: process.env.DB_DATABASE || 'dcone-quantum-gaurd',
+  username: process.env.DB_USERNAME || 'root',
+  password: process.env.DB_PASSWORD || 'asdasd',
+  host: process.env.DB_HOST || 'localhost',
+  port: Number(process.env.DB_PORT) || 3306,
+  dialect: 'mariadb',
+  logging: process.env.NODE_ENV === 'development' ? console.log : false,
+  pool: {
+    max: 10,
+    min: 0,
+    acquire: 30000,
+    idle: 10000,
+  },
+});
+
+export async function initDatabase(): Promise<void> {
+  try {
+    await sequelize.authenticate();
+    console.log('  ✓ MariaDB connected (dcone-quantum-gaurd)');
+
+    // Sync models — force:false preserves data
+    await sequelize.sync({ alter: process.env.NODE_ENV === 'development' });
+    console.log('  ✓ Database models synced');
+  } catch (error) {
+    console.error('  ✗ Database connection failed:', (error as Error).message);
+    console.error('    Make sure MariaDB is running and the database exists.');
+    console.error('    Create it with: CREATE DATABASE `dcone-quantum-gaurd`;');
+  }
+}
+
+export default sequelize;
