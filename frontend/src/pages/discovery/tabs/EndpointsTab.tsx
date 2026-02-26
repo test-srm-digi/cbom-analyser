@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Eye, ExternalLink } from 'lucide-react';
-import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, TlsPill } from '../components';
+import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, TlsPill, EmptyState } from '../components';
+import type { IntegrationStep } from '../components';
 import { ENDPOINTS } from '../data';
 import type { DiscoveryEndpoint, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
@@ -10,23 +11,33 @@ interface Props {
   setSearch: (v: string) => void;
 }
 
+const STEPS: IntegrationStep[] = [
+  { step: 1, title: 'Navigate to Integrations', description: 'Go to the Integrations page and locate "Network TLS Scanner" in the catalog.' },
+  { step: 2, title: 'Define target ranges', description: 'Enter CIDR ranges (e.g. 10.0.0.0/24) and ports to scan (443, 8443, 636). Set concurrency and timeout limits.' },
+  { step: 3, title: 'Run the scan', description: 'Click "Save & Run" to initiate TLS probing across all defined targets. The scanner performs TLS handshakes and collects cipher suite data.' },
+  { step: 4, title: 'Review discovered endpoints', description: 'TLS endpoints, cipher suites, key exchange algorithms, and certificate chains will appear here after the scan completes.' },
+];
+
 export default function EndpointsTab({ search, setSearch }: Props) {
-  const total      = ENDPOINTS.length;
-  const qsSafe     = ENDPOINTS.filter((e) => e.quantumSafe).length;
+  const [data, setData] = useState<DiscoveryEndpoint[]>([]);
+  const loaded = data.length > 0;
+
+  const total      = data.length;
+  const qsSafe     = data.filter((e) => e.quantumSafe).length;
   const qsPct      = total > 0 ? Math.round((qsSafe / total) * 100) : 0;
-  const deprecated = ENDPOINTS.filter((e) => e.tlsVersion === 'TLS 1.1' || e.tlsVersion === 'TLS 1.0').length;
+  const deprecated = data.filter((e) => e.tlsVersion === 'TLS 1.1' || e.tlsVersion === 'TLS 1.0').length;
 
   const filtered = useMemo(() => {
-    if (!search) return ENDPOINTS;
+    if (!search) return data;
     const q = search.toLowerCase();
-    return ENDPOINTS.filter(
+    return data.filter(
       (e) =>
         e.hostname.toLowerCase().includes(q) ||
         e.ipAddress.includes(q) ||
         e.keyAgreement.toLowerCase().includes(q) ||
         e.cipherSuite.toLowerCase().includes(q),
     );
-  }, [search]);
+  }, [search, data]);
 
   const stats: StatCardConfig[] = [
     { title: 'Total Endpoints',   value: total,       sub: 'Discovered via Network TLS Scanner',                                         variant: 'default' },
@@ -56,6 +67,18 @@ export default function EndpointsTab({ search, setSearch }: Props) {
       ),
     },
   ];
+
+  if (!loaded) {
+    return (
+      <EmptyState
+        title="Endpoints"
+        integrationName="Network TLS Scanner"
+        integrationDescription="Scan your network to discover TLS endpoints, cipher suites, certificate chains, and key exchange algorithms. Identify hosts using quantum-vulnerable cryptography before Q-Day."
+        steps={STEPS}
+        onLoadSample={() => setData([...ENDPOINTS])}
+      />
+    );
+  }
 
   return (
     <>

@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Eye, ExternalLink } from 'lucide-react';
-import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, SeverityBadge } from '../components';
+import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, SeverityBadge, EmptyState } from '../components';
+import type { IntegrationStep } from '../components';
 import { CODE_FINDINGS } from '../data';
 import type { DiscoveryCodeFinding, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
@@ -10,16 +11,26 @@ interface Props {
   setSearch: (v: string) => void;
 }
 
+const STEPS: IntegrationStep[] = [
+  { step: 1, title: 'Navigate to Integrations', description: 'Go to the Integrations page and locate "GitHub Crypto Scanner" in the catalog.' },
+  { step: 2, title: 'Connect GitHub repositories', description: 'Provide a GitHub personal access token (repo scope), then select the organizations and repositories to scan.' },
+  { step: 3, title: 'Configure scan settings', description: 'Choose target branches, file path patterns, and languages. Enable deep scan to detect transitive crypto dependencies.' },
+  { step: 4, title: 'Review code findings', description: 'Crypto API calls, algorithms, key sizes, and severity ratings will appear here after the scan completes.' },
+];
+
 export default function CodeAnalysisTab({ search, setSearch }: Props) {
-  const total      = CODE_FINDINGS.length;
-  const qsSafe     = CODE_FINDINGS.filter((f) => f.quantumSafe).length;
-  const critical   = CODE_FINDINGS.filter((f) => f.severity === 'critical' || f.severity === 'high').length;
-  const repos      = new Set(CODE_FINDINGS.map((f) => f.repository)).size;
+  const [data, setData] = useState<DiscoveryCodeFinding[]>([]);
+  const loaded = data.length > 0;
+
+  const total      = data.length;
+  const qsSafe     = data.filter((f) => f.quantumSafe).length;
+  const critical   = data.filter((f) => f.severity === 'critical' || f.severity === 'high').length;
+  const repos      = new Set(data.map((f) => f.repository)).size;
 
   const filtered = useMemo(() => {
-    if (!search) return CODE_FINDINGS;
+    if (!search) return data;
     const q = search.toLowerCase();
-    return CODE_FINDINGS.filter(
+    return data.filter(
       (f) =>
         f.repository.toLowerCase().includes(q) ||
         f.filePath.toLowerCase().includes(q) ||
@@ -27,7 +38,7 @@ export default function CodeAnalysisTab({ search, setSearch }: Props) {
         f.algorithm.toLowerCase().includes(q) ||
         f.language.toLowerCase().includes(q),
     );
-  }, [search]);
+  }, [search, data]);
 
   const stats: StatCardConfig[] = [
     { title: 'Crypto API Calls',   value: total,    sub: `Found across ${repos} repositories via GitHub Scanner`,   variant: 'default' },
@@ -57,6 +68,18 @@ export default function CodeAnalysisTab({ search, setSearch }: Props) {
       ),
     },
   ];
+
+  if (!loaded) {
+    return (
+      <EmptyState
+        title="Code Analysis Findings"
+        integrationName="GitHub Crypto Scanner"
+        integrationDescription="Scan your GitHub repositories for cryptographic API usage. Detect vulnerable algorithms, weak key sizes, and deprecated crypto libraries across your codebase to plan PQC migration."
+        steps={STEPS}
+        onLoadSample={() => setData([...CODE_FINDINGS])}
+      />
+    );
+  }
 
   return (
     <>

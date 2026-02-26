@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Eye, ExternalLink, Zap } from 'lucide-react';
-import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, LibChips } from '../components';
+import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, LibChips, EmptyState } from '../components';
+import type { IntegrationStep } from '../components';
 import { SOFTWARE } from '../data';
 import type { DiscoverySoftware, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
@@ -10,22 +11,32 @@ interface Props {
   setSearch: (v: string) => void;
 }
 
+const STEPS: IntegrationStep[] = [
+  { step: 1, title: 'Navigate to Integrations', description: 'Go to the Integrations page and locate "DigiCert Software Trust Manager" in the catalog.' },
+  { step: 2, title: 'Enter STM credentials', description: 'Provide your DigiCert ONE tenant URL, API key, and select the environment (Production or Staging).' },
+  { step: 3, title: 'Test & sync', description: 'Click "Test Connection" to verify STM API access, then "Save & Sync" to import signing certificates and release metadata.' },
+  { step: 4, title: 'Review software releases', description: 'Code-signing certificates, signing algorithms, hash algorithms, and crypto library data will appear here after sync.' },
+];
+
 export default function SoftwareTab({ search, setSearch }: Props) {
-  const total      = SOFTWARE.length;
-  const qsSafe     = SOFTWARE.filter((sw) => sw.quantumSafe).length;
+  const [data, setData] = useState<DiscoverySoftware[]>([]);
+  const loaded = data.length > 0;
+
+  const total      = data.length;
+  const qsSafe     = data.filter((sw) => sw.quantumSafe).length;
   const violations = total - qsSafe;
 
   const filtered = useMemo(() => {
-    if (!search) return SOFTWARE;
+    if (!search) return data;
     const q = search.toLowerCase();
-    return SOFTWARE.filter(
+    return data.filter(
       (sw) =>
         sw.name.toLowerCase().includes(q) ||
         sw.vendor.toLowerCase().includes(q) ||
         sw.signingAlgorithm.toLowerCase().includes(q) ||
         sw.cryptoLibraries.some((lib) => lib.toLowerCase().includes(q)),
     );
-  }, [search]);
+  }, [search, data]);
 
   const stats: StatCardConfig[] = [
     { title: 'Software Releases',  value: total,      sub: 'Code-signing inventory from DigiCert Software Trust Manager', variant: 'default' },
@@ -61,6 +72,18 @@ export default function SoftwareTab({ search, setSearch }: Props) {
       ),
     },
   ];
+
+  if (!loaded) {
+    return (
+      <EmptyState
+        title="Software Releases"
+        integrationName="DigiCert Software Trust Manager"
+        integrationDescription="Import code signing certificates, software hashes, and SBOM-linked cryptographic assets from STM. Analyze signing algorithms used across your software supply chain and plan PQC migration."
+        steps={STEPS}
+        onLoadSample={() => setData([...SOFTWARE])}
+      />
+    );
+  }
 
   return (
     <>

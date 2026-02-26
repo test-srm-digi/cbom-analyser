@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Eye, ExternalLink } from 'lucide-react';
-import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, DeviceStatusBadge } from '../components';
+import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, DeviceStatusBadge, EmptyState } from '../components';
+import type { IntegrationStep } from '../components';
 import { DEVICES } from '../data';
 import type { DiscoveryDevice, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
@@ -10,23 +11,33 @@ interface Props {
   setSearch: (v: string) => void;
 }
 
+const STEPS: IntegrationStep[] = [
+  { step: 1, title: 'Navigate to Integrations', description: 'Go to the Integrations page and locate "DigiCert Device Trust Manager" in the catalog.' },
+  { step: 2, title: 'Enter DTM credentials', description: 'Provide your DigiCert ONE tenant URL, API key, and optionally filter by device group or enrollment profile.' },
+  { step: 3, title: 'Test & sync', description: 'Click "Test Connection" to verify DTM API access, then "Save & Sync" to import your IoT/OT device fleet.' },
+  { step: 4, title: 'Review device inventory', description: 'Device certificates, firmware versions, enrollment status, and PQC readiness will appear here after sync.' },
+];
+
 export default function DevicesTab({ search, setSearch }: Props) {
-  const total      = DEVICES.length;
-  const qsSafe     = DEVICES.filter((d) => d.quantumSafe).length;
-  const violations = DEVICES.filter((d) => !d.quantumSafe).length;
-  const weakKeys   = DEVICES.filter((d) => d.keyLength === '1024 bits').length;
+  const [data, setData] = useState<DiscoveryDevice[]>([]);
+  const loaded = data.length > 0;
+
+  const total      = data.length;
+  const qsSafe     = data.filter((d) => d.quantumSafe).length;
+  const violations = data.filter((d) => !d.quantumSafe).length;
+  const weakKeys   = data.filter((d) => d.keyLength === '1024 bits').length;
 
   const filtered = useMemo(() => {
-    if (!search) return DEVICES;
+    if (!search) return data;
     const q = search.toLowerCase();
-    return DEVICES.filter(
+    return data.filter(
       (d) =>
         d.deviceName.toLowerCase().includes(q) ||
         d.manufacturer.toLowerCase().includes(q) ||
         d.deviceType.toLowerCase().includes(q) ||
         d.certAlgorithm.toLowerCase().includes(q),
     );
-  }, [search]);
+  }, [search, data]);
 
   const stats: StatCardConfig[] = [
     { title: 'Total Devices',     value: total,      sub: 'Managed by DigiCert Device Trust Manager',                       variant: 'default' },
@@ -57,6 +68,18 @@ export default function DevicesTab({ search, setSearch }: Props) {
       ),
     },
   ];
+
+  if (!loaded) {
+    return (
+      <EmptyState
+        title="Devices"
+        integrationName="DigiCert Device Trust Manager"
+        integrationDescription="Import your IoT and OT device fleet from DTM. Discover device certificates, firmware crypto capabilities, enrollment status, and identify devices needing PQC migration."
+        steps={STEPS}
+        onLoadSample={() => setData([...DEVICES])}
+      />
+    );
+  }
 
   return (
     <>

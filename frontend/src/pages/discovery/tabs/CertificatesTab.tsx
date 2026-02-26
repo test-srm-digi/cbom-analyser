@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Zap, Eye, ExternalLink } from 'lucide-react';
-import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, CertStatusBadge } from '../components';
+import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, CertStatusBadge, EmptyState } from '../components';
+import type { IntegrationStep } from '../components';
 import { CERTIFICATES } from '../data';
 import type { DiscoveryCertificate, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
@@ -10,24 +11,35 @@ interface Props {
   setSearch: (v: string) => void;
 }
 
+/* ── Integration setup steps ──────────────────────────────── */
+const STEPS: IntegrationStep[] = [
+  { step: 1, title: 'Navigate to Integrations', description: 'Go to the Integrations page from the sidebar and locate "DigiCert Trust Lifecycle Manager" in the catalog.' },
+  { step: 2, title: 'Configure API credentials', description: 'Enter your DigiCert ONE tenant URL, API key, account ID, and optionally a division ID to scope the import.' },
+  { step: 3, title: 'Test connection & sync', description: 'Click "Test Connection" to verify API access, then "Save & Sync" to run the first certificate import.' },
+  { step: 4, title: 'Review discovered certificates', description: 'Certificates, CA hierarchies, and TLS endpoint data will appear here automatically after the sync completes.' },
+];
+
 export default function CertificatesTab({ search, setSearch }: Props) {
-  const total      = CERTIFICATES.length;
-  const qsSafe     = CERTIFICATES.filter((c) => c.quantumSafe).length;
+  const [data, setData] = useState<DiscoveryCertificate[]>([]);
+  const loaded = data.length > 0;
+
+  const total      = data.length;
+  const qsSafe     = data.filter((c) => c.quantumSafe).length;
   const violations = total - qsSafe;
 
   const filtered = useMemo(() => {
-    if (!search) return CERTIFICATES;
+    if (!search) return data;
     const q = search.toLowerCase();
-    return CERTIFICATES.filter(
+    return data.filter(
       (c) =>
         c.commonName.toLowerCase().includes(q) ||
         c.caVendor.toLowerCase().includes(q) ||
         c.keyAlgorithm.toLowerCase().includes(q) ||
         c.source.toLowerCase().includes(q),
     );
-  }, [search]);
+  }, [search, data]);
 
-  const upgradeCount = CERTIFICATES.filter((c) => !c.quantumSafe).length;
+  const upgradeCount = data.filter((c) => !c.quantumSafe).length;
 
   const stats: StatCardConfig[] = [
     { title: 'Total Certificates', value: total,      sub: `Discovered via DigiCert Trust Lifecycle Manager`, variant: 'default' },
@@ -63,6 +75,18 @@ export default function CertificatesTab({ search, setSearch }: Props) {
       ),
     },
   ];
+
+  if (!loaded) {
+    return (
+      <EmptyState
+        title="Certificates"
+        integrationName="DigiCert Trust Lifecycle Manager"
+        integrationDescription="Import TLS/PKI certificates, CA hierarchies, and endpoint data via the TLM REST API. Automatically track key algorithms, expiry dates, and PQC-readiness across your managed certificate infrastructure."
+        steps={STEPS}
+        onLoadSample={() => setData([...CERTIFICATES])}
+      />
+    );
+  }
 
   return (
     <>
