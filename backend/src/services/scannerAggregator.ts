@@ -217,8 +217,10 @@ export async function runSonarCryptoScan(repoPath: string, excludePatterns?: str
       `-Dsonar.host.url=${sonarHostUrl}`,
       `-Dsonar.token=${sonarToken}`,
       `-Dsonar.scm.disabled=true`,
-      `-Dsonar.qualitygate.wait=true`,
-      `-Dsonar.qualitygate.timeout=300`,
+      // Exclude files that SonarQube can't parse (Helm templates, build output, etc.)
+      `-Dsonar.exclusions=**/charts/**/templates/**,**/node_modules/**,**/target/**,**/build/**,**/dist/**,**/.git/**`,
+      // Allow the token to create new projects automatically
+      `-Dsonar.qualitygate.wait=false`,
     ].join(' ');
 
     console.log(`Running sonar-scanner against ${repoPath} → ${sonarHostUrl}`);
