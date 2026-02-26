@@ -261,17 +261,53 @@ export interface PrimitiveDistribution {
 
 // ─── Integrations & Discovery types ──────────────────────────────────────────
 
-export type IntegrationStatus = 'connected' | 'disconnected' | 'error';
+export type IntegrationStatus = 'not_configured' | 'configuring' | 'testing' | 'connected' | 'error' | 'disabled';
 
+export type IntegrationCategory = 'digicert' | 'scanner' | 'import' | 'repository';
+
+export type SyncSchedule = 'manual' | '1h' | '6h' | '12h' | '24h';
+
+export type ImportScope = 'certificates' | 'endpoints' | 'software' | 'keys';
+
+/** Catalog entry — what integrations are available */
+export interface IntegrationTemplate {
+  type: string;
+  name: string;
+  vendor: string;
+  category: IntegrationCategory;
+  description: string;
+  docsUrl: string;
+  capabilities: string[];
+  fields: IntegrationField[];
+}
+
+export interface IntegrationField {
+  key: string;
+  label: string;
+  type: 'text' | 'password' | 'url' | 'textarea' | 'select' | 'cidr' | 'port-range' | 'file';
+  placeholder?: string;
+  required: boolean;
+  helpText?: string;
+  options?: { value: string; label: string }[];
+}
+
+/** A user-configured integration instance */
 export interface Integration {
   id: string;
+  templateType: string;
   name: string;
   description: string;
   status: IntegrationStatus;
-  configUrl: string;
-  lastImport: string;
   enabled: boolean;
-  icon?: string;
+  config: Record<string, string>;
+  importScope: ImportScope[];
+  syncSchedule: SyncSchedule;
+  lastSync?: string;
+  lastSyncItems?: number;
+  lastSyncErrors?: number;
+  nextSync?: string;
+  createdAt: string;
+  errorMessage?: string;
 }
 
 export type CertificateStatus = 'Issued' | 'Expired' | 'Revoked' | 'Pending';

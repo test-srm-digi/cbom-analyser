@@ -1,41 +1,8 @@
 import type {
-  Integration,
   DiscoveryCertificate,
   DiscoveryEndpoint,
   DiscoverySoftware,
 } from './types';
-
-/* ── Integrations ─────────────────────────────────────────── */
-
-export const SAMPLE_INTEGRATIONS: Integration[] = [
-  {
-    id: 'tlm',
-    name: 'DigiCert Trust Lifecycle',
-    description: 'Import certificates and cryptographic assets from DigiCert Trust Lifecycle Manager',
-    status: 'connected',
-    configUrl: 'https://one.digicert.com',
-    lastImport: '12/01/2024, 16:00:00',
-    enabled: true,
-  },
-  {
-    id: 'stm',
-    name: 'DigiCert Software Trust',
-    description: 'Import software signing certificates and code signing assets from DigiCert Software Trust Manager',
-    status: 'connected',
-    configUrl: 'https://one.digicert.com',
-    lastImport: '12/01/2024, 14:45:00',
-    enabled: true,
-  },
-  {
-    id: 'dtm',
-    name: 'DigiCert Device Trust',
-    description: 'Import device certificates and IoT cryptographic assets from DigiCert Device Trust Manager',
-    status: 'connected',
-    configUrl: 'https://one.digicert.com',
-    lastImport: '12/01/2024, 14:15:00',
-    enabled: true,
-  },
-];
 
 /* ── Certificates ─────────────────────────────────────────── */
 
