@@ -9,14 +9,6 @@ import IntegrationsPage from './pages/IntegrationsPage';
 import DiscoveryPage from './pages/DiscoveryPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import {
-  FileText,
-  BarChart3,
-  UserCog,
-  LayoutDashboard,
-  ShieldCheck,
-  KeyRound,
-  Award,
-  PackageOpen,
   ShieldHalf,
   Tablet,
   FileSignature,
@@ -188,80 +180,6 @@ export default function App() {
         return <DiscoveryPage />;
       case 'network':
         return <NetworkPage />;
-
-      /* ── Trust Lifecycle placeholders ─────────────── */
-      case 'reporting':
-        return (
-          <PlaceholderPage
-            section="Trust Lifecycle"
-            title="Reporting"
-            icon={BarChart3}
-            description="Generate compliance reports, certificate expiry summaries, and quantum-readiness audits across your entire crypto inventory."
-            features={['Compliance audit reports', 'Expiry forecasting', 'Quantum-readiness posture', 'Scheduled PDF / CSV exports']}
-          />
-        );
-      case 'account':
-        return (
-          <PlaceholderPage
-            section="Trust Lifecycle"
-            title="Account"
-            icon={UserCog}
-            description="Manage your organisation profile, team members, API keys, and billing for Trust Lifecycle Manager services."
-            features={['Team & role management', 'API key rotation', 'Billing & usage', 'Audit log']}
-          />
-        );
-
-      /* ── Software Trust placeholders ─────────────── */
-      case 'stm-dashboard':
-        return (
-          <PlaceholderPage
-            section="Software Trust"
-            title="Dashboard"
-            icon={LayoutDashboard}
-            description="Overview of your code-signing posture, release activity, and keypair health across all Software Trust Manager projects."
-            features={['Signing activity timeline', 'Key expiry alerts', 'Release pipeline status', 'Policy violations']}
-          />
-        );
-      case 'stm-release-security':
-        return (
-          <PlaceholderPage
-            section="Software Trust"
-            title="Release Security"
-            icon={ShieldCheck}
-            description="Enforce signing policies on software releases. Review approval workflows, validation rules, and tamper evidence."
-            features={['Approval workflows', 'Signature validation', 'Tamper-evidence logs', 'Policy enforcement']}
-          />
-        );
-      case 'stm-keypairs':
-        return (
-          <PlaceholderPage
-            section="Software Trust"
-            title="Keypairs"
-            icon={KeyRound}
-            description="Manage code-signing keypairs stored in DigiCert ONE. Generate, rotate, and assign keys to release pipelines."
-            features={['HSM-backed key generation', 'Key rotation schedules', 'Assignment to pipelines', 'Usage audit trail']}
-          />
-        );
-      case 'stm-certificates':
-        return (
-          <PlaceholderPage
-            section="Software Trust"
-            title="Certificates"
-            icon={Award}
-            description="View and manage code-signing certificates issued through Software Trust Manager, including EV and standard OV certificates."
-            features={['Certificate lifecycle', 'Auto-renewal', 'Revocation management', 'Chain validation']}
-          />
-        );
-      case 'stm-releases':
-        return (
-          <PlaceholderPage
-            section="Software Trust"
-            title="Releases"
-            icon={PackageOpen}
-            description="Track signed software releases across all projects. Verify signatures, view provenance, and manage distribution."
-            features={['Release inventory', 'Signature verification', 'Provenance tracking', 'Distribution channels']}
-          />
-        );
 
       /* ── Other product placeholders ──────────────── */
       case 'private-ca':

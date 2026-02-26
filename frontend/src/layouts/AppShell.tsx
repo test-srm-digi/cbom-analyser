@@ -2,7 +2,6 @@ import { useState, ReactNode } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faGauge,
-  faBoxesStacked,
   faDiagramProject,
   faTriangleExclamation,
   faListCheck,
@@ -18,12 +17,6 @@ import {
   faTableCells,
   faBullseyeArrow,
   faMagnifyingGlass,
-  faChartLine,
-  faUserGear,
-  faRocketLaunch,
-  faKey,
-  faCertificate,
-  faBoxOpen,
 } from '@fortawesome/pro-light-svg-icons';
 import {
   faChevronDown,
@@ -43,15 +36,6 @@ export type NavPage =
   | 'discovery'
   | 'network'
   | 'settings'
-  /* Trust Lifecycle */
-  | 'reporting'
-  | 'account'
-  /* Software Trust */
-  | 'stm-dashboard'
-  | 'stm-release-security'
-  | 'stm-keypairs'
-  | 'stm-certificates'
-  | 'stm-releases'
   /* Other products */
   | 'private-ca'
   | 'device-trust'
@@ -78,61 +62,27 @@ const mainNavItems: { id: NavPage; label: string; icon: typeof faGauge }[] = [
   { id: 'settings', label: 'Settings', icon: faGear },
 ];
 
-interface SidebarChild {
-  label: string;
-  icon: typeof faGauge;
-  navPage: NavPage;
-}
-
 interface SidebarSection {
   label: string;
   icon: typeof faGauge;
-  expandable: boolean;
-  navPage?: NavPage;           // for non-expandable top-level items
-  children?: SidebarChild[];
+  description?: string;
+  navPage?: NavPage;
+  comingSoon?: boolean;
 }
 
 const sidebarSections: SidebarSection[] = [
-  { label: 'Private CA', icon: faShieldCheck, expandable: false, navPage: 'private-ca' },
-  {
-    label: 'Trust Lifecycle',
-    icon: faArrowsRotate,
-    expandable: true,
-    children: [
-      { label: 'Dashboard',                    icon: faGrid2,           navPage: 'dashboard' },
-      { label: 'Inventory',                    icon: faTableCells,      navPage: 'inventory' },
-      { label: 'Policies',                     icon: faShieldHalved,    navPage: 'policies' },
-      { label: 'Integrations',                 icon: faPlug,            navPage: 'integrations' },
-      { label: 'Discovery & automation tools', icon: faMagnifyingGlass, navPage: 'discovery' },
-      { label: 'Reporting',                    icon: faChartLine,       navPage: 'reporting' },
-      { label: 'Account',                      icon: faUserGear,        navPage: 'account' },
-    ],
-  },
-  {
-    label: 'Software Trust',
-    icon: faLock,
-    expandable: true,
-    children: [
-      { label: 'Dashboard',        icon: faGrid2,        navPage: 'stm-dashboard' },
-      { label: 'Release security', icon: faRocketLaunch, navPage: 'stm-release-security' },
-      { label: 'Keypairs',         icon: faKey,          navPage: 'stm-keypairs' },
-      { label: 'Certificates',     icon: faCertificate,  navPage: 'stm-certificates' },
-      { label: 'Releases',         icon: faBoxOpen,      navPage: 'stm-releases' },
-    ],
-  },
-  { label: 'Device Trust',   icon: faTabletScreenButton, expandable: false, navPage: 'device-trust' },
-  { label: 'Document Trust', icon: faFileSignature,       expandable: false, navPage: 'document-trust' },
+  { label: 'Private CA',      icon: faShieldCheck,        navPage: 'private-ca',    description: 'Deploy and manage private Certificate Authorities for internal TLS, mTLS, and device identity use cases.' },
+  { label: 'Trust Lifecycle', icon: faArrowsRotate,       comingSoon: true,         description: 'Manage the full certificate lifecycle — from discovery and issuance to renewal and revocation — across your entire organisation.' },
+  { label: 'Software Trust',  icon: faLock,               comingSoon: true,         description: 'Secure your software supply chain with code-signing keypairs, release validation, and tamper-evidence workflows.' },
+  { label: 'Device Trust',    icon: faTabletScreenButton, navPage: 'device-trust',  description: 'Secure IoT and device identities with certificate-based authentication and firmware signing.' },
+  { label: 'Document Trust',  icon: faFileSignature,      navPage: 'document-trust',description: 'Apply trusted digital signatures to documents and verify authenticity with DigiCert-issued certificates.' },
 ];
 
 /* ─── Component ─────────────────────────────────────────────── */
 
 export default function AppShell({ activePage, onNavigate, children }: Props) {
   const [qraExpanded, setQraExpanded] = useState(true);
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
-
-  const toggleSection = (label: string) => {
-    setExpandedSections((prev) => ({ ...prev, [label]: !prev[label] }));
-  };
+  const [comingSoonModal, setComingSoonModal] = useState<SidebarSection | null>(null);
 
   return (
     <div className="dc1-shell">
@@ -184,17 +134,14 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
 
           {/* Other sidebar sections */}
           {sidebarSections.map((section) => {
-            const isExpanded = !!expandedSections[section.label];
-            const sectionActive = section.navPage
-              ? activePage === section.navPage
-              : section.children?.some((c) => c.navPage === activePage);
+            const isActive = section.navPage ? activePage === section.navPage : false;
             return (
               <div key={section.label} className="dc1-nav-section dc1-nav-section-other">
                 <button
-                  className={`dc1-nav-section-header dc1-nav-section-header-other ${sectionActive ? 'dc1-nav-section-header-active' : ''}`}
+                  className={`dc1-nav-section-header dc1-nav-section-header-other ${isActive ? 'dc1-nav-section-header-active' : ''}`}
                   onClick={() => {
-                    if (section.expandable) {
-                      toggleSection(section.label);
+                    if (section.comingSoon) {
+                      setComingSoonModal(section);
                     } else if (section.navPage) {
                       onNavigate(section.navPage);
                     }
@@ -204,29 +151,10 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
                     <FontAwesomeIcon icon={section.icon} />
                   </span>
                   <span className="dc1-nav-section-label-other">{section.label}</span>
-                  {section.expandable && (
-                    <FontAwesomeIcon
-                      icon={faChevronRight}
-                      className={`dc1-nav-chevron dc1-nav-chevron-small ${isExpanded ? 'dc1-nav-chevron-expanded' : ''}`}
-                    />
+                  {section.comingSoon && (
+                    <span className="dc1-coming-soon-pill">Soon</span>
                   )}
                 </button>
-
-                {isExpanded && section.children && (
-                  <ul className="dc1-subnav-list">
-                    {section.children.map((child) => (
-                      <li key={child.label}>
-                        <button
-                          className={`dc1-subnav-item ${activePage === child.navPage ? 'dc1-subnav-active' : ''}`}
-                          onClick={() => onNavigate(child.navPage)}
-                        >
-                          <FontAwesomeIcon icon={child.icon} className="dc1-subnav-icon" />
-                          <span>{child.label}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
             );
           })}
@@ -246,6 +174,26 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
           {children}
         </div>
       </div>
+
+      {/* ── Coming Soon modal ──────────────────────── */}
+      {comingSoonModal && (
+        <div className="dc1-cs-overlay" onClick={() => setComingSoonModal(null)}>
+          <div className="dc1-cs-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="dc1-cs-close" onClick={() => setComingSoonModal(null)}>×</button>
+            <div className="dc1-cs-icon">
+              <FontAwesomeIcon icon={comingSoonModal.icon} />
+            </div>
+            <span className="dc1-cs-badge">Coming Soon</span>
+            <h2 className="dc1-cs-title">{comingSoonModal.label}</h2>
+            <p className="dc1-cs-desc">{comingSoonModal.description}</p>
+            <div className="dc1-cs-divider" />
+            <p className="dc1-cs-note">
+              This module is under active development and will be available in a future release of DigiCert ONE.
+            </p>
+            <button className="dc1-cs-btn" onClick={() => setComingSoonModal(null)}>Got it</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
