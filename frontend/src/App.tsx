@@ -19,7 +19,6 @@ export default function App() {
   const [readinessScore, setReadinessScore] = useState<QuantumReadinessScore | null>(null);
   const [compliance, setCompliance] = useState<ComplianceSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [autoLoaded, setAutoLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* ── Upload ──────────────────────────────────────────── */
@@ -140,12 +139,11 @@ export default function App() {
     };
   }
 
-  /* ── Auto-load sample data so dashboard isn't empty ──── */
+  /* ── Load sample data on demand ──────────────────────── */
 
-  if (!cbom && !isLoading && !autoLoaded) {
-    setAutoLoaded(true);
-    setTimeout(() => handleLocalParse(JSON.stringify(SAMPLE_CBOM)), 0);
-  }
+  const loadSampleData = useCallback(() => {
+    handleLocalParse(JSON.stringify(SAMPLE_CBOM));
+  }, []);
 
   /* ── Render page ─────────────────────────────────────── */
 
@@ -159,14 +157,15 @@ export default function App() {
             compliance={compliance}
             onNavigate={(p) => setActivePage(p as NavPage)}
             onUpload={triggerUpload}
+            onLoadSample={loadSampleData}
           />
         );
       case 'inventory':
-        return <InventoryPage cbom={cbom} readinessScore={readinessScore} />;
+        return <InventoryPage cbom={cbom} readinessScore={readinessScore} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
       case 'visualize':
-        return <VisualizePage cbom={cbom} />;
+        return <VisualizePage cbom={cbom} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
       case 'violations':
-        return <ViolationsPage cbom={cbom} />;
+        return <ViolationsPage cbom={cbom} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
       case 'integrations':
         return <NetworkPage />;
       default:

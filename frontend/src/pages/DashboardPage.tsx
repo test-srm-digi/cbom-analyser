@@ -5,6 +5,7 @@ import {
   ShieldCheck,
   BarChart3,
   Layers,
+  Database,
 } from 'lucide-react';
 import type { CBOMDocument, QuantumReadinessScore, ComplianceSummary } from '../types';
 import { CBOMHeader, ReadinessScoreCard, QuantumSafetyDonut, ComplianceBanner } from '../components';
@@ -15,9 +16,10 @@ interface Props {
   compliance: ComplianceSummary | null;
   onNavigate: (path: string) => void;
   onUpload: () => void;
+  onLoadSample: () => void;
 }
 
-export default function DashboardPage({ cbom, readinessScore, compliance, onNavigate, onUpload }: Props) {
+export default function DashboardPage({ cbom, readinessScore, compliance, onNavigate, onUpload, onLoadSample }: Props) {
   const assets = cbom?.cryptoAssets ?? [];
   const totalAssets = assets.length;
   const safe = assets.filter((a) => a.quantumSafety === 'quantum-safe').length;
@@ -30,12 +32,27 @@ export default function DashboardPage({ cbom, readinessScore, compliance, onNavi
 
   if (!cbom) {
     return (
-      <div className="dc1-dashboard-empty">
-        <div className="dc1-empty-state">
-          <ShieldCheck size={64} strokeWidth={1} className="dc1-empty-icon" />
-          <h2>Welcome to Quantum Readiness Dashboard</h2>
-          <p>Upload a CBOM file or scan your code to get started</p>
-          <button className="dc1-btn-primary" onClick={onUpload}>Upload CBOM</button>
+      <div className="dc1-welcome">
+        <div className="dc1-welcome-inner">
+          <div className="dc1-welcome-header">
+            <ShieldCheck size={48} strokeWidth={1.2} className="dc1-welcome-icon" />
+            <h1>Quantum Readiness Advisor</h1>
+            <p>Analyse your cryptographic inventory for post-quantum readiness. Upload a CBOM file to get started or explore with sample data.</p>
+          </div>
+
+          <div className="dc1-welcome-cards">
+            <button className="dc1-welcome-card dc1-welcome-card-primary" onClick={onUpload}>
+              <Upload size={32} strokeWidth={1.5} />
+              <h3>Upload CBOM</h3>
+              <p>Import your CycloneDX CBOM file (.json, .cdx, .xml) to analyse your project's cryptographic inventory</p>
+            </button>
+
+            <button className="dc1-welcome-card dc1-welcome-card-secondary" onClick={onLoadSample}>
+              <Database size={32} strokeWidth={1.5} />
+              <h3>Load Sample Data</h3>
+              <p>Explore the dashboard with a pre-built sample dataset from the Keycloak open-source project</p>
+            </button>
+          </div>
         </div>
       </div>
     );

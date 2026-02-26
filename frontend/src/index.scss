@@ -544,6 +544,157 @@ body {
 }
 .dc1-empty-icon { color: var(--dc1-text-muted); }
 
+/* ── Welcome page (no data loaded) ────────────────────────── */
+.dc1-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - var(--dc1-topbar-h) - 80px);
+}
+.dc1-welcome-inner {
+  max-width: 640px;
+  width: 100%;
+}
+.dc1-welcome-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.dc1-welcome-icon {
+  color: var(--dc1-blue);
+  margin-bottom: 12px;
+}
+.dc1-welcome-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--dc1-text);
+  margin: 0 0 8px;
+}
+.dc1-welcome-header p {
+  font-size: 14px;
+  color: var(--dc1-text-secondary);
+  margin: 0;
+  line-height: 1.6;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.dc1-welcome-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.dc1-welcome-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 32px 24px;
+  border-radius: var(--dc1-radius-lg);
+  border: 1.5px solid var(--dc1-border);
+  background: var(--dc1-card);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.dc1-welcome-card:hover {
+  border-color: var(--dc1-blue);
+  box-shadow: 0 4px 20px rgba(1, 116, 195, 0.1);
+  transform: translateY(-2px);
+}
+.dc1-welcome-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--dc1-text);
+  margin: 0;
+}
+.dc1-welcome-card p {
+  font-size: 13px;
+  color: var(--dc1-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+.dc1-welcome-card-primary svg {
+  color: var(--dc1-blue);
+}
+.dc1-welcome-card-secondary svg {
+  color: var(--dc1-text-secondary);
+}
+.dc1-welcome-card-primary:hover svg {
+  color: var(--dc1-blue-dark);
+}
+.dc1-welcome-card-secondary:hover svg {
+  color: var(--dc1-text);
+}
+
+/* ── Empty page state (for sub-pages) ─────────────────────── */
+.dc1-empty-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 64px 24px;
+  background: var(--dc1-card);
+  border: 1px solid var(--dc1-border);
+  border-radius: var(--dc1-radius);
+}
+.dc1-empty-page-icon {
+  color: var(--dc1-text-muted);
+  margin-bottom: 12px;
+}
+.dc1-empty-page h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--dc1-text);
+  margin: 0 0 6px;
+}
+.dc1-empty-page p {
+  font-size: 13px;
+  color: var(--dc1-text-secondary);
+  margin: 0 0 20px;
+  max-width: 360px;
+}
+.dc1-empty-page-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* ── Buttons ──────────────────────────────────────────────── */
+.dc1-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--dc1-blue);
+  border: none;
+  border-radius: var(--dc1-radius-sm);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.dc1-btn-primary:hover { background: var(--dc1-blue-dark); }
+
+.dc1-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dc1-text);
+  background: var(--dc1-card);
+  border: 1px solid var(--dc1-border);
+  border-radius: var(--dc1-radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.dc1-btn-secondary:hover {
+  background: var(--dc1-bg);
+  border-color: var(--dc1-text-muted);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Inventory page
    ═══════════════════════════════════════════════════════════════ */

@@ -1,13 +1,15 @@
 import { useMemo } from 'react';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, Upload, Database } from 'lucide-react';
 import type { CBOMDocument } from '../types';
 import { AssetListView } from '../components';
 
 interface Props {
   cbom: CBOMDocument | null;
+  onUpload: () => void;
+  onLoadSample: () => void;
 }
 
-export default function ViolationsPage({ cbom }: Props) {
+export default function ViolationsPage({ cbom, onUpload, onLoadSample }: Props) {
   const allAssets = cbom?.cryptoAssets ?? [];
 
   const violatingAssets = useMemo(
@@ -34,7 +36,19 @@ export default function ViolationsPage({ cbom }: Props) {
         </p>
       </div>
 
-      <div className="dc1-inv-summary" style={{ marginBottom: 20 }}>
+      {!cbom ? (
+        <div className="dc1-empty-page">
+          <ShieldAlert size={40} strokeWidth={1.2} className="dc1-empty-page-icon" />
+          <h3>No data loaded</h3>
+          <p>Upload a CBOM file or load sample data to review violations.</p>
+          <div className="dc1-empty-page-actions">
+            <button className="dc1-btn-primary" onClick={onUpload}><Upload size={15} /> Upload CBOM</button>
+            <button className="dc1-btn-secondary" onClick={onLoadSample}><Database size={15} /> Load Sample Data</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="dc1-inv-summary" style={{ marginBottom: 20 }}>
         <div className="dc1-inv-card dc1-inv-card-violations">
           <div className="dc1-inv-card-header">
             <span className="dc1-inv-card-title">Not Quantum Safe</span>
@@ -70,6 +84,8 @@ export default function ViolationsPage({ cbom }: Props) {
         </div>
       ) : (
         <AssetListView assets={atRiskAssets} />
+      )}
+      </>
       )}
     </div>
   );
