@@ -551,7 +551,7 @@ $_risk-high: $warning-100;
 
 // ── Table ────────────────────────────────────────────────────
 .tableWrap {
-  overflow-x: clip;
+  overflow-x: auto;
   overflow-y: visible;
 }
 
@@ -830,6 +830,7 @@ $_pqc-review: $warning-200; // #955925
   color: $dc1-blue;
   font-size: 12px;
   cursor: pointer;
+  text-decoration: none;
 
   &:hover {
     text-decoration: underline;

@@ -718,10 +718,23 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                           {asset.provider}
                         </span>
                       )}
-                      <span className={s.fileLink}>
-                        {asset.location.fileName}
-                        {asset.location.lineNumber ? `:${asset.location.lineNumber}` : ''}
-                      </span>
+                      {repoUrl ? (
+                        <a
+                          href={buildGitHubFileUrl(repoUrl, effectiveBranch, basePath, asset.location.fileName, asset.location.lineNumber)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={s.fileLink}
+                          title="View on GitHub"
+                        >
+                          {asset.location.fileName}
+                          {asset.location.lineNumber ? `:${asset.location.lineNumber}` : ''}
+                        </a>
+                      ) : (
+                        <span className={s.fileLink}>
+                          {asset.location.fileName}
+                          {asset.location.lineNumber ? `:${asset.location.lineNumber}` : ''}
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <span className={s.noDash}>—</span>
