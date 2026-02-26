@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   ExternalLink, ChevronLeft, ChevronRight, SlidersHorizontal,
   Github, GitBranch, FolderOpen, Sparkles, Loader2,
@@ -103,21 +103,25 @@ function pqcVerdictBadge(asset: CryptoAsset) {
   const v = asset.pqcVerdict;
   if (!v) return null;
 
-  const config: Record<string, { icon: typeof ShieldCheck; cls: string; label: string }> = {
-    [PQCReadinessVerdict.PQC_READY]: { icon: ShieldCheck, cls: s.pqcReady, label: 'PQC Ready' },
-    [PQCReadinessVerdict.NOT_PQC_READY]: { icon: ShieldAlert, cls: s.pqcNotReady, label: 'Not PQC Ready' },
-    [PQCReadinessVerdict.REVIEW_NEEDED]: { icon: ShieldQuestion, cls: s.pqcReview, label: 'Review Needed' },
+  const config: Record<string, { cls: string; label: string; dotCls: string; fillCls: string }> = {
+    [PQCReadinessVerdict.PQC_READY]: { cls: s.pqcReady, label: 'PQC Ready', dotCls: s.verdictDotSafe, fillCls: s.verdictConfFillSafe },
+    [PQCReadinessVerdict.NOT_PQC_READY]: { cls: s.pqcNotReady, label: 'Not Ready', dotCls: s.verdictDotDanger, fillCls: s.verdictConfFillDanger },
+    [PQCReadinessVerdict.REVIEW_NEEDED]: { cls: s.pqcReview, label: 'Review', dotCls: s.verdictDotWarning, fillCls: s.verdictConfFillWarn },
   };
 
   const c = config[v.verdict] || config[PQCReadinessVerdict.REVIEW_NEEDED];
-  const Icon = c.icon;
 
   return (
     <div className={s.verdictGroup}>
       <span className={c.cls}>
-        <Icon className={s.badgeIcon} />
+        <span className={c.dotCls} />
         {c.label}
-        <span className={s.verdictConf}>{v.confidence}%</span>
+        <span className={s.verdictConfWrap}>
+          <span className={s.verdictConfBar}>
+            <span className={c.fillCls} style={{ width: `${v.confidence}%` }} />
+          </span>
+          <span className={s.verdictConfText}>{v.confidence}%</span>
+        </span>
       </span>
       <div className={s.verdictTooltip}>
         <div className={s.tooltipBody}>
@@ -197,6 +201,36 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
   const [suggestions, setSuggestions] = useState<Record<string, SuggestionState>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [insight, setInsight] = useState<InsightState>({ loading: false });
+  const [colWidths, setColWidths] = useState<Record<number, number>>({});
+  const resizingCol = useRef<{ idx: number; startX: number; startW: number } | null>(null);
+
+  const onResizeStart = useCallback((e: React.MouseEvent, colIdx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const th = (e.target as HTMLElement).parentElement!;
+    const startW = th.offsetWidth;
+    resizingCol.current = { idx: colIdx, startX: e.clientX, startW };
+
+    const onMove = (ev: MouseEvent) => {
+      if (!resizingCol.current) return;
+      const diff = ev.clientX - resizingCol.current.startX;
+      const newW = Math.max(60, resizingCol.current.startW + diff);
+      setColWidths(prev => ({ ...prev, [colIdx]: newW }));
+    };
+
+    const onUp = () => {
+      resizingCol.current = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, []);
 
   const effectiveBranch = branch === 'custom' ? customBranch : branch;
 
@@ -638,24 +672,32 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
         <table className={s.table}>
           <thead className={s.thead}>
             <tr>
-              <th className={s.th} onClick={() => toggleSort('safety')}>
+              <th className={s.th} style={colWidths[0] ? { width: colWidths[0] } : undefined} onClick={() => toggleSort('safety')}>
                 Quantum Safety {sortField === 'safety' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 0)} />
               </th>
-              <th className={s.th} onClick={() => toggleSort('name')}>
+              <th className={s.th} style={colWidths[1] ? { width: colWidths[1] } : undefined} onClick={() => toggleSort('name')}>
                 Cryptographic asset {sortField === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 1)} />
               </th>
-              <th className={s.th} onClick={() => toggleSort('primitive')}>
+              <th className={s.th} style={colWidths[2] ? { width: colWidths[2] } : undefined} onClick={() => toggleSort('primitive')}>
                 Primitive {sortField === 'primitive' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 2)} />
               </th>
-              <th className={s.th}>PQC Verdict</th>
-              <th className={s.th} onClick={() => toggleSort('location')}>
+              <th className={s.th} style={colWidths[3] ? { width: colWidths[3] } : undefined}>
+                PQC Verdict
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 3)} />
+              </th>
+              <th className={s.th} style={colWidths[4] ? { width: colWidths[4] } : undefined} onClick={() => toggleSort('location')}>
                 Location {sortField === 'location' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 4)} />
               </th>
-              <th className={s.thAi}>
+              <th className={s.thAi} style={colWidths[5] ? { width: colWidths[5] } : undefined}>
                 <span className={s.thAiInner}>
                   <Sparkles className={s.aiSparkle} />
                   <span className={s.aiLabel}>AI Suggested Fix</span>
                 </span>
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 5)} />
               </th>
               <th className={s.thAction}></th>
             </tr>

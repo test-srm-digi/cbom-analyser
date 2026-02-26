@@ -26,6 +26,21 @@
   color: $text;
 }
 
+@mixin srcTag($color) {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid rgba($color, 0.2);
+  color: rgba($color, 0.75);
+  background: transparent;
+}
+
 // ── Card container ───────────────────────────────────────────
 .card {
   background: $dc1-card;
@@ -559,6 +574,7 @@ $_risk-high: $warning-100;
   width: 100%;
   font-size: 14px;
   border-collapse: collapse;
+  table-layout: auto;
 }
 
 .thead tr {
@@ -573,9 +589,29 @@ $_risk-high: $warning-100;
   cursor: pointer;
   white-space: nowrap;
   font-weight: 600;
+  position: relative;
+  user-select: none;
 
   &:hover {
     color: $dc1-text;
+  }
+}
+
+// Column resize handle
+.resizeHandle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+  z-index: 1;
+
+  &:hover,
+  &.resizing {
+    background: $dc1-blue;
   }
 }
 
@@ -674,30 +710,99 @@ $_risk-high: $warning-100;
 .verdictCell {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .verdictGroup {
   position: relative;
 }
 
-.verdictBadge {
+// PQC badge variants — compact row layout
+$_pqc-review: $warning-200;
+
+.pqcReady {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: $_chip-success;
   cursor: help;
 }
 
-// PQC badge variants
-$_pqc-review: $warning-200; // #955925
-.pqcReady    { @include badge(rgba($_chip-success, 0.14), $_chip-success, rgba($_chip-success, 0.35)); cursor: help; }
-.pqcNotReady { @include badge(rgba($_chip-danger, 0.14), $_chip-danger, rgba($_chip-danger, 0.35)); cursor: help; }
-.pqcReview   { @include badge(rgba($_pqc-review, 0.14), $_pqc-review, rgba($_pqc-review, 0.35)); cursor: help; }
+.pqcNotReady {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: $_chip-danger;
+  cursor: help;
+}
 
-.pqcConfidence {
+.pqcReview {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: $_pqc-review;
+  cursor: help;
+}
+
+// Dot indicator before verdict label
+.verdictDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.verdictDotSafe    { @extend .verdictDot; background: $_chip-success; box-shadow: 0 0 0 2px rgba($_chip-success, 0.2); }
+.verdictDotDanger  { @extend .verdictDot; background: $_chip-danger; box-shadow: 0 0 0 2px rgba($_chip-danger, 0.2); }
+.verdictDotWarning { @extend .verdictDot; background: $_pqc-review; box-shadow: 0 0 0 2px rgba($_pqc-review, 0.2); }
+
+// Confidence: inline mini bar
+.verdictConfWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 2px;
+}
+
+.verdictConfBar {
+  width: 28px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba($dc1-text-muted, 0.15);
+  overflow: hidden;
+}
+
+.verdictConfFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.verdictConfFillSafe   { @extend .verdictConfFill; background: $_chip-success; }
+.verdictConfFillDanger { @extend .verdictConfFill; background: $_chip-danger; }
+.verdictConfFillWarn   { @extend .verdictConfFill; background: $_pqc-review; }
+
+.verdictConfText {
+  font-size: 9px;
+  font-weight: 500;
+  color: $dc1-text-muted;
+}
+
+// Keep old class for backwards compat (no longer visible but referenced)
+.verdictConf {
   font-size: 9px;
   opacity: 0.7;
 }
 
-.verdictConf {
-  @extend .pqcConfidence;
+.badgeIcon {
+  width: 11px;
+  height: 11px;
 }
 
 // PQC tooltip
@@ -789,11 +894,11 @@ $_pqc-review: $warning-200; // #955925
   color: $dc1-blue;
 }
 
-// Detection source badge
-.srcSonar      { @include smallBadge(rgba($dc1-blue, 0.1), $dc1-blue); }
-.srcRegex      { @include smallBadge(rgba($_chip-neutral, 0.1), $_chip-neutral); }
-.srcDependency { @include smallBadge(rgba($_pqc-review, 0.1), $_pqc-review); }
-.srcNetwork    { @include smallBadge(rgba($_ai-purple, 0.1), $_ai-purple); }
+// Detection source badge — subtle inline tag
+.srcSonar      { @include srcTag($dc1-blue); }
+.srcRegex      { @include srcTag($_chip-neutral); }
+.srcDependency { @include srcTag($_pqc-review); }
+.srcNetwork    { @include srcTag($_ai-purple); }
 
 .srcIcon {
   width: 8px;
