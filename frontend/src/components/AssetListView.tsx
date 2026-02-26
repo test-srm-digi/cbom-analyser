@@ -139,31 +139,33 @@ function pqcVerdictBadge(asset: CryptoAsset) {
         </div>
       </div>
       <div className={s.verdictTooltip}>
-        <div className={s.tooltipBody}>
-          {v.reasons.map((r: string, i: number) => (
-            <div key={i} className={s.tooltipRow}>
-              <span className={s.tooltipBullet}>{r.includes('✓') ? '✓' : r.includes('✗') ? '✗' : '•'}</span>
-              <span>{r}</span>
-            </div>
-          ))}
-          {v.parameters && Object.keys(v.parameters).length > 0 && (
-            <div className={s.tooltipParams}>
-              <span className={s.tooltipParamsTitle}>Detected Parameters</span>
-              <div className={s.tooltipParamsGrid}>
-                {Object.entries(v.parameters).map(([k, val]) => (
-                  <div key={k}>
-                    <span className={s.tooltipParamKey}>{k}: </span>
-                    <span className={s.tooltipParamVal}>{String(val)}</span>
-                  </div>
-                ))}
+        <div className={s.verdictTooltipInner}>
+          <div className={s.tooltipBody}>
+            {v.reasons.map((r: string, i: number) => (
+              <div key={i} className={s.tooltipRow}>
+                <span className={s.tooltipBullet}>{r.includes('✓') ? '✓' : r.includes('✗') ? '✗' : '•'}</span>
+                <span>{r}</span>
               </div>
-            </div>
-          )}
-          {v.recommendation && (
-            <div className={s.tooltipRec}>
-              {v.recommendation}
-            </div>
-          )}
+            ))}
+            {v.parameters && Object.keys(v.parameters).length > 0 && (
+              <div className={s.tooltipParams}>
+                <span className={s.tooltipParamsTitle}>Detected Parameters</span>
+                <div className={s.tooltipParamsGrid}>
+                  {Object.entries(v.parameters).map(([k, val]) => (
+                    <div key={k}>
+                      <span className={s.tooltipParamKey}>{k}: </span>
+                      <span className={s.tooltipParamVal}>{String(val)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {v.recommendation && (
+              <div className={s.tooltipRec}>
+                {v.recommendation}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
