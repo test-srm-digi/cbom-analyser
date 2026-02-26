@@ -11,15 +11,18 @@
 3. [Docker Deployment](#docker-deployment)
 4. [API Reference](#api-reference)
 5. [Scanning Approaches](#scanning-approaches)
-6. [Variable Resolution & Context Scanning](#variable-resolution--context-scanning)
-7. [Third-Party Dependency Scanning](#third-party-dependency-scanning)
-8. [PQC Readiness Verdicts](#pqc-readiness-verdicts)
-9. [Quantum Safety Dashboard](#quantum-safety-dashboard)
-10. [Project Insight Panel](#project-insight-panel)
-11. [AI-Powered Suggested Fixes](#ai-powered-suggested-fixes)
-12. [Sample Data & Demo Code](#sample-data--demo-code)
-13. [Configuration](#configuration)
-14. [CycloneDX 1.7 Standard](#cyclonedx-17-standard)
+6. [UI Navigation & Application Layout](#ui-navigation--application-layout)
+7. [Integrations Hub](#integrations-hub)
+8. [Discovery Pages](#discovery-pages)
+9. [Variable Resolution & Context Scanning](#variable-resolution--context-scanning)
+10. [Third-Party Dependency Scanning](#third-party-dependency-scanning)
+11. [PQC Readiness Verdicts](#pqc-readiness-verdicts)
+12. [Quantum Safety Dashboard](#quantum-safety-dashboard)
+13. [Project Insight Panel](#project-insight-panel)
+14. [AI-Powered Suggested Fixes](#ai-powered-suggested-fixes)
+15. [Sample Data & Demo Code](#sample-data--demo-code)
+16. [Configuration](#configuration)
+17. [CycloneDX 1.7 Standard](#cyclonedx-17-standard)
 
 ---
 
@@ -742,6 +745,225 @@ curl -X POST http://localhost:3001/api/scan-network/merge/urn:uuid:YOUR-CBOM-ID 
 | **sonar-cryptography** | High | Slow | Very High | Java, Python, Go | No | No | No |
 | **Network TLS Scanner** | None | Fast | High (TLS) | N/A | No | No | Yes |
 | **Full Pipeline** | Low–High | Medium | Highest | All | Yes | Yes | Yes |
+
+---
+
+## UI Navigation & Application Layout
+
+The frontend is organized as a single-page application with a persistent sidebar and a main content area. All pages are accessible from the **Quantum Readiness Advisor** section in the sidebar.
+
+### Sidebar Structure
+
+```
+digicert ONE
+└─ Quantum Readiness Advisor
+   ├─ Dashboard              — PQC readiness overview & risk score
+   ├─ Inventory              — Full crypto-asset table with filters
+   ├─ Visualize              — Dependency & algorithm graphs
+   ├─ Violations             — Policy violations & compliance gaps
+   ├─ Integrations           — Configure data sources (see below)
+   ├─ Discovery              — Expandable parent with 6 child pages:
+   │  ├─ Certificates        — TLS / PKI certificates (from DigiCert TLM)
+   │  ├─ Endpoints           — Network TLS endpoints (from Network Scanner)
+   │  ├─ Software            — Signing artifacts (from DigiCert STM)
+   │  ├─ Devices             — IoT / OT devices (from DigiCert DTM)
+   │  ├─ Code Analysis       — Crypto API calls (from GitHub Scanner)
+   │  └─ CBOM Imports        — CycloneDX CBOM files (from CI/CD)
+   ├─ Network Scanner        — Live TLS endpoint scanner
+   ├─ Tracking               — Migration task tracking
+   ├─ Policies               — Crypto policy management
+   └─ Settings               — Application configuration
+```
+
+Additional sidebar sections (below the main nav):
+- **Private CA** — Private CA certificate quantum assessment
+- **Trust Lifecycle** — (Coming Soon) End-to-end PQC migration workflows
+- **Software Trust** — (Coming Soon) Software supply-chain crypto scanning
+- **Device Trust** — IoT firmware crypto inventory
+- **Document Trust** — Document-signing PQC migration
+
+The Discovery parent item is **auto-expandable** — clicking it reveals 6 child navigation items and navigates to the first child. When any child page is active, the parent stays highlighted and expanded.
+
+---
+
+## Integrations Hub
+
+The **Integrations** page is the central configuration point for connecting external data sources to the crypto inventory. It provides a catalog-driven workflow for adding, configuring, and managing integrations.
+
+### Integration Catalog
+
+Six pre-built integration templates are available:
+
+| Integration | Vendor | Category | Description |
+|-------------|--------|----------|-------------|
+| **DigiCert Trust Lifecycle Manager** | DigiCert | `digicert` | Import certificates, keys, and endpoint data from TLM. Enables discovery of TLS certificates, CA hierarchies, and cryptographic posture across managed PKI. |
+| **DigiCert Software Trust Manager** | DigiCert | `digicert` | Import code signing certificates, software hashes, and SBOM-linked crypto assets. Analyze signing algorithms across your software supply chain. |
+| **DigiCert Device Trust Manager** | DigiCert | `digicert` | Import IoT device certificates and embedded crypto configurations. Track quantum readiness of device fleets and firmware crypto. |
+| **Network TLS Scanner** | Built-in | `scanner` | Scan your network to discover TLS endpoints, cipher suites, certificate chains, and key exchange algorithms. |
+| **CBOM File Import** | CycloneDX | `import` | Upload or link CycloneDX CBOM files from CI/CD pipelines, SBOM tools, or manual audits. |
+| **GitHub Repository Scanner** | GitHub | `repository` | Scan GitHub repos for crypto API usage, hardcoded keys, certificate files, and crypto library dependencies. |
+
+### Configuration Workflow
+
+Each integration follows a 4-step configuration flow inside a slide-out drawer:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Step 1 — INTEGRATION NAME                                   │
+│  User-friendly name for this integration instance            │
+│  e.g., "Production TLM — US East"                            │
+├──────────────────────────────────────────────────────────────┤
+│  Step 2 — CONNECTION DETAILS                                 │
+│  Type-specific fields (API URL, API Key, tokens, etc.)       │
+│  Each template defines its own required/optional fields      │
+├──────────────────────────────────────────────────────────────┤
+│  Step 3 — IMPORT SCOPE (multi-select)                        │
+│  Choose which data categories to pull from this source       │
+│  Each integration has unique scope options (see below)       │
+├──────────────────────────────────────────────────────────────┤
+│  Step 4 — SYNC SCHEDULE                                      │
+│  Manual only │ Every hour │ 6h │ 12h │ 24h                  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+The drawer also includes a **Test Connection** button that validates credentials before saving.
+
+### Per-Integration Import Scopes
+
+Each integration type has unique import scope options that reflect the actual data categories available from that source:
+
+**DigiCert Trust Lifecycle Manager (TLM):**
+
+| Scope | Description |
+|-------|-------------|
+| Certificates | TLS, CA, and private certificates from managed PKI |
+| Endpoints | Hosts and IPs discovered via network & cloud scans |
+| Keys | Key algorithms, strength, and lifecycle data |
+| CA Hierarchies | Intermediate & root CA chain mappings |
+
+**DigiCert Software Trust Manager (STM):**
+
+| Scope | Description |
+|-------|-------------|
+| Signing Certificates | Code signing & timestamping certificates |
+| Keypairs | Signing key pairs and algorithm metadata |
+| Releases | Software release windows and signing audit trails |
+| Threat Detection | Vulnerability and threat scan results |
+
+**DigiCert Device Trust Manager (DTM):**
+
+| Scope | Description |
+|-------|-------------|
+| Device Certificates | IoT/OT device identity certificates |
+| Devices | Device records, enrollment status, and profiles |
+| Firmware | Firmware versions and signing verification data |
+| Device Groups | Logical groupings and enrollment profiles |
+
+**Network TLS Scanner:**
+
+| Scope | Description |
+|-------|-------------|
+| Endpoints | TLS-enabled hosts, IPs, and port configurations |
+| Certificates | Certificate chains extracted from TLS handshakes |
+| Cipher Suites | Supported cipher suites per endpoint |
+| Key Exchange | KEX algorithms (ECDHE, X25519, ML-KEM, etc.) |
+
+**CBOM File Import:**
+
+| Scope | Description |
+|-------|-------------|
+| Crypto Components | Algorithms, protocols, and crypto primitives from CBOM |
+| Certificates | Certificates referenced in the CBOM |
+| Keys | Key material and parameters in the CBOM |
+| Dependencies | Crypto library dependencies and versions |
+
+**GitHub Repository Scanner:**
+
+| Scope | Description |
+|-------|-------------|
+| Crypto API Calls | Detect cryptographic function calls in source code |
+| Dependencies | Crypto library imports and version tracking |
+| Key & Cert Files | Certificate and key files in the repository |
+| Configurations | Crypto-related config files (TLS, SSH, etc.) |
+
+### Integration Card States
+
+Once configured, each integration appears as a card on the Integrations page showing:
+- **Status badge** — Connected / Disconnected / Error / Syncing
+- **Enabled toggle** — Enable or disable the integration without deleting it
+- **Last sync timestamp** — When data was last pulled
+- **Quick actions** — Edit, Sync Now, Delete
+
+### Stats Row
+
+The page header displays aggregate statistics:
+- Total integrations configured
+- Active (connected & enabled) count
+- Errored integrations
+- Last sync time across all integrations
+
+---
+
+## Discovery Pages
+
+The **Discovery** section contains 6 specialized pages, each showing cryptographic assets discovered from a specific integration source. Every page follows the same pattern: an **empty state** with guided setup steps when no data is loaded, and a rich data table once assets are available.
+
+### Page Architecture
+
+Each discovery page provides:
+
+| Component | Description |
+|-----------|-------------|
+| **Header** | Breadcrumb (`Discovery`) + page title + contextual subtitle |
+| **Stat Cards** | Quick metrics — total count, quantum-safe %, key algorithm breakdown |
+| **Toolbar** | Search bar, export options, filter controls |
+| **Data Table** | Sortable, filterable table with type-specific columns |
+| **AI Banner** | Contextual AI insight banner (when data is loaded) |
+| **Empty State** | Integration setup guide with step-by-step instructions |
+
+### Empty State → Integration Flow
+
+When no data has been imported, each discovery page shows an **EmptyState** component with:
+
+1. An illustration and message explaining the data source
+2. **Step-by-step integration instructions** specific to that page:
+   - Navigate to Integrations page
+   - Locate the relevant catalog template
+   - Configure connection credentials
+   - Select import scope
+   - Run initial sync
+3. A **"Load Sample Data"** button to populate the page with demo data for exploration
+
+### Discovery Tabs
+
+| Page | Source Integration | Key Columns | Description |
+|------|-------------------|-------------|-------------|
+| **Certificates** | DigiCert TLM | Common Name, CA Vendor, Status, Key Algorithm, Key Length, Quantum Safe | TLS / PKI certificates — algorithm inventory, expiry tracking, PQC-readiness |
+| **Endpoints** | Network Scanner | Hostname, IP, Port, TLS Version, Cipher Suite, Key Agreement, Quantum Safe | Network endpoints — TLS config, cipher suites, key-agreement protocols |
+| **Software** | DigiCert STM | Name, Version, Vendor, Signing Algorithm, Key Length, Hash, Quantum Safe | Software releases — signing algorithm and PQC migration status |
+| **Devices** | DigiCert DTM | Device Name, Type, Manufacturer, Firmware, Cert Algorithm, Key Length, Enrollment | IoT devices — firmware crypto, certificate enrollment, key-strength audit |
+| **Code Analysis** | GitHub Scanner | Finding, Severity, Algorithm, Key Size, File Path, Language | Crypto API calls in source code — algorithm, key size, severity classification |
+| **CBOM Imports** | CBOM File Import | Component Name, Type, Algorithm, Version, Quantum Safe, Spec Version | CycloneDX CBOM contents — crypto component inventory and PQC breakdown |
+
+### Integration → Discovery Data Flow
+
+```
+┌─────────────────────┐     ┌─────────────────────┐     ┌──────────────────────┐
+│   Integrations Hub  │────▶│   Sync / Import     │────▶│   Discovery Pages    │
+│                     │     │                     │     │                      │
+│  Configure sources  │     │  Pull data from     │     │  View, search, and   │
+│  Set import scopes  │     │  external APIs or   │     │  analyze discovered  │
+│  Schedule syncs     │     │  file imports       │     │  crypto assets       │
+└─────────────────────┘     └─────────────────────┘     └──────────────────────┘
+```
+
+Each integration type feeds into its corresponding Discovery page:
+- **DigiCert TLM** → Certificates page
+- **Network TLS Scanner** → Endpoints page
+- **DigiCert STM** → Software page
+- **DigiCert DTM** → Devices page
+- **GitHub Repository Scanner** → Code Analysis page
+- **CBOM File Import** → CBOM Imports page
 
 ---
 
