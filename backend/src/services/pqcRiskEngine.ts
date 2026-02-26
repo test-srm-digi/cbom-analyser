@@ -483,6 +483,7 @@ export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
         reasons: [
           `${asset.name} is classified as not quantum-safe.`,
           ...(profile.notes ? [profile.notes] : []),
+          ...(asset.description ? [`\u{1F50D} ${asset.description}`] : []),
         ],
         recommendation: profile.recommendedPQC
           ? `Replace with ${profile.recommendedPQC}.`
@@ -495,6 +496,7 @@ export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
         reasons: [
           `${asset.name} is classified as quantum-safe.`,
           ...(profile.notes ? [profile.notes] : []),
+          ...(asset.description ? [`\u{1F50D} ${asset.description}`] : []),
         ],
         recommendation: 'No migration needed.',
       };
@@ -505,6 +507,7 @@ export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
         reasons: [
           `${asset.name} quantum safety is conditional on configuration/parameters.`,
           ...(profile.notes ? [profile.notes] : []),
+          ...(asset.description ? [`\u{1F50D} ${asset.description}`] : []),
         ],
         recommendation: profile.recommendedPQC
           ? `Consider ${profile.recommendedPQC} if current parameters are insufficient.`

@@ -733,6 +733,11 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                   {asset.keyLength && (
                     <span className="text-gray-500 text-xs ml-2">({asset.keyLength}-bit)</span>
                   )}
+                  {asset.description && (
+                    <p className="text-[10px] text-gray-500 mt-0.5 max-w-[340px] leading-tight" title={asset.description}>
+                      {asset.description.length > 120 ? asset.description.slice(0, 117) + '…' : asset.description}
+                    </p>
+                  )}
                 </td>
 
                 {/* Primitive */}
