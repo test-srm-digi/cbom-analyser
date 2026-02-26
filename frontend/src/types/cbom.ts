@@ -258,3 +258,53 @@ export interface PrimitiveDistribution {
   count: number;
   percentage: number;
 }
+
+// ─── Integrations & Discovery types ──────────────────────────────────────────
+
+export type IntegrationStatus = 'connected' | 'disconnected' | 'error';
+
+export interface Integration {
+  id: string;
+  name: string;
+  description: string;
+  status: IntegrationStatus;
+  configUrl: string;
+  lastImport: string;
+  enabled: boolean;
+  icon?: string;
+}
+
+export type CertificateStatus = 'Issued' | 'Expired' | 'Revoked' | 'Pending';
+
+export interface DiscoveryCertificate {
+  id: string;
+  commonName: string;
+  caVendor: string;
+  status: CertificateStatus;
+  keyAlgorithm: string;
+  keyLength: string;
+  quantumSafe: boolean;
+  source: string;
+  expiryDate?: string;
+}
+
+export interface DiscoveryEndpoint {
+  id: string;
+  hostname: string;
+  ipAddress: string;
+  port: number;
+  tlsVersion: string;
+  keyAgreement: string;
+  quantumSafe: boolean;
+  source: string;
+}
+
+export interface DiscoverySoftware {
+  id: string;
+  name: string;
+  version: string;
+  vendor: string;
+  cryptoLibraries: string[];
+  quantumSafe: boolean;
+  source: string;
+}

@@ -1,0 +1,440 @@
+@use '../styles/variables' as *;
+
+/* ── Tabs ─────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.tab {
+  padding: 10px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: $dc1-text-secondary;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color $transition-fast, border-color $transition-fast;
+
+  &:hover { color: $dc1-text; }
+}
+
+.tabActive {
+  @extend .tab;
+  color: $dc1-blue;
+  border-bottom-color: $dc1-blue;
+  font-weight: 600;
+}
+
+/* ── Stat cards ───────────────────────────────────────────── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.statCard {
+  background: $dc1-card;
+  border-radius: $dc1-radius;
+  border: 1px solid $dc1-border;
+  padding: 20px 24px;
+  border-left: 4px solid $dc1-blue;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statCardSuccess { @extend .statCard; border-left-color: $dc1-success; }
+.statCardDanger  { @extend .statCard; border-left-color: $dc1-danger; }
+
+.statHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.statTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: $dc1-text;
+}
+
+.statIcon {
+  width: 18px;
+  height: 18px;
+  color: $dc1-text-muted;
+}
+
+.statIconSuccess { @extend .statIcon; color: $dc1-success; }
+.statIconDanger  { @extend .statIcon; color: $dc1-danger; }
+
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: $dc1-blue;
+  line-height: 1.2;
+}
+
+.statValueSuccess { @extend .statValue; color: $dc1-success; }
+.statValueDanger  { @extend .statValue; color: $dc1-danger; }
+
+.statSub {
+  font-size: 12px;
+  color: $dc1-text-muted;
+}
+
+/* ── AI recommendation banner ─────────────────────────────── */
+.aiBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(90deg, #FFFBEB 0%, #FEF3C7 100%);
+  border: 1px solid #F5D98C;
+  border-radius: $dc1-radius;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+}
+
+.aiBannerIcon {
+  width: 22px;
+  height: 22px;
+  color: #D97706;
+  flex-shrink: 0;
+}
+
+.aiBannerText {
+  flex: 1;
+  font-size: 13px;
+  color: $dc1-text;
+  line-height: 1.5;
+
+  strong { font-weight: 700; }
+}
+
+.aiBannerBtn {
+  padding: 7px 18px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  color: $dc1-text;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background $transition-fast;
+
+  &:hover { background: $neutral-50; }
+}
+
+/* ── Toolbar ──────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.searchBar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  padding: 8px 14px;
+  background: $dc1-card;
+}
+
+.searchIcon {
+  width: 16px;
+  height: 16px;
+  color: $dc1-text-muted;
+  flex-shrink: 0;
+}
+
+.searchInput {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: $dc1-text;
+  flex: 1;
+  font-family: $dc1-font;
+
+  &::placeholder { color: $dc1-text-muted; }
+}
+
+.exportBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  background: $dc1-card;
+  color: $dc1-text;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover { background: $neutral-50; }
+}
+
+.exportIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.filterToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  background: $dc1-card;
+  color: $dc1-text-secondary;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover { background: $neutral-50; }
+}
+
+.filterIcon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Table card ───────────────────────────────────────────── */
+.tableCard {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 20px 24px;
+  overflow-x: auto;
+}
+
+.tableTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0 0 16px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: $dc1-text-secondary;
+  border-bottom: 1px solid $dc1-border;
+  white-space: nowrap;
+}
+
+.sortIcon {
+  width: 12px;
+  height: 12px;
+  vertical-align: middle;
+  margin-left: 4px;
+  color: $dc1-text-muted;
+}
+
+.filterRow td {
+  padding: 6px 12px 10px;
+  border-bottom: 1px solid $dc1-border;
+}
+
+.filterInput {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  font-size: 12px;
+  color: $dc1-text;
+  background: $dc1-card;
+  font-family: $dc1-font;
+
+  &::placeholder { color: $dc1-text-muted; }
+}
+
+.filterSelect {
+  @extend .filterInput;
+  appearance: auto;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid rgba($dc1-border, 0.5);
+  transition: background $transition-fast;
+
+  &:hover { background: rgba($dc1-bg, 0.5); }
+}
+
+.table tbody td {
+  padding: 12px 12px;
+  color: $dc1-text;
+  vertical-align: middle;
+}
+
+/* ── Badges ───────────────────────────────────────────────── */
+.badgeIssued {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: $dc1-success;
+  color: $dc1-card;
+}
+
+.badgeExpired {
+  @extend .badgeIssued;
+  background: $dc1-danger;
+}
+
+.badgeRevoked {
+  @extend .badgeIssued;
+  background: $neutral-600;
+}
+
+.badgePending {
+  @extend .badgeIssued;
+  background: $dc1-warning;
+  color: $dc1-text;
+}
+
+.qsYes {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: $dc1-success-bg;
+  color: $dc1-success;
+  border: 1px solid rgba($dc1-success, 0.3);
+}
+
+.qsNo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: $dc1-danger-bg;
+  color: $dc1-danger;
+  border: 1px solid rgba($dc1-danger, 0.3);
+}
+
+.qsDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.sourceLink {
+  color: $dc1-blue;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+
+  &:hover { text-decoration: underline; }
+}
+
+/* ── Actions column ───────────────────────────────────────── */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upgradeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+  color: $dc1-card;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity $transition-fast;
+
+  &:hover { opacity: 0.9; }
+}
+
+.upgradeIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  color: $dc1-text-secondary;
+  cursor: pointer;
+  transition: background $transition-fast, color $transition-fast;
+
+  &:hover {
+    background: $neutral-50;
+    color: $dc1-text;
+  }
+}
+
+.actionIcon {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── TLS version pill ─────────────────────────────────────── */
+.tlsPill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  background: $neutral-100;
+  color: $dc1-text;
+  border: 1px solid $dc1-border;
+}
+
+/* ── Software crypto libs ─────────────────────────────────── */
+.libChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.libChip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: monospace;
+  background: $dc1-blue-light;
+  color: $dc1-blue-dark;
+  border: 1px solid rgba($dc1-blue, 0.15);
+}

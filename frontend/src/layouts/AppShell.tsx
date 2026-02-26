@@ -40,6 +40,7 @@ export type NavPage =
   | 'tracking'
   | 'policies'
   | 'integrations'
+  | 'discovery'
   | 'settings';
 
 interface Props {
@@ -56,6 +57,7 @@ const mainNavItems: { id: NavPage; label: string; icon: typeof faGauge }[] = [
   { id: 'visualize', label: 'Visualize', icon: faDiagramProject },
   { id: 'violations', label: 'Violations', icon: faTriangleExclamation },
   { id: 'integrations', label: 'Integrations', icon: faPlug },
+  { id: 'discovery', label: 'Discovery', icon: faMagnifyingGlass },
   { id: 'tracking', label: 'Tracking', icon: faListCheck },
   { id: 'policies', label: 'Policies', icon: faShieldHalved },
   { id: 'settings', label: 'Settings', icon: faGear },

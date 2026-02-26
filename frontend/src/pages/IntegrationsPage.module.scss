@@ -1,0 +1,267 @@
+@use '../styles/variables' as *;
+
+/* ── Page header ──────────────────────────────────────────── */
+.header {
+  background: linear-gradient(135deg, $dc1-blue-light 0%, $dc1-card 100%);
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-lg;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: $dc1-blue;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: $dc1-text-secondary;
+  margin: 0;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid $dc1-border;
+  margin-bottom: 28px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: $dc1-text-secondary;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color $transition-fast, border-color $transition-fast;
+
+  &:hover {
+    color: $dc1-text;
+  }
+}
+
+.tabActive {
+  @extend .tab;
+  color: $dc1-blue;
+  border-bottom-color: $dc1-blue;
+  font-weight: 600;
+}
+
+.tabIcon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Integration cards grid ───────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  gap: 20px;
+}
+
+/* ── Single integration card ──────────────────────────────── */
+.card {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: box-shadow $transition-fast;
+
+  &:hover {
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cardIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid $dc1-border;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: $dc1-text-muted;
+}
+
+.cardIconSvg {
+  width: 18px;
+  height: 18px;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.statusConnected {
+  @extend .statusBadge;
+  background: $dc1-success;
+  color: $dc1-card;
+}
+
+.statusDisconnected {
+  @extend .statusBadge;
+  background: $neutral-400;
+  color: $dc1-card;
+}
+
+.statusError {
+  @extend .statusBadge;
+  background: $dc1-danger;
+  color: $dc1-card;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.cardDescription {
+  font-size: 13px;
+  color: $dc1-text-secondary;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Field rows ───────────────────────────────────────────── */
+.cardFields {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.field {
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  padding: 10px 14px;
+  margin-bottom: -1px;
+
+  &:first-child { border-radius: $dc1-radius-sm $dc1-radius-sm 0 0; }
+  &:last-child  { border-radius: 0 0 $dc1-radius-sm $dc1-radius-sm; margin-bottom: 0; }
+}
+
+.fieldLabel {
+  font-size: 11px;
+  color: $dc1-text-muted;
+  margin-bottom: 2px;
+}
+
+.fieldValue {
+  font-size: 14px;
+  color: $dc1-text;
+  font-weight: 500;
+}
+
+/* ── Footer: toggle + configure ───────────────────────────── */
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Toggle switch */
+.toggleWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  cursor: pointer;
+  background: $neutral-300;
+  border: none;
+  transition: background $transition-fast;
+  flex-shrink: 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: $dc1-card;
+    transition: transform $transition-fast;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+}
+
+.toggleOn {
+  @extend .toggle;
+  background: $dc1-blue;
+
+  &::after {
+    transform: translateX(18px);
+  }
+}
+
+.toggleLabel {
+  font-size: 13px;
+  color: $dc1-text;
+  font-weight: 500;
+}
+
+.configBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  color: $dc1-text;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background $transition-fast, border-color $transition-fast;
+
+  &:hover {
+    background: $neutral-50;
+    border-color: $neutral-400;
+  }
+}
+
+.configIcon {
+  width: 14px;
+  height: 14px;
+  color: $dc1-text-secondary;
+}

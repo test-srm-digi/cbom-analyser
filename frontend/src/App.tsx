@@ -5,6 +5,8 @@ import InventoryPage from './pages/InventoryPage';
 import VisualizePage from './pages/VisualizePage';
 import ViolationsPage from './pages/ViolationsPage';
 import NetworkPage from './pages/NetworkPage';
+import IntegrationsPage from './pages/IntegrationsPage';
+import DiscoveryPage from './pages/DiscoveryPage';
 import {
   CBOMDocument,
   QuantumReadinessScore,
@@ -167,7 +169,9 @@ export default function App() {
       case 'violations':
         return <ViolationsPage cbom={cbom} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
       case 'integrations':
-        return <NetworkPage />;
+        return <IntegrationsPage />;
+      case 'discovery':
+        return <DiscoveryPage />;
       default:
         return (
           <div className="dc1-placeholder-page">
