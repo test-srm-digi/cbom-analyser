@@ -13,6 +13,8 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { Integration } from '../models';
+import { executeSyncForIntegration } from '../services/syncExecutor';
+import { onScheduleChanged, onIntegrationDeleted, onIntegrationToggled, scheduleJob } from '../services/syncScheduler';
 
 const router = Router();
 
@@ -75,6 +77,11 @@ router.post('/integrations', async (req: Request, res: Response) => {
       syncSchedule: syncSchedule || '24h',
     });
 
+    // Schedule cron job if non-manual
+    if (integration.syncSchedule !== 'manual') {
+      scheduleJob(integration.id, integration.syncSchedule, integration.name);
+    }
+
     res.status(201).json({ success: true, data: integration });
   } catch (error) {
     console.error('Error creating integration:', error);
@@ -110,6 +117,16 @@ router.put('/integrations/:id', async (req: Request, res: Response) => {
       ...(enabled !== undefined && { enabled }),
     });
 
+    // Notify scheduler of schedule or enabled changes
+    if (syncSchedule !== undefined || enabled !== undefined) {
+      onScheduleChanged(
+        integration.id,
+        integration.syncSchedule,
+        integration.name,
+        integration.enabled,
+      );
+    }
+
     res.json({ success: true, data: integration });
   } catch (error) {
     console.error('Error updating integration:', error);
@@ -126,6 +143,7 @@ router.delete('/integrations/:id', async (req: Request, res: Response) => {
     }
 
     await integration.destroy();
+    onIntegrationDeleted(integration.id);
     res.json({ success: true, message: 'Integration deleted' });
   } catch (error) {
     console.error('Error deleting integration:', error);
@@ -149,6 +167,9 @@ router.patch('/integrations/:id/toggle', async (req: Request, res: Response) => 
         : 'disabled',
     });
 
+    // Start or stop cron job based on new enabled state
+    onIntegrationToggled(integration.id, newEnabled, integration.syncSchedule, integration.name);
+
     res.json({ success: true, data: integration });
   } catch (error) {
     console.error('Error toggling integration:', error);
@@ -164,24 +185,33 @@ router.post('/integrations/:id/sync', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Integration not found' });
     }
 
-    // Mark as syncing
-    await integration.update({ status: 'testing' });
+    if (!integration.enabled) {
+      return res.status(400).json({ success: false, message: 'Integration is disabled — enable it before syncing' });
+    }
 
-    // Simulate sync (replace with real connector logic later)
-    setTimeout(async () => {
-      try {
-        await integration.update({
-          status: 'connected',
-          lastSync: new Date().toLocaleString(),
-          lastSyncItems: Math.floor(Math.random() * 80) + 20,
-          lastSyncErrors: 0,
-        });
-      } catch (err) {
-        console.error('Error completing sync:', err);
-      }
-    }, 3000);
+    // Execute sync via the SyncExecutor (creates SyncLog, calls connector, persists data)
+    const result = await executeSyncForIntegration(integration.id, 'manual');
 
-    res.json({ success: true, message: 'Sync started', data: integration });
+    // Reload integration to get updated metadata
+    await integration.reload();
+
+    res.json({
+      success: result.success,
+      message: result.success
+        ? `Sync completed: ${result.itemsCreated} items fetched in ${result.durationMs}ms`
+        : `Sync completed with ${result.errors.length} error(s)`,
+      data: {
+        integration,
+        syncResult: {
+          syncLogId: result.syncLogId,
+          itemsFetched: result.itemsFetched,
+          itemsCreated: result.itemsCreated,
+          itemsDeleted: result.itemsDeleted,
+          errors: result.errors,
+          durationMs: result.durationMs,
+        },
+      },
+    });
   } catch (error) {
     console.error('Error triggering sync:', error);
     res.status(500).json({ success: false, message: 'Failed to trigger sync' });

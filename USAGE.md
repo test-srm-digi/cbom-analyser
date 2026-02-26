@@ -17,16 +17,19 @@
 9. [Database Setup (MariaDB)](#database-setup-mariadb)
 10. [Integrations REST API](#integrations-rest-api)
 11. [Discovery Data REST API](#discovery-data-rest-api)
-12. [Frontend State Management (RTK Query)](#frontend-state-management-rtk-query)
-13. [Variable Resolution & Context Scanning](#variable-resolution--context-scanning)
-14. [Third-Party Dependency Scanning](#third-party-dependency-scanning)
-15. [PQC Readiness Verdicts](#pqc-readiness-verdicts)
-16. [Quantum Safety Dashboard](#quantum-safety-dashboard)
-17. [Project Insight Panel](#project-insight-panel)
-18. [AI-Powered Suggested Fixes](#ai-powered-suggested-fixes)
-19. [Sample Data & Demo Code](#sample-data--demo-code)
-20. [Configuration](#configuration)
-21. [CycloneDX 1.7 Standard](#cyclonedx-17-standard)
+12. [Sync Scheduler](#sync-scheduler)
+13. [Sync Logs REST API](#sync-logs-rest-api)
+14. [Scheduler REST API](#scheduler-rest-api)
+15. [Frontend State Management (RTK Query)](#frontend-state-management-rtk-query)
+16. [Variable Resolution & Context Scanning](#variable-resolution--context-scanning)
+17. [Third-Party Dependency Scanning](#third-party-dependency-scanning)
+18. [PQC Readiness Verdicts](#pqc-readiness-verdicts)
+19. [Quantum Safety Dashboard](#quantum-safety-dashboard)
+20. [Project Insight Panel](#project-insight-panel)
+21. [AI-Powered Suggested Fixes](#ai-powered-suggested-fixes)
+22. [Sample Data & Demo Code](#sample-data--demo-code)
+23. [Configuration](#configuration)
+24. [CycloneDX 1.7 Standard](#cyclonedx-17-standard)
 
 ---
 
@@ -1043,8 +1046,9 @@ pool: {
 | `Device` | `devices` | IoT/industrial devices from DigiCert Device Trust Manager |
 | `CodeFinding` | `code_findings` | Crypto API findings from GitHub Repository Scanner |
 | `CbomImport` | `cbom_imports` | CycloneDX CBOM file import records |
+| `SyncLog` | `sync_logs` | Audit trail of every sync run (scheduled or manual) |
 
-> All six discovery tables have an `integration_id` foreign key referencing `integrations.id` with `ON DELETE CASCADE` — deleting an integration removes all its discovered data.
+> All six discovery tables and `sync_logs` have an `integration_id` foreign key referencing `integrations.id` with `ON DELETE CASCADE` — deleting an integration removes all its discovered data and sync history.
 
 #### Integration Table Schema
 
@@ -1182,6 +1186,27 @@ pool: {
 | `status` | `ENUM` | `Processed`, `Processing`, `Failed`, `Partial` |
 | `source` | `VARCHAR(100)` | Data source identifier |
 | `application_name` | `VARCHAR(255)` | Application name (nullable) |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
+
+#### Sync Logs Table Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `integration_id` | `VARCHAR(36)` FK | References `integrations.id` (CASCADE) |
+| `trigger` | `ENUM` | `scheduled`, `manual` |
+| `status` | `ENUM` | `running`, `success`, `partial`, `failed` |
+| `started_at` | `VARCHAR(100)` | ISO timestamp when the sync started |
+| `completed_at` | `VARCHAR(100)` | ISO timestamp when the sync finished (nullable) |
+| `duration_ms` | `INTEGER` | Duration of the sync run in milliseconds (nullable) |
+| `items_fetched` | `INTEGER` | Number of items fetched from the connector (default 0) |
+| `items_created` | `INTEGER` | Number of items bulk-inserted into the discovery table (default 0) |
+| `items_updated` | `INTEGER` | Number of items updated (default 0, reserved for future delta sync) |
+| `items_deleted` | `INTEGER` | Number of old items deleted in full-refresh (default 0) |
+| `errors` | `INTEGER` | Total error count (default 0) |
+| `error_details` | `JSON` | Array of error message strings (nullable) |
+| `sync_schedule` | `VARCHAR(10)` | The schedule that triggered this sync (e.g. `6h`, `manual`) |
 | `created_at` | `DATETIME` | Auto-managed by Sequelize |
 | `updated_at` | `DATETIME` | Auto-managed by Sequelize |
 
@@ -1382,6 +1407,221 @@ curl -X DELETE http://localhost:3001/api/certificates/integration/<integrationId
 
 ---
 
+## Sync Scheduler
+
+The backend includes a cron-based sync scheduler that automatically pulls data from external integrations on a configurable schedule. It uses **`node-cron`** for in-process cron job scheduling — no external daemon or message queue required.
+
+### Architecture Overview
+
+```
+┌──────────────────────┐
+│  Integration CRUD    │  ← user creates/updates/deletes integrations
+│  (REST routes)       │
+└──────┬───────────────┘
+       │  lifecycle events (scheduleJob / onScheduleChanged / onIntegrationDeleted / onIntegrationToggled)
+       ▼
+┌──────────────────────┐
+│  SyncScheduler       │  ← singleton, manages Map<integrationId, ScheduledJob>
+│  (node-cron)         │  ← starts/stops/restarts cron tasks per integration
+└──────┬───────────────┘
+       │  on cron tick (or manual trigger)
+       ▼
+┌──────────────────────┐
+│  SyncExecutor        │  ← 7-step sync lifecycle per integration
+│                      │  ← creates SyncLog → calls connector → bulk inserts → finalises log
+└──────┬───────────────┘
+       │
+       ▼
+┌──────────────────────┐
+│  Connectors          │  ← per-type data fetcher (e.g. fetchCertificates, fetchEndpoints)
+│  (CONNECTOR_REGISTRY)│  ← maps templateType → { fetch, model, label }
+└──────┬───────────────┘
+       │
+       ▼
+┌──────────────────────┐
+│  Discovery Tables    │  ← full-refresh: delete old → bulk insert new
+│  + SyncLog Table     │  ← audit trail with metrics
+└──────────────────────┘
+```
+
+### Schedule-to-Cron Mapping
+
+| Sync Schedule | Cron Expression | Description |
+|---------------|-----------------|-------------|
+| `manual` | *(no cron job)* | Only syncs when user clicks "Sync Now" |
+| `1h` | `0 * * * *` | Every hour at minute 0 |
+| `6h` | `0 */6 * * *` | Every 6 hours (00:00, 06:00, 12:00, 18:00) |
+| `12h` | `0 */12 * * *` | Every 12 hours (00:00, 12:00) |
+| `24h` | `0 2 * * *` | Daily at 02:00 |
+
+### Connector Registry
+
+Each integration `templateType` maps to a connector in the `CONNECTOR_REGISTRY`:
+
+| Template Type | Connector Function | Discovery Table | Label |
+|---------------|-------------------|-----------------|-------|
+| `digicert-tlm` | `fetchCertificates()` | `certificates` | DigiCert TLM (Certificates) |
+| `network-scanner` | `fetchEndpoints()` | `endpoints` | Network Scanner (Endpoints) |
+| `digicert-stm` | `fetchSoftware()` | `software` | DigiCert STM (Software) |
+| `digicert-dtm` | `fetchDevices()` | `devices` | DigiCert DTM (Devices) |
+| `github-scanner` | `fetchCodeFindings()` | `code_findings` | GitHub Scanner (Code Findings) |
+| `cbom-import` | `fetchCbomImports()` | `cbom_imports` | CBOM Import (CBOM Files) |
+
+> **Simulated data**: Connectors currently return realistic simulated data so the full pipeline can be exercised end-to-end without real external API credentials. Replace the `fetch*` functions with real API calls when ready.
+
+### Sync Execution Lifecycle (7 Steps)
+
+When a sync runs (either from a cron tick or a manual trigger), the `SyncExecutor` performs:
+
+1. **Create SyncLog** — inserts a `running` record with `startedAt` timestamp
+2. **Load Integration** — fetches the integration from DB and validates it exists + is enabled
+3. **Lookup Connector** — resolves the `templateType` → connector via `CONNECTOR_REGISTRY`
+4. **Fetch Data** — calls the connector's `fetch()` function, passing integration config
+5. **Full Refresh** — deletes all existing records for this integration, then bulk-inserts the new data
+6. **Update Integration** — sets `lastSync`, `lastSyncItems`, `lastSyncErrors`, and calculates `nextSync`
+7. **Finalise SyncLog** — updates the log with `completedAt`, `durationMs`, item counts, and final status
+
+### Scheduler Lifecycle
+
+| Event | Handler | Behaviour |
+|-------|---------|----------|
+| Server startup | `initScheduler()` | Loads all enabled, non-manual integrations from DB and schedules cron jobs |
+| Integration created | `scheduleJob()` | Starts a cron job if schedule is not `manual` |
+| Schedule changed | `onScheduleChanged()` | Removes old job, starts new job with updated cron |
+| Integration deleted | `onIntegrationDeleted()` | Removes the cron job |
+| Integration toggled off | `onIntegrationToggled(false)` | Removes the cron job |
+| Integration toggled on | `onIntegrationToggled(true)` | Schedules a new cron job |
+| Server shutdown (SIGTERM/SIGINT) | `stopAllJobs()` | Stops all active cron tasks gracefully |
+
+### Backend Service Files
+
+```
+backend/src/services/
+├── connectors.ts      — 6 connector functions + CONNECTOR_REGISTRY
+├── syncExecutor.ts    — executeSyncForIntegration() — 7-step lifecycle
+├── syncScheduler.ts   — cron job management (node-cron)
+└── index.ts           — barrel re-exports
+```
+
+---
+
+## Sync Logs REST API
+
+The sync logs API provides read-only access to the audit trail of all sync runs, plus cleanup endpoints.
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/sync-logs` | List all sync logs (newest first, default limit 100, max 500) |
+| `GET` | `/api/sync-logs/integration/:integrationId` | List sync logs for a specific integration |
+| `GET` | `/api/sync-logs/:id` | Get a single sync log by ID |
+| `DELETE` | `/api/sync-logs/integration/:integrationId` | Delete all sync logs for an integration |
+
+### Query Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `limit` | `100` | Max records to return (capped at 500) |
+
+### Example Requests
+
+```bash
+# List recent sync logs (default limit 100)
+curl http://localhost:3001/api/sync-logs
+
+# List with custom limit
+curl http://localhost:3001/api/sync-logs?limit=20
+
+# Logs for a specific integration
+curl http://localhost:3001/api/sync-logs/integration/<integrationId>
+
+# Get a single log entry
+curl http://localhost:3001/api/sync-logs/<id>
+
+# Delete all logs for an integration
+curl -X DELETE http://localhost:3001/api/sync-logs/integration/<integrationId>
+```
+
+### Response Example
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "abc-123",
+      "integrationId": "int-456",
+      "trigger": "scheduled",
+      "status": "success",
+      "startedAt": "2025-01-15T02:00:00.000Z",
+      "completedAt": "2025-01-15T02:00:03.542Z",
+      "durationMs": 3542,
+      "itemsFetched": 25,
+      "itemsCreated": 25,
+      "itemsUpdated": 0,
+      "itemsDeleted": 18,
+      "errors": 0,
+      "errorDetails": null,
+      "syncSchedule": "24h"
+    }
+  ]
+}
+```
+
+---
+
+## Scheduler REST API
+
+The scheduler API provides operational control over the cron job scheduler.
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/scheduler/status` | Get scheduler status — active jobs, uptime, server time |
+| `POST` | `/api/scheduler/stop` | Stop all scheduled cron jobs |
+| `POST` | `/api/scheduler/restart` | Stop all jobs, then reload from DB and reschedule |
+
+### Status Response Example
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalJobs": 3,
+    "jobs": [
+      {
+        "integrationId": "int-456",
+        "integrationName": "Production TLM",
+        "schedule": "24h",
+        "cronExpression": "0 2 * * *",
+        "createdAt": "2025-01-15T00:00:00.000Z",
+        "lastRunAt": "2025-01-15T02:00:00.000Z",
+        "runCount": 5
+      }
+    ],
+    "uptime": 86400,
+    "serverTime": "2025-01-16T02:00:00.000Z"
+  }
+}
+```
+
+### Example Requests
+
+```bash
+# Check scheduler status
+curl http://localhost:3001/api/scheduler/status
+
+# Stop all scheduled jobs
+curl -X POST http://localhost:3001/api/scheduler/stop
+
+# Restart scheduler (reload from DB)
+curl -X POST http://localhost:3001/api/scheduler/restart
+```
+
+---
+
 ## Frontend State Management (RTK Query)
 
 The frontend uses **Redux Toolkit** with **RTK Query** for server state management. RTK Query provides automatic caching, cache invalidation, and optimistic updates for all API slices.
@@ -1392,7 +1632,7 @@ The Redux store is configured in `frontend/src/store/store.ts` and wrapped aroun
 
 ```
 frontend/src/store/
-├── store.ts                 — configureStore with 7 API reducers + middleware
+├── store.ts                 — configureStore with 9 API reducers + middleware
 ├── index.ts                 — barrel exports
 └── api/
     ├── integrationsApi.ts   — Integrations CRUD (8 hooks)
@@ -1402,6 +1642,8 @@ frontend/src/store/
     ├── devicesApi.ts        — Devices CRUD (8 hooks)
     ├── codeFindingsApi.ts   — Code Findings CRUD (8 hooks)
     ├── cbomImportsApi.ts    — CBOM Imports CRUD (8 hooks)
+    ├── syncLogsApi.ts       — Sync Logs (4 hooks)
+    ├── schedulerApi.ts      — Scheduler status & control (3 hooks)
     └── index.ts             — re-exports all hooks + types
 ```
 
@@ -1433,18 +1675,39 @@ Each of the six discovery API slices generates 8 hooks following the same patter
 | **Code Findings** | `useGetCodeFindingsQuery()` | `useGetCodeFindingsByIntegrationQuery(id)` | `useGetCodeFindingQuery(id)` | `useCreateCodeFindingMutation()` | `useBulkCreateCodeFindingsMutation()` | `useUpdateCodeFindingMutation()` | `useDeleteCodeFindingMutation()` | `useDeleteCodeFindingsByIntegrationMutation()` |
 | **CBOM Imports** | `useGetCbomImportsQuery()` | `useGetCbomImportsByIntegrationQuery(id)` | `useGetCbomImportQuery(id)` | `useCreateCbomImportMutation()` | `useBulkCreateCbomImportsMutation()` | `useUpdateCbomImportMutation()` | `useDeleteCbomImportMutation()` | `useDeleteCbomImportsByIntegrationMutation()` |
 
-> All 48 hooks are re-exported from `frontend/src/store/api/index.ts` and can be imported from `../../store`.
+### Sync Logs API Hooks
+
+The `syncLogsApi` slice provides hooks for accessing the sync audit trail:
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useGetSyncLogsQuery(limit?)` | Query | Fetch all sync logs (optional limit, default 100) |
+| `useGetSyncLogsByIntegrationQuery(id)` | Query | Fetch sync logs for a specific integration |
+| `useGetSyncLogQuery(id)` | Query | Fetch a single sync log by ID |
+| `useDeleteSyncLogsByIntegrationMutation()` | Mutation | Delete all sync logs for an integration |
+
+### Scheduler API Hooks
+
+The `schedulerApi` slice provides hooks for monitoring and controlling the cron scheduler:
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useGetSchedulerStatusQuery()` | Query | Fetch scheduler status (active jobs, uptime, server time) |
+| `useStopSchedulerMutation()` | Mutation | Stop all cron jobs |
+| `useRestartSchedulerMutation()` | Mutation | Restart scheduler — stops all, reloads from DB |
+
+> All 55 hooks (48 discovery + 8 integrations + 4 sync logs + 3 scheduler — some shared with integrations) are re-exported from `frontend/src/store/api/index.ts` and can be imported from `../../store`.
 
 ### Cache Invalidation Strategy
 
-RTK Query uses **tags** for automatic cache invalidation across all 7 API slices:
+RTK Query uses **tags** for automatic cache invalidation across all 9 API slices:
 
 - Each record is tagged with `{ type: '<Tag>', id }` (e.g., `{ type: 'Certificate', id: 'abc-123' }`)
 - The full list is tagged with `{ type: '<Tag>', id: 'LIST' }`
 - Mutations (create, bulk create, update, delete) **invalidate** both the specific tag and the list tag
 - This means any list query auto-refetches after any mutation — no manual refetch needed
 
-**Tag types:** `Integration`, `Certificate`, `Endpoint`, `Software`, `Device`, `CodeFinding`, `CbomImport`
+**Tag types:** `Integration`, `Certificate`, `Endpoint`, `Software`, `Device`, `CodeFinding`, `CbomImport`, `SyncLog`, `Scheduler`
 
 ### Usage in Components
 

@@ -5,3 +5,8 @@ export { getAISuggestion, getProjectInsight } from './bedrockService';
 export type { ProjectInsightRequest, ProjectInsightResponse } from './bedrockService';
 export { scanDependencies, cryptoLibToCBOMAssets } from './dependencyScanner';
 export { analyzeConditionalAsset, analyzeAllConditionalAssets } from './pqcParameterAnalyzer';
+export { executeSyncForIntegration } from './syncExecutor';
+export type { SyncResult } from './syncExecutor';
+export { initScheduler, scheduleJob, removeJob, onScheduleChanged, onIntegrationDeleted, onIntegrationToggled, stopAllJobs, getSchedulerStatus } from './syncScheduler';
+export { CONNECTOR_REGISTRY } from './connectors';
+export type { ConnectorResult, ConnectorConfig } from './connectors';

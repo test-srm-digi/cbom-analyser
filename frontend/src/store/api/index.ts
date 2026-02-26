@@ -95,3 +95,22 @@ export {
 } from './cbomImportsApi';
 
 export type { CreateCbomImportRequest, UpdateCbomImportRequest } from './cbomImportsApi';
+
+export {
+  syncLogsApi,
+  useGetSyncLogsQuery,
+  useGetSyncLogsByIntegrationQuery,
+  useGetSyncLogQuery,
+  useDeleteSyncLogsByIntegrationMutation,
+} from './syncLogsApi';
+
+export type { SyncLogEntry } from './syncLogsApi';
+
+export {
+  schedulerApi,
+  useGetSchedulerStatusQuery,
+  useStopSchedulerMutation,
+  useRestartSchedulerMutation,
+} from './schedulerApi';
+
+export type { SchedulerJob, SchedulerStatus } from './schedulerApi';

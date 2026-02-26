@@ -20,8 +20,11 @@ import {
   deviceRoutes,
   codeFindingRoutes,
   cbomImportRoutes,
+  syncLogRoutes,
+  schedulerRoutes,
 } from './routes';
 import { initDatabase } from './config/database';
+import { initScheduler, stopAllJobs } from './services/syncScheduler';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -45,6 +48,8 @@ app.use('/api', softwareRoutes);
 app.use('/api', deviceRoutes);
 app.use('/api', codeFindingRoutes);
 app.use('/api', cbomImportRoutes);
+app.use('/api', syncLogRoutes);
+app.use('/api', schedulerRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -72,6 +77,22 @@ app.listen(PORT, async () => {
 
   // Initialize database
   await initDatabase();
+
+  // Initialize sync scheduler (reads DB for active schedules)
+  await initScheduler();
+});
+
+// Graceful shutdown — stop cron jobs before exit
+process.on('SIGTERM', () => {
+  console.log('[Server] SIGTERM received — stopping scheduler…');
+  stopAllJobs();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('[Server] SIGINT received — stopping scheduler…');
+  stopAllJobs();
+  process.exit(0);
 });
 
 export default app;
