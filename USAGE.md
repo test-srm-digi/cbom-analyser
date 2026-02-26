@@ -19,7 +19,7 @@
 11. [AI-Powered Suggested Fixes](#ai-powered-suggested-fixes)
 12. [Sample Data & Demo Code](#sample-data--demo-code)
 13. [Configuration](#configuration)
-14. [CycloneDX 1.6 Standard](#cyclonedx-16-standard)
+14. [CycloneDX 1.7 Standard](#cyclonedx-17-standard)
 
 ---
 
@@ -270,7 +270,7 @@ If your SonarQube is on an internal network, you need a **self-hosted runner**
 
 > **How it works:** When both `sonar-host-url` and `sonar-token` are set the
 > backend's scanner aggregator runs `sonar-scanner` against the checkout,
-> fetches the resulting CycloneDX 1.6 CBOM from SonarQube, and merges it
+> fetches the resulting CycloneDX 1.7 CBOM from SonarQube, and merges it
 > with the regex + dependency + network scan results. When the inputs are
 > absent the scanner falls back to regex mode automatically.
 
@@ -630,7 +630,7 @@ curl -X POST http://localhost:3001/api/scan-code \
 ### Approach 2: IBM sonar-cryptography (Most Accurate for Java)
 
 Uses SonarQube with IBM's cryptography plugin for deep static analysis.
-Generates CycloneDX 1.6 CBOM with precise algorithm detection, key sizes, and OIDs.
+Generates CycloneDX 1.7 CBOM with precise algorithm detection, key sizes, and OIDs.
 
 > **GitHub Actions:** You can also enable sonar-cryptography in the GitHub
 > Action by setting the `sonar-host-url` and `sonar-token` inputs — see
@@ -1207,9 +1207,9 @@ The production frontend uses nginx to proxy API requests. See `frontend/nginx.co
 
 ---
 
-## CycloneDX 1.6 Standard
+## CycloneDX 1.7 Standard
 
-This project implements the **CycloneDX 1.6** specification for Cryptographic Bill of Materials.
+This project implements the **CycloneDX 1.7** specification for Cryptographic Bill of Materials.
 
 ### Asset Types
 
@@ -1249,10 +1249,16 @@ This project implements the **CycloneDX 1.6** specification for Cryptographic Bi
 ```jsonc
 {
   "bomFormat": "CycloneDX",
-  "specVersion": "1.6",
+  "specVersion": "1.7",
   "serialNumber": "urn:uuid:...",
   "version": 1,
-  "metadata": { /* timestamp, tools, component */ },
+  "metadata": {
+    /* timestamp, tools, component */
+    "repository": {
+      "url": "https://github.com/org/repo",
+      "branch": "main"
+    }
+  },
   "components": [],
   "cryptoAssets": [
     {
@@ -1312,7 +1318,7 @@ This project implements the **CycloneDX 1.6** specification for Cryptographic Bi
 | `unknown` | Not enough information to classify |
 
 **Resources:**
-- [CycloneDX Specification](https://cyclonedx.org/specification/overview/)
+- [CycloneDX 1.7 Specification](https://cyclonedx.org/docs/1.7/json/)
 - [CycloneDX CBOM Guide](https://cyclonedx.org/capabilities/cbom/)
 - [IBM sonar-cryptography](https://github.com/cbomkit/sonar-cryptography)
 - [NIST Post-Quantum Cryptography](https://csrc.nist.gov/projects/post-quantum-cryptography)
