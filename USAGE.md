@@ -326,15 +326,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Optional: build Java project for bytecode-level analysis
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-      - name: Build
-        run: mvn compile -q -DskipTests
-
       - name: CBOM Analysis
         uses: test-srm-digi/cbom-analyser@main
         with:
@@ -348,6 +339,9 @@ jobs:
         with:
           sarif_file: cbom.sarif
 ```
+
+> No build step needed — see [Optional: Java Build Step](#optional-java-build-step-for-enhanced-bytecode-analysis)
+> if you want bytecode-level analysis for Java projects.
 
 > **Network note:** The runner must be able to reach the SonarQube URL.
 > Internal servers require a **self-hosted runner** — see
