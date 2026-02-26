@@ -9,7 +9,18 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 import express from 'express';
 import cors from 'cors';
-import { cbomRoutes, networkRoutes, scanRoutes, integrationRoutes } from './routes';
+import {
+  cbomRoutes,
+  networkRoutes,
+  scanRoutes,
+  integrationRoutes,
+  certificateRoutes,
+  endpointRoutes,
+  softwareRoutes,
+  deviceRoutes,
+  codeFindingRoutes,
+  cbomImportRoutes,
+} from './routes';
 import { initDatabase } from './config/database';
 
 const app = express();
@@ -28,6 +39,12 @@ app.use('/api', cbomRoutes);
 app.use('/api', networkRoutes);
 app.use('/api', scanRoutes);
 app.use('/api', integrationRoutes);
+app.use('/api', certificateRoutes);
+app.use('/api', endpointRoutes);
+app.use('/api', softwareRoutes);
+app.use('/api', deviceRoutes);
+app.use('/api', codeFindingRoutes);
+app.use('/api', cbomImportRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
