@@ -41,7 +41,7 @@ export default function CBOMUploader({ onUpload, isLoading }: CBOMUploaderProps)
       {isLoading ? (
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-10 h-10 text-qg-accent animate-spin" />
-          <p className="text-gray-400">Processing {fileName}...</p>
+          <p className="text-gray-500">Processing {fileName}...</p>
         </div>
       ) : fileName ? (
         <div className="flex flex-col items-center gap-3">

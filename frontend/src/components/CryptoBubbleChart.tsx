@@ -51,11 +51,11 @@ function BubbleTooltip({ active, payload }: BubbleTooltipProps) {
   return (
     <div
       style={{
-        backgroundColor: '#e6edf3',
-        border: '1px solid #30363d',
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #E2E5EA',
         borderRadius: '8px',
         padding: '8px 12px',
-        color: '#161b22',
+        color: '#353535',
       }}
     >
       <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -79,7 +79,7 @@ export default function CryptoBubbleChart({ assets }: CryptoBubbleChartProps) {
 
   return (
     <div className="bg-qg-card border border-qg-border rounded-lg p-4 animate-fade-in">
-      <h3 className="text-sm font-medium text-gray-400 mb-2">
+      <h3 className="text-sm font-medium text-gray-500 mb-2">
         Algorithm Distribution ({data.length} types of crypto assets)
       </h3>
       <div style={{ height: 250 }}>
@@ -100,7 +100,7 @@ export default function CryptoBubbleChart({ assets }: CryptoBubbleChartProps) {
       {/* Legend labels */}
       <div className="flex flex-wrap gap-2 mt-2 justify-center">
         {data.slice(0, 14).map(({ name, color }) => (
-          <div key={name} className="flex items-center gap-1 text-xs text-gray-400">
+          <div key={name} className="flex items-center gap-1 text-xs text-gray-500">
             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
             {name}
           </div>

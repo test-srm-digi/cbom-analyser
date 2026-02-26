@@ -28,8 +28,8 @@ export default function ComplianceBanner({ compliance }: ComplianceBannerProps) 
         <span className={`font-semibold ${isCompliant ? 'text-qg-green' : 'text-qg-red'}`}>
           {isCompliant ? 'Compliant' : 'Not compliant'}
         </span>
-        <span className="text-gray-400 mx-2">–</span>
-        <span className="text-gray-300">
+        <span className="text-gray-500 mx-2">–</span>
+        <span className="text-gray-600">
           {isCompliant
             ? `This CBOM complies with the policy "${compliance.policy}".`
             : `This CBOM does not comply with the policy "${compliance.policy}".`}

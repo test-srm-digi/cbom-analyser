@@ -40,7 +40,7 @@ export default function NetworkScanner({ onScanComplete }: NetworkScannerProps) 
 
   return (
     <div className="bg-qg-card border border-qg-border rounded-lg p-4 animate-fade-in">
-      <h3 className="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
+      <h3 className="text-sm font-medium text-gray-500 mb-3 flex items-center gap-2">
         <Globe className="w-4 h-4" />
         Network TLS Scanner
       </h3>
@@ -51,7 +51,7 @@ export default function NetworkScanner({ onScanComplete }: NetworkScannerProps) 
           value={url}
           onChange={e => setUrl(e.target.value)}
           placeholder="Enter URL or IP (e.g., google.com)"
-          className="flex-1 bg-qg-dark border border-qg-border rounded px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-qg-accent"
+          className="flex-1 bg-qg-dark border border-qg-border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none focus:border-qg-accent"
           onKeyDown={e => e.key === 'Enter' && handleScan()}
         />
         <button
@@ -74,11 +74,11 @@ export default function NetworkScanner({ onScanComplete }: NetworkScannerProps) 
         <div className="bg-qg-dark rounded border border-qg-border p-3 text-xs space-y-1.5">
           <div className="flex justify-between">
             <span className="text-gray-500">Protocol:</span>
-            <span className="text-gray-200 font-mono">{lastResult.protocol}</span>
+            <span className="text-gray-700 font-mono">{lastResult.protocol}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Cipher Suite:</span>
-            <span className="text-gray-200 font-mono text-right">{lastResult.cipherSuite}</span>
+            <span className="text-gray-700 font-mono text-right">{lastResult.cipherSuite}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Quantum Safe:</span>
@@ -88,7 +88,7 @@ export default function NetworkScanner({ onScanComplete }: NetworkScannerProps) 
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Scanned:</span>
-            <span className="text-gray-400">{new Date(lastResult.lastScanned).toLocaleString()}</span>
+            <span className="text-gray-500">{new Date(lastResult.lastScanned).toLocaleString()}</span>
           </div>
         </div>
       )}

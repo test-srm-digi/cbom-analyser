@@ -2,6 +2,9 @@ import { useState, useCallback, useRef } from 'react';
 import AppShell, { type NavPage } from './layouts/AppShell';
 import DashboardPage from './pages/DashboardPage';
 import InventoryPage from './pages/InventoryPage';
+import VisualizePage from './pages/VisualizePage';
+import ViolationsPage from './pages/ViolationsPage';
+import NetworkPage from './pages/NetworkPage';
 import {
   CBOMDocument,
   QuantumReadinessScore,
@@ -160,6 +163,12 @@ export default function App() {
         );
       case 'inventory':
         return <InventoryPage cbom={cbom} readinessScore={readinessScore} />;
+      case 'visualize':
+        return <VisualizePage cbom={cbom} />;
+      case 'violations':
+        return <ViolationsPage cbom={cbom} />;
+      case 'integrations':
+        return <NetworkPage />;
       default:
         return (
           <div className="dc1-placeholder-page">

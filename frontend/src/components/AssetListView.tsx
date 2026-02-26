@@ -66,10 +66,10 @@ function getStatusLabel(status?: QuantumSafetyStatus): string {
 
 function getStatusBg(status?: QuantumSafetyStatus): string {
   switch (status) {
-    case QuantumSafetyStatus.QUANTUM_SAFE: return 'bg-green-500/15 ring-green-500/30 text-green-400';
-    case QuantumSafetyStatus.NOT_QUANTUM_SAFE: return 'bg-red-500/15 ring-red-500/30 text-red-400';
-    case QuantumSafetyStatus.CONDITIONAL: return 'bg-cyan-500/15 ring-cyan-500/30 text-cyan-400';
-    default: return 'bg-gray-500/15 ring-gray-500/30 text-gray-400';
+    case QuantumSafetyStatus.QUANTUM_SAFE: return 'bg-green-500/15 ring-green-500/30 text-green-600';
+    case QuantumSafetyStatus.NOT_QUANTUM_SAFE: return 'bg-red-500/15 ring-red-500/30 text-red-600';
+    case QuantumSafetyStatus.CONDITIONAL: return 'bg-cyan-500/15 ring-cyan-500/30 text-cyan-600';
+    default: return 'bg-gray-500/15 ring-gray-500/30 text-gray-500';
   }
 }
 
@@ -85,9 +85,9 @@ function getStatusIcon(status?: QuantumSafetyStatus) {
 function confidenceBadge(level?: string) {
   if (!level) return null;
   const styles: Record<string, string> = {
-    high: 'bg-green-500/15 text-green-400 ring-green-500/30',
-    medium: 'bg-yellow-500/15 text-yellow-400 ring-yellow-500/30',
-    low: 'bg-gray-500/15 text-gray-400 ring-gray-500/30',
+    high: 'bg-green-500/15 text-green-600 ring-green-500/30',
+    medium: 'bg-yellow-500/15 text-yellow-600 ring-yellow-500/30',
+    low: 'bg-gray-500/15 text-gray-500 ring-gray-500/30',
   };
   const cls = styles[level] || styles.low;
   return (
@@ -105,17 +105,17 @@ function pqcVerdictBadge(asset: CryptoAsset) {
   const config: Record<string, { icon: typeof ShieldCheck; cls: string; label: string }> = {
     [PQCReadinessVerdict.PQC_READY]: {
       icon: ShieldCheck,
-      cls: 'bg-green-500/15 text-green-400 ring-green-500/30',
+      cls: 'bg-green-500/15 text-green-600 ring-green-500/30',
       label: 'PQC Ready',
     },
     [PQCReadinessVerdict.NOT_PQC_READY]: {
       icon: ShieldAlert,
-      cls: 'bg-red-500/15 text-red-400 ring-red-500/30',
+      cls: 'bg-red-500/15 text-red-600 ring-red-500/30',
       label: 'Not PQC Ready',
     },
     [PQCReadinessVerdict.REVIEW_NEEDED]: {
       icon: ShieldQuestion,
-      cls: 'bg-yellow-500/15 text-yellow-400 ring-yellow-500/30',
+      cls: 'bg-yellow-500/15 text-yellow-600 ring-yellow-500/30',
       label: 'Review Needed',
     },
   };
@@ -132,7 +132,7 @@ function pqcVerdictBadge(asset: CryptoAsset) {
       </span>
       {/* Tooltip with reasons */}
       <div className="absolute z-[999] bottom-full left-0 mb-2 w-72 p-3 bg-qg-dark border border-qg-border rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/verdict:opacity-100 group-hover/verdict:pointer-events-auto transition-opacity">
-        <div className="text-[11px] text-gray-300 space-y-1.5">
+        <div className="text-[11px] text-gray-600 space-y-1.5">
           {v.reasons.map((r: string, i: number) => (
             <div key={i} className="flex gap-1.5">
               <span className="text-gray-500 flex-shrink-0">{r.includes('✓') ? '✓' : r.includes('✗') ? '✗' : '•'}</span>
@@ -146,7 +146,7 @@ function pqcVerdictBadge(asset: CryptoAsset) {
                 {Object.entries(v.parameters).map(([k, val]) => (
                   <div key={k}>
                     <span className="text-gray-500">{k}: </span>
-                    <span className="text-gray-300 font-mono text-[10px]">{String(val)}</span>
+                    <span className="text-gray-600 font-mono text-[10px]">{String(val)}</span>
                   </div>
                 ))}
               </div>
@@ -167,8 +167,8 @@ function detectionSourceBadge(source?: string) {
   if (!source) return null;
   const styles: Record<string, string> = {
     sonar: 'bg-blue-500/10 text-blue-400/80',
-    regex: 'bg-gray-500/10 text-gray-400/80',
-    dependency: 'bg-amber-500/10 text-amber-400/80',
+    regex: 'bg-gray-500/10 text-gray-500/80',
+    dependency: 'bg-amber-500/10 text-amber-600/80',
     network: 'bg-purple-500/10 text-purple-400/80',
   };
   return (
@@ -423,7 +423,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
       {/* Header */}
       <div className="px-4 py-3 border-b border-qg-border space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-200">List of all assets</h3>
+          <h3 className="text-sm font-semibold text-gray-700">List of all assets</h3>
           <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-qg-dark border border-qg-border rounded px-2.5 py-1.5">
             <div className="flex items-center gap-1.5" title="GitHub repository URL">
@@ -433,7 +433,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                 placeholder="https://github.com/owner/repo"
                 value={repoUrl}
                 onChange={e => setRepoUrl(e.target.value.trim())}
-                className="bg-transparent text-xs text-gray-300 w-48 focus:outline-none placeholder:text-gray-600"
+                className="bg-transparent text-xs text-gray-600 w-48 focus:outline-none placeholder:text-gray-600"
               />
             </div>
             <span className="text-gray-700">|</span>
@@ -442,7 +442,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
               <select
                 value={branch}
                 onChange={e => setBranch(e.target.value)}
-                className="bg-transparent text-xs text-gray-400 focus:outline-none cursor-pointer appearance-none pr-1"
+                className="bg-transparent text-xs text-gray-500 focus:outline-none cursor-pointer appearance-none pr-1"
               >
                 <option value="main">main</option>
                 <option value="master">master</option>
@@ -455,7 +455,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                   placeholder="branch-name"
                   value={customBranch}
                   onChange={e => setCustomBranch(e.target.value.trim())}
-                  className="bg-transparent text-xs text-gray-300 w-20 focus:outline-none placeholder:text-gray-600"
+                  className="bg-transparent text-xs text-gray-600 w-20 focus:outline-none placeholder:text-gray-600"
                   autoFocus
                 />
               )}
@@ -467,7 +467,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                 type="text"
                 value={basePath}
                 onChange={e => setBasePath(e.target.value.trim())}
-                className="bg-transparent text-xs text-gray-400 w-14 focus:outline-none"
+                className="bg-transparent text-xs text-gray-500 w-14 focus:outline-none"
                 placeholder="/"
               />
             </div>
@@ -477,12 +477,12 @@ export default function AssetListView({ assets }: AssetListViewProps) {
             placeholder="Filter assets..."
             value={filterText}
             onChange={e => { setFilterText(e.target.value); setPage(1); }}
-            className="bg-qg-dark border border-qg-border rounded px-2 py-1 text-xs text-gray-300 w-48 focus:outline-none focus:border-qg-accent"
+            className="bg-qg-dark border border-qg-border rounded px-2 py-1 text-xs text-gray-600 w-48 focus:outline-none focus:border-qg-accent"
           />
           <button
             onClick={fetchProjectInsight}
             disabled={insight.loading}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600/80 to-blue-600/80 hover:from-purple-500 hover:to-blue-500 text-white text-[11px] font-medium px-3 py-1.5 rounded-md transition-all shadow-sm hover:shadow-purple-500/20 hover:shadow-md disabled:opacity-60"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600/80 to-blue-600/80 hover:from-purple-500 hover:to-blue-500 text-gray-800 text-[11px] font-medium px-3 py-1.5 rounded-md transition-all shadow-sm hover:shadow-purple-500/20 hover:shadow-md disabled:opacity-60"
             title="Get a project-level quantum readiness insight"
           >
             {insight.loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <BarChart3 className="w-3 h-3" />}
@@ -500,7 +500,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
               className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full ring-1 transition-all ${
                 safetyFilter.has(QuantumSafetyStatus.NOT_QUANTUM_SAFE)
                   ? 'bg-red-500/25 ring-red-500/60 text-red-300 shadow-sm shadow-red-500/10'
-                  : 'bg-red-500/10 ring-red-500/20 text-red-400/70 hover:ring-red-500/40'
+                  : 'bg-red-500/10 ring-red-500/20 text-red-600/70 hover:ring-red-500/40'
               }`}
             >
               <ShieldAlert className="w-2.5 h-2.5" />
@@ -512,7 +512,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
               className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full ring-1 transition-all ${
                 safetyFilter.has(QuantumSafetyStatus.CONDITIONAL)
                   ? 'bg-cyan-500/25 ring-cyan-500/60 text-cyan-300 shadow-sm shadow-cyan-500/10'
-                  : 'bg-cyan-500/10 ring-cyan-500/20 text-cyan-400/70 hover:ring-cyan-500/40'
+                  : 'bg-cyan-500/10 ring-cyan-500/20 text-cyan-600/70 hover:ring-cyan-500/40'
               }`}
             >
               <ShieldQuestion className="w-2.5 h-2.5" />
@@ -524,7 +524,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
               className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full ring-1 transition-all ${
                 safetyFilter.has(QuantumSafetyStatus.QUANTUM_SAFE)
                   ? 'bg-green-500/25 ring-green-500/60 text-green-300 shadow-sm shadow-green-500/10'
-                  : 'bg-green-500/10 ring-green-500/20 text-green-400/70 hover:ring-green-500/40'
+                  : 'bg-green-500/10 ring-green-500/20 text-green-600/70 hover:ring-green-500/40'
               }`}
             >
               <ShieldCheck className="w-2.5 h-2.5" />
@@ -535,8 +535,8 @@ export default function AssetListView({ assets }: AssetListViewProps) {
               onClick={() => toggleSafetyFilter('unknown' as any)}
               className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full ring-1 transition-all ${
                 safetyFilter.has('unknown' as any)
-                  ? 'bg-gray-500/25 ring-gray-500/60 text-gray-300 shadow-sm shadow-gray-500/10'
-                  : 'bg-gray-500/10 ring-gray-500/20 text-gray-400/70 hover:ring-gray-500/40'
+                  ? 'bg-gray-500/25 ring-gray-500/60 text-gray-600 shadow-sm shadow-gray-500/10'
+                  : 'bg-gray-500/10 ring-gray-500/20 text-gray-500/70 hover:ring-gray-500/40'
               }`}
             >
               Unknown
@@ -545,7 +545,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
             {safetyFilter.size > 0 && (
               <button
                 onClick={() => { setSafetyFilter(new Set()); setPage(1); }}
-                className="text-[10px] text-gray-500 hover:text-gray-300 ml-0.5 underline"
+                className="text-[10px] text-gray-500 hover:text-gray-600 ml-0.5 underline"
               >
                 clear
               </button>
@@ -568,8 +568,8 @@ export default function AssetListView({ assets }: AssetListViewProps) {
 
           {insight.error && (
             <div className="flex items-center justify-between p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
-              <span className="text-xs text-red-400">{insight.error}</span>
-              <button onClick={() => setInsight({ loading: false })} className="text-gray-500 hover:text-gray-300">
+              <span className="text-xs text-red-600">{insight.error}</span>
+              <button onClick={() => setInsight({ loading: false })} className="text-gray-500 hover:text-gray-600">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -578,17 +578,17 @@ export default function AssetListView({ assets }: AssetListViewProps) {
           {insight.data && (() => {
             const d = insight.data!;
             const riskColors: Record<string, { bg: string; ring: string; text: string; bar: string }> = {
-              critical: { bg: 'from-red-500/10 to-red-600/5', ring: 'border-red-500/30', text: 'text-red-400', bar: 'bg-red-500' },
+              critical: { bg: 'from-red-500/10 to-red-600/5', ring: 'border-red-500/30', text: 'text-red-600', bar: 'bg-red-500' },
               high: { bg: 'from-orange-500/10 to-red-500/5', ring: 'border-orange-500/30', text: 'text-orange-400', bar: 'bg-orange-500' },
-              moderate: { bg: 'from-yellow-500/10 to-orange-500/5', ring: 'border-yellow-500/30', text: 'text-yellow-400', bar: 'bg-yellow-500' },
-              low: { bg: 'from-green-500/10 to-emerald-500/5', ring: 'border-green-500/30', text: 'text-green-400', bar: 'bg-green-500' },
+              moderate: { bg: 'from-yellow-500/10 to-orange-500/5', ring: 'border-yellow-500/30', text: 'text-yellow-600', bar: 'bg-yellow-500' },
+              low: { bg: 'from-green-500/10 to-emerald-500/5', ring: 'border-green-500/30', text: 'text-green-600', bar: 'bg-green-500' },
             };
             const c = riskColors[d.riskLevel] || riskColors.moderate;
             const impactColors: Record<string, string> = {
-              critical: 'bg-red-500/15 text-red-400 ring-red-500/30',
+              critical: 'bg-red-500/15 text-red-600 ring-red-500/30',
               high: 'bg-orange-500/15 text-orange-400 ring-orange-500/30',
-              medium: 'bg-yellow-500/15 text-yellow-400 ring-yellow-500/30',
-              low: 'bg-green-500/15 text-green-400 ring-green-500/30',
+              medium: 'bg-yellow-500/15 text-yellow-600 ring-yellow-500/30',
+              low: 'bg-green-500/15 text-green-600 ring-green-500/30',
             };
 
             return (
@@ -598,14 +598,14 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                       <BarChart3 className={`w-4 h-4 ${c.text}`} />
-                      <span className="text-xs font-semibold text-gray-200">Project Quantum Risk Assessment</span>
+                      <span className="text-xs font-semibold text-gray-700">Project Quantum Risk Assessment</span>
                     </div>
                     <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ring-1 uppercase tracking-wider ${impactColors[d.riskLevel] || impactColors.medium}`}>
                       <AlertTriangle className="w-2.5 h-2.5" />
                       {d.riskLevel}
                     </span>
                   </div>
-                  <button onClick={() => setInsight({ loading: false })} className="text-gray-500 hover:text-gray-300 p-0.5">
+                  <button onClick={() => setInsight({ loading: false })} className="text-gray-500 hover:text-gray-600 p-0.5">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -613,7 +613,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                 {/* Risk score bar */}
                 <div className="px-4 pb-2">
                   <div className="flex items-center gap-3">
-                    <div className="flex-1 h-1.5 bg-gray-700/50 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-gray-200/50 rounded-full overflow-hidden">
                       <div className={`h-full ${c.bar} rounded-full transition-all duration-700`} style={{ width: `${d.riskScore}%` }} />
                     </div>
                     <span className={`text-xs font-mono font-bold ${c.text}`}>{d.riskScore}/100</span>
@@ -627,7 +627,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
 
                 {/* Summary */}
                 <div className="px-4 pb-3">
-                  <p className="text-[11px] text-gray-300 leading-relaxed">{d.summary}</p>
+                  <p className="text-[11px] text-gray-600 leading-relaxed">{d.summary}</p>
                 </div>
 
                 {/* Priorities */}
@@ -642,7 +642,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                         <span className={`flex-shrink-0 mt-0.5 inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded ring-1 ${impactColors[p.impact] || impactColors.medium}`}>
                           {p.impact}
                         </span>
-                        <span className="text-[11px] text-gray-300 leading-snug flex-1">{p.action}</span>
+                        <span className="text-[11px] text-gray-600 leading-snug flex-1">{p.action}</span>
                         <span className="flex-shrink-0 text-[9px] text-gray-500 font-medium flex items-center gap-0.5">
                           <Clock className="w-2.5 h-2.5" />
                           {p.effort}
@@ -656,8 +656,8 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                 <div className="px-4 pb-3 border-t border-white/5 pt-2">
                   <div className="flex items-center gap-2">
                     <Clock className={`w-3 h-3 ${c.text}`} />
-                    <span className="text-[10px] text-gray-400">
-                      <span className="font-medium text-gray-300">Migration Estimate:</span> {d.migrationEstimate}
+                    <span className="text-[10px] text-gray-500">
+                      <span className="font-medium text-gray-600">Migration Estimate:</span> {d.migrationEstimate}
                     </span>
                   </div>
                 </div>
@@ -673,26 +673,26 @@ export default function AssetListView({ assets }: AssetListViewProps) {
           <thead>
             <tr className="text-left text-gray-500 text-xs border-b border-qg-border">
               <th
-                className="px-4 py-2 cursor-pointer hover:text-gray-300 whitespace-nowrap"
+                className="px-4 py-2 cursor-pointer hover:text-gray-600 whitespace-nowrap"
                 onClick={() => toggleSort('safety')}
               >
                 Quantum Safety {sortField === 'safety' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
               </th>
               <th
-                className="px-4 py-2 cursor-pointer hover:text-gray-300"
+                className="px-4 py-2 cursor-pointer hover:text-gray-600"
                 onClick={() => toggleSort('name')}
               >
                 Cryptographic asset {sortField === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
               </th>
               <th
-                className="px-4 py-2 cursor-pointer hover:text-gray-300"
+                className="px-4 py-2 cursor-pointer hover:text-gray-600"
                 onClick={() => toggleSort('primitive')}
               >
                 Primitive {sortField === 'primitive' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
               </th>
               <th className="px-4 py-2">PQC Verdict</th>
               <th
-                className="px-4 py-2 cursor-pointer hover:text-gray-300"
+                className="px-4 py-2 cursor-pointer hover:text-gray-600"
                 onClick={() => toggleSort('location')}
               >
                 Location {sortField === 'location' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
@@ -729,7 +729,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
 
                 {/* Algorithm name */}
                 <td className="px-4 py-3">
-                  <span className="text-gray-200 font-medium">{asset.name}</span>
+                  <span className="text-gray-700 font-medium">{asset.name}</span>
                   {asset.keyLength && (
                     <span className="text-gray-500 text-xs ml-2">({asset.keyLength}-bit)</span>
                   )}
@@ -744,7 +744,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                 <td className="px-4 py-3">
                   <div className="text-xs">
                     {getPrimitiveLabel(asset.cryptoProperties?.algorithmProperties?.primitive).split('\n').map((line, i) => (
-                      <div key={i} className={i === 0 ? 'text-gray-300 font-medium' : 'text-gray-500'}>
+                      <div key={i} className={i === 0 ? 'text-gray-600 font-medium' : 'text-gray-500'}>
                         {line}
                       </div>
                     ))}
@@ -764,7 +764,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                   {asset.location ? (
                     <div className="flex flex-col gap-0.5">
                       {asset.detectionSource === 'dependency' && asset.provider && (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-amber-400/90 font-medium">
+                        <span className="inline-flex items-center gap-1 text-[10px] text-amber-600/90 font-medium">
                           <Package className="w-2.5 h-2.5" />
                           {asset.provider}
                         </span>
@@ -805,10 +805,10 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                           <div className="flex items-center justify-between mb-1.5">
                             {confidenceBadge(s.confidence)}
                             <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                              <button onClick={() => toggleCollapse(asset.id)} className="p-0.5 rounded hover:bg-qg-border/60 text-gray-500 hover:text-gray-300" title={s.collapsed ? 'Expand' : 'Collapse'}>
+                              <button onClick={() => toggleCollapse(asset.id)} className="p-0.5 rounded hover:bg-qg-border/60 text-gray-500 hover:text-gray-600" title={s.collapsed ? 'Expand' : 'Collapse'}>
                                 {s.collapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
                               </button>
-                              <button onClick={() => dismissSuggestion(asset.id)} className="p-0.5 rounded hover:bg-qg-border/60 text-gray-500 hover:text-gray-300" title="Dismiss">
+                              <button onClick={() => dismissSuggestion(asset.id)} className="p-0.5 rounded hover:bg-qg-border/60 text-gray-500 hover:text-gray-600" title="Dismiss">
                                 <X className="w-3 h-3" />
                               </button>
                             </div>
@@ -816,16 +816,16 @@ export default function AssetListView({ assets }: AssetListViewProps) {
 
                           {!s.collapsed && (
                             <>
-                              <p className="text-[11px] text-gray-300 leading-relaxed mb-1.5">{s.fix}</p>
+                              <p className="text-[11px] text-gray-600 leading-relaxed mb-1.5">{s.fix}</p>
                               {s.codeSnippet && (
                                 <div className="relative group/snippet">
-                                  <pre className="text-[10px] leading-relaxed bg-qg-dark/80 border border-qg-border/50 rounded-md px-2.5 py-2 text-green-400 overflow-x-auto max-h-24 font-mono">{s.codeSnippet}</pre>
+                                  <pre className="text-[10px] leading-relaxed bg-qg-dark/80 border border-qg-border/50 rounded-md px-2.5 py-2 text-green-600 overflow-x-auto max-h-24 font-mono">{s.codeSnippet}</pre>
                                   <button
                                     onClick={() => copySnippet(asset.id, s.codeSnippet!)}
-                                    className="absolute top-1.5 right-1.5 p-1 rounded bg-qg-dark/90 border border-qg-border/50 text-gray-500 hover:text-gray-200 opacity-0 group-hover/snippet:opacity-100 transition-opacity"
+                                    className="absolute top-1.5 right-1.5 p-1 rounded bg-qg-dark/90 border border-qg-border/50 text-gray-500 hover:text-gray-700 opacity-0 group-hover/snippet:opacity-100 transition-opacity"
                                     title="Copy code"
                                   >
-                                    {copiedId === asset.id ? <Check className="w-2.5 h-2.5 text-green-400" /> : <Copy className="w-2.5 h-2.5" />}
+                                    {copiedId === asset.id ? <Check className="w-2.5 h-2.5 text-green-600" /> : <Copy className="w-2.5 h-2.5" />}
                                   </button>
                                 </div>
                               )}
@@ -844,7 +844,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                       return (
                         <button
                           onClick={() => fetchSuggestion(asset)}
-                          className="flex items-center gap-1.5 text-[11px] text-red-400 hover:text-red-300 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-md px-2.5 py-1.5 transition-colors"
+                          className="flex items-center gap-1.5 text-[11px] text-red-600 hover:text-red-300 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-md px-2.5 py-1.5 transition-colors"
                         >
                           <Sparkles className="w-3 h-3" /> Retry
                         </button>
@@ -856,12 +856,12 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                       <div className="flex flex-col gap-1">
                         {asset.recommendedPQC && (
                           <span className="text-[10px] text-gray-500 leading-snug">
-                            Migrate to <span className="text-gray-400 font-medium">{asset.recommendedPQC}</span>
+                            Migrate to <span className="text-gray-500 font-medium">{asset.recommendedPQC}</span>
                           </span>
                         )}
                         <button
                           onClick={() => fetchSuggestion(asset)}
-                          className="group/btn flex items-center gap-1.5 w-fit text-[11px] font-medium bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/40 hover:to-blue-600/40 text-purple-300 hover:text-white border border-purple-500/20 hover:border-purple-500/40 rounded-md px-2.5 py-1 transition-all hover:shadow-sm hover:shadow-purple-500/10"
+                          className="group/btn flex items-center gap-1.5 w-fit text-[11px] font-medium bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/40 hover:to-blue-600/40 text-purple-300 hover:text-gray-800 border border-purple-500/20 hover:border-purple-500/40 rounded-md px-2.5 py-1 transition-all hover:shadow-sm hover:shadow-purple-500/10"
                           title="Get AI-powered migration suggestion"
                         >
                           <Sparkles className="w-3 h-3 group-hover/btn:animate-pulse" />
@@ -881,7 +881,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                       rel="noopener noreferrer"
                       title="View on GitHub"
                     >
-                      <ExternalLink className="w-3.5 h-3.5 text-qg-accent hover:text-white cursor-pointer" />
+                      <ExternalLink className="w-3.5 h-3.5 text-qg-accent hover:text-gray-800 cursor-pointer" />
                     </a>
                   ) : (
                     <ExternalLink className="w-3.5 h-3.5 text-gray-600 cursor-not-allowed" />
@@ -900,7 +900,7 @@ export default function AssetListView({ assets }: AssetListViewProps) {
           <select
             value={perPage}
             onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}
-            className="bg-qg-dark border border-qg-border rounded px-1 py-0.5 text-gray-300"
+            className="bg-qg-dark border border-qg-border rounded px-1 py-0.5 text-gray-600"
           >
             {ITEMS_PER_PAGE_OPTIONS.map(n => (
               <option key={n} value={n}>{n}</option>

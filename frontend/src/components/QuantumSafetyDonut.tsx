@@ -6,8 +6,8 @@ interface QuantumSafetyDonutProps {
 }
 
 const COLORS: Record<string, string> = {
-  'Quantum Safe': '#3fb950',
-  'Not Quantum Safe': '#f85149',
+  'Quantum Safe': '#27A872',
+  'Not Quantum Safe': '#DC2626',
   'Conditional': '#22d3ee',
   'Unknown': '#8b949e',
 };
@@ -37,7 +37,7 @@ export default function QuantumSafetyDonut({ assets }: QuantumSafetyDonutProps) 
 
   return (
     <div className="bg-qg-card border border-qg-border rounded-lg p-4 animate-fade-in">
-      <h3 className="text-sm font-medium text-gray-400 mb-2">Crypto Assets</h3>
+      <h3 className="text-sm font-medium text-gray-500 mb-2">Crypto Assets</h3>
       <div className="relative" style={{ height: 250 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -58,24 +58,24 @@ export default function QuantumSafetyDonut({ assets }: QuantumSafetyDonutProps) 
             </Pie>
             <Tooltip
               contentStyle={{
-                  backgroundColor: '#e6edf3',
-                border: '1px solid #30363d',
+                  backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E5EA',
                 borderRadius: '8px',
-                color: '#161b22',
+                color: '#353535',
               }}
             />
           </PieChart>
         </ResponsiveContainer>
         {/* Center label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-bold text-white">{total}</span>
-          <span className="text-xs text-gray-400">Crypto Assets*</span>
+          <span className="text-3xl font-bold text-gray-800">{total}</span>
+          <span className="text-xs text-gray-500">Crypto Assets*</span>
         </div>
       </div>
       {/* Legend */}
       <div className="flex flex-wrap gap-3 mt-2 justify-center">
         {Object.entries(COLORS).map(([label, color]) => (
-          <div key={label} className="flex items-center gap-1.5 text-xs text-gray-400">
+          <div key={label} className="flex items-center gap-1.5 text-xs text-gray-500">
             <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
             {label}
           </div>

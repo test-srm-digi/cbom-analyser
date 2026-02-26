@@ -45,7 +45,7 @@ export default function FunctionsDonut({ assets }: FunctionsDonutProps) {
 
   return (
     <div className="bg-qg-card border border-qg-border rounded-lg p-4 animate-fade-in">
-      <h3 className="text-sm font-medium text-gray-400 mb-2">Crypto Functions</h3>
+      <h3 className="text-sm font-medium text-gray-500 mb-2">Crypto Functions</h3>
       <div className="relative" style={{ height: 250 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -66,22 +66,22 @@ export default function FunctionsDonut({ assets }: FunctionsDonutProps) {
             </Pie>
             <Tooltip
               contentStyle={{
-                 backgroundColor: '#e6edf3',
-                border: '1px solid #30363d',
+                 backgroundColor: '#FFFFFF',
+                border: '1px solid #E2E5EA',
                 borderRadius: '8px',
-                color: '#161b22',
+                color: '#353535',
               }}
             />
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-bold text-white">{total}</span>
-          <span className="text-xs text-gray-400">Crypto Functions</span>
+          <span className="text-3xl font-bold text-gray-800">{total}</span>
+          <span className="text-xs text-gray-500">Crypto Functions</span>
         </div>
       </div>
       <div className="flex flex-wrap gap-2 mt-2 justify-center">
         {data.map(({ name, color }) => (
-          <div key={name} className="flex items-center gap-1 text-xs text-gray-400">
+          <div key={name} className="flex items-center gap-1 text-xs text-gray-500">
             <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
             {name}
           </div>
