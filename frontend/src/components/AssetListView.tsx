@@ -219,6 +219,9 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
   const [colWidths, setColWidths] = useState<Record<number, number>>({});
   const resizingCol = useRef<{ idx: number; startX: number; startW: number } | null>(null);
 
+  // Per-column minimum widths (index-matched to colgroup order)
+  const COL_MIN: Record<number, number> = { 0: 120, 1: 180, 2: 100, 3: 155, 4: 180, 5: 260 };
+
   const onResizeStart = useCallback((e: React.MouseEvent, colIdx: number) => {
     e.preventDefault();
     e.stopPropagation();
@@ -229,7 +232,8 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
     const onMove = (ev: MouseEvent) => {
       if (!resizingCol.current) return;
       const diff = ev.clientX - resizingCol.current.startX;
-      const newW = Math.max(60, resizingCol.current.startW + diff);
+      const min = COL_MIN[colIdx] ?? 80;
+      const newW = Math.max(min, resizingCol.current.startW + diff);
       setColWidths(prev => ({ ...prev, [colIdx]: newW }));
     };
 
@@ -686,12 +690,12 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
       <div className={s.tableWrap}>
         <table className={s.table}>
           <colgroup>
-            <col style={{ width: colWidths[0] || 120 }} />
-            <col style={{ width: colWidths[1] || 200 }} />
-            <col style={{ width: colWidths[2] || 100 }} />
-            <col style={{ width: colWidths[3] || 155 }} />
-            <col style={{ width: colWidths[4] || 'auto' }} />
-            <col style={{ width: colWidths[5] || 280 }} />
+            <col style={{ width: colWidths[0] || COL_MIN[0], minWidth: COL_MIN[0] }} />
+            <col style={{ width: colWidths[1] || COL_MIN[1], minWidth: COL_MIN[1] }} />
+            <col style={{ width: colWidths[2] || COL_MIN[2], minWidth: COL_MIN[2] }} />
+            <col style={{ width: colWidths[3] || COL_MIN[3], minWidth: COL_MIN[3] }} />
+            <col style={{ width: colWidths[4] || COL_MIN[4], minWidth: COL_MIN[4] }} />
+            <col style={{ width: colWidths[5] || COL_MIN[5], minWidth: COL_MIN[5] }} />
           </colgroup>
           <thead className={s.thead}>
             <tr>
