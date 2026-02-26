@@ -516,19 +516,58 @@ export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
     }
   }
 
+  // Respect quantumSafety if it was already promoted/demoted by the parameter
+  // analyzer (i.e. not UNKNOWN and different from the DB's generic classification).
+  const effectiveSafety =
+    asset.quantumSafety !== QuantumSafetyStatus.UNKNOWN &&
+    asset.quantumSafety !== QuantumSafetyStatus.CONDITIONAL &&
+    asset.quantumSafety !== profile.quantumSafety
+      ? asset.quantumSafety
+      : profile.quantumSafety;
+
   return {
     ...asset,
-    quantumSafety: profile.quantumSafety,
+    quantumSafety: effectiveSafety,
     recommendedPQC: profile.recommendedPQC,
     pqcVerdict,
-    complianceStatus: profile.quantumSafety === QuantumSafetyStatus.QUANTUM_SAFE
+    complianceStatus: effectiveSafety === QuantumSafetyStatus.QUANTUM_SAFE
       ? ComplianceStatus.COMPLIANT
-      : profile.quantumSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE
+      : effectiveSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE
         ? ComplianceStatus.NOT_COMPLIANT
-        : profile.quantumSafety === QuantumSafetyStatus.CONDITIONAL
+        : effectiveSafety === QuantumSafetyStatus.CONDITIONAL
           ? ComplianceStatus.COMPLIANT   // Conditional assets are compliant but flagged for review
           : ComplianceStatus.UNKNOWN,
   };
+}
+
+/**
+ * Safety-net sync: ensure quantumSafety is consistent with pqcVerdict.
+ * Call this AFTER all analysis (parameter analyzer, cross-file enrichment)
+ * to catch any ordering/overwrite issues.
+ */
+export function syncQuantumSafetyWithVerdict(assets: CryptoAsset[]): CryptoAsset[] {
+  return assets.map(asset => {
+    const v = asset.pqcVerdict;
+    if (!v) return asset;
+
+    let expected: QuantumSafetyStatus | null = null;
+    if (v.verdict === PQCReadinessVerdict.PQC_READY && v.confidence >= 70) {
+      expected = QuantumSafetyStatus.QUANTUM_SAFE;
+    } else if (v.verdict === PQCReadinessVerdict.NOT_PQC_READY && v.confidence >= 50) {
+      expected = QuantumSafetyStatus.NOT_QUANTUM_SAFE;
+    }
+
+    if (expected && asset.quantumSafety !== expected) {
+      return {
+        ...asset,
+        quantumSafety: expected,
+        complianceStatus: expected === QuantumSafetyStatus.QUANTUM_SAFE
+          ? ComplianceStatus.COMPLIANT
+          : ComplianceStatus.NOT_COMPLIANT,
+      };
+    }
+    return asset;
+  });
 }
 
 /**

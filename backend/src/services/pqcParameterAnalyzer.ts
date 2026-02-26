@@ -709,14 +709,17 @@ export function analyzeConditionalAsset(
     };
   }
 
-  // Optionally promote verdict to update quantumSafety status
+  // Promote/demote quantumSafety based on the analyzer's definitive verdict.
+  // Thresholds are intentionally lower than 100% because the analyzer is the
+  // *most specific* signal — even 50-60% confidence from it outweighs the DB's
+  // generic "conditional" classification.
   let updatedSafety: QuantumSafetyStatus = asset.quantumSafety;
-  if (verdict.verdict === PQCReadinessVerdict.PQC_READY && verdict.confidence >= 75) {
+  if (verdict.verdict === PQCReadinessVerdict.PQC_READY && verdict.confidence >= 70) {
     updatedSafety = QuantumSafetyStatus.QUANTUM_SAFE;
-  } else if (verdict.verdict === PQCReadinessVerdict.NOT_PQC_READY && verdict.confidence >= 75) {
+  } else if (verdict.verdict === PQCReadinessVerdict.NOT_PQC_READY && verdict.confidence >= 50) {
     updatedSafety = QuantumSafetyStatus.NOT_QUANTUM_SAFE;
   }
-  // Otherwise keep CONDITIONAL
+  // REVIEW_NEEDED stays CONDITIONAL
 
   return {
     ...asset,

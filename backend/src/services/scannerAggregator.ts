@@ -18,7 +18,7 @@ import {
   QuantumSafetyStatus,
   CryptoDependency,
 } from '../types';
-import { enrichAssetWithPQCData, calculateReadinessScore, checkNISTPQCCompliance } from './pqcRiskEngine';
+import { enrichAssetWithPQCData, calculateReadinessScore, checkNISTPQCCompliance, syncQuantumSafetyWithVerdict } from './pqcRiskEngine';
 import { scanNetworkCrypto, networkResultToCBOMAsset } from './networkScanner';
 import { scanDependencies, cryptoLibToCBOMAssets } from './dependencyScanner';
 import { analyzeAllConditionalAssets } from './pqcParameterAnalyzer';
@@ -1026,6 +1026,10 @@ export async function runFullScan(
 
   // 5. Smart PQC parameter analysis — promote/demote CONDITIONAL assets
   merged.cryptoAssets = analyzeAllConditionalAssets(merged.cryptoAssets, repoPath);
+
+  // 6. Safety-net: sync quantumSafety column with pqcVerdict
+  //    (catches any ordering/overwrite issues from enrichment → analysis pipeline)
+  merged.cryptoAssets = syncQuantumSafetyWithVerdict(merged.cryptoAssets);
 
   return merged;
 }
