@@ -1,32 +1,8 @@
-@use '../styles/variables' as *;
+@use '../../../styles/variables' as *;
 
-/* ── Tabs ─────────────────────────────────────────────────── */
-.tabs {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 20px;
-}
-
-.tab {
-  padding: 10px 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: $dc1-text-secondary;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: color $transition-fast, border-color $transition-fast;
-
-  &:hover { color: $dc1-text; }
-}
-
-.tabActive {
-  @extend .tab;
-  color: $dc1-blue;
-  border-bottom-color: $dc1-blue;
-  font-weight: 600;
-}
+/* ═══════════════════════════════════════════════════════════════
+   Discovery — Shared Component Styles
+   ═══════════════════════════════════════════════════════════════ */
 
 /* ── Stat cards ───────────────────────────────────────────── */
 .stats {
@@ -250,29 +226,6 @@
   color: $dc1-text-muted;
 }
 
-.filterRow td {
-  padding: 6px 12px 10px;
-  border-bottom: 1px solid $dc1-border;
-}
-
-.filterInput {
-  width: 100%;
-  padding: 6px 10px;
-  border: 1px solid $dc1-border;
-  border-radius: $dc1-radius-sm;
-  font-size: 12px;
-  color: $dc1-text;
-  background: $dc1-card;
-  font-family: $dc1-font;
-
-  &::placeholder { color: $dc1-text-muted; }
-}
-
-.filterSelect {
-  @extend .filterInput;
-  appearance: auto;
-}
-
 .table tbody tr {
   border-bottom: 1px solid rgba($dc1-border, 0.5);
   transition: background $transition-fast;
@@ -297,21 +250,19 @@
   color: $dc1-card;
 }
 
-.badgeExpired {
-  @extend .badgeIssued;
-  background: $dc1-danger;
-}
+.badgeExpired  { @extend .badgeIssued; background: $dc1-danger; }
+.badgeRevoked  { @extend .badgeIssued; background: $neutral-600; }
+.badgePending  { @extend .badgeIssued; background: $dc1-warning; color: $dc1-text; }
 
-.badgeRevoked {
-  @extend .badgeIssued;
-  background: $neutral-600;
-}
+.badgeEnrolled   { @extend .badgeIssued; background: $dc1-success; }
+.badgeDevPending { @extend .badgeIssued; background: $dc1-warning; color: $dc1-text; }
+.badgeDevExpired { @extend .badgeIssued; background: $dc1-danger; }
+.badgeDevRevoked { @extend .badgeIssued; background: $neutral-600; }
 
-.badgePending {
-  @extend .badgeIssued;
-  background: $dc1-warning;
-  color: $dc1-text;
-}
+.badgeProcessed  { @extend .badgeIssued; background: $dc1-success; }
+.badgeProcessing { @extend .badgeIssued; background: $dc1-blue; }
+.badgeFailed     { @extend .badgeIssued; background: $dc1-danger; }
+.badgePartial    { @extend .badgeIssued; background: $dc1-warning; color: $dc1-text; }
 
 .qsYes {
   display: inline-flex;
@@ -346,6 +297,46 @@
   background: currentColor;
 }
 
+/* ── Severity badges ──────────────────────────────────────── */
+.severityCritical {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: $dc1-danger;
+  color: $dc1-card;
+}
+
+.severityHigh {
+  @extend .severityCritical;
+  background: $error-50;
+  color: $dc1-danger;
+  border: 1px solid rgba($dc1-danger, 0.3);
+}
+
+.severityMedium {
+  @extend .severityCritical;
+  background: $warning-50;
+  color: $warning-200;
+  border: 1px solid rgba($dc1-warning, 0.3);
+}
+
+.severityLow {
+  @extend .severityCritical;
+  background: $blue-50;
+  color: $dc1-blue;
+  border: 1px solid rgba($dc1-blue, 0.2);
+}
+
+.severityInfo {
+  @extend .severityCritical;
+  background: $neutral-100;
+  color: $dc1-text-secondary;
+  border: 1px solid $dc1-border;
+}
+
+/* ── Source & action links ────────────────────────────────── */
 .sourceLink {
   color: $dc1-blue;
   font-size: 12px;
@@ -355,11 +346,11 @@
   &:hover { text-decoration: underline; }
 }
 
-/* ── Actions column ───────────────────────────────────────── */
 .actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-content: flex-end;
 }
 
 .upgradeBtn {
@@ -421,7 +412,7 @@
   border: 1px solid $dc1-border;
 }
 
-/* ── Software crypto libs ─────────────────────────────────── */
+/* ── Chip tags ────────────────────────────────────────────── */
 .libChips {
   display: flex;
   flex-wrap: wrap;
@@ -437,4 +428,40 @@
   background: $dc1-blue-light;
   color: $dc1-blue-dark;
   border: 1px solid rgba($dc1-blue, 0.15);
+}
+
+/* ── Mono text ────────────────────────────────────────────── */
+.mono {
+  font-family: monospace;
+  font-size: 12px;
+}
+
+/* ── Progress bar (for CBOM imports) ──────────────────────── */
+.progressBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 6px;
+  background: $neutral-100;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 3px;
+  background: $dc1-success;
+  transition: width 0.3s ease;
+}
+
+.progressLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: $dc1-text-secondary;
+  min-width: 36px;
+  text-align: right;
 }

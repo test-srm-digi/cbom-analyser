@@ -309,38 +309,3 @@ export interface Integration {
   createdAt: string;
   errorMessage?: string;
 }
-
-export type CertificateStatus = 'Issued' | 'Expired' | 'Revoked' | 'Pending';
-
-export interface DiscoveryCertificate {
-  id: string;
-  commonName: string;
-  caVendor: string;
-  status: CertificateStatus;
-  keyAlgorithm: string;
-  keyLength: string;
-  quantumSafe: boolean;
-  source: string;
-  expiryDate?: string;
-}
-
-export interface DiscoveryEndpoint {
-  id: string;
-  hostname: string;
-  ipAddress: string;
-  port: number;
-  tlsVersion: string;
-  keyAgreement: string;
-  quantumSafe: boolean;
-  source: string;
-}
-
-export interface DiscoverySoftware {
-  id: string;
-  name: string;
-  version: string;
-  vendor: string;
-  cryptoLibraries: string[];
-  quantumSafe: boolean;
-  source: string;
-}

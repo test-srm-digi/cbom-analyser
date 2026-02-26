@@ -6,7 +6,7 @@ import VisualizePage from './pages/VisualizePage';
 import ViolationsPage from './pages/ViolationsPage';
 import NetworkPage from './pages/NetworkPage';
 import IntegrationsPage from './pages/IntegrationsPage';
-import DiscoveryPage from './pages/DiscoveryPage';
+import DiscoveryPage from './pages/discovery';
 import PlaceholderPage from './pages/PlaceholderPage';
 import {
   ShieldHalf,
