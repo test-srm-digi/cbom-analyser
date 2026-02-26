@@ -155,10 +155,17 @@ By default the action uses a fast built-in **regex scanner**.
 To enable IBM **sonar-cryptography** deep analysis set the two optional
 Sonar inputs — the action image ships with `sonar-scanner` pre-installed.
 
+> **Important:** Your SonarQube instance must be **network-reachable** from the
+> GitHub Actions runner. Internal/corporate SonarQube servers (e.g.
+> `sonar.dev.company.com`) are **not reachable** from GitHub-hosted runners
+> (`ubuntu-latest`). Use a **self-hosted runner** on the same network instead.
+
+#### Basic Example (self-hosted runner)
+
 ```yaml
 jobs:
   cbom:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted      # must be on a network that can reach your SonarQube
     permissions:
       contents: read
       security-events: write
@@ -173,22 +180,109 @@ jobs:
           fail-on-vulnerable: true
 ```
 
+#### With Java Build Step (recommended for full accuracy)
+
+SonarQube's Java analyzer delivers bytecode-level insights when compiled
+`.class` files are available. The scanner auto-detects common build output
+directories (`target/classes`, `build/classes`, `out/production`, `bin`).
+If none exist it creates a temporary empty directory so the scan still
+proceeds — but you get source-level analysis only.
+
+For **full accuracy**, add a build step before the CBOM scan:
+
+**Maven project:**
+
+```yaml
+jobs:
+  cbom:
+    runs-on: self-hosted
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build (compile only — no tests)
+        run: mvn compile -q -DskipTests
+
+      - name: CBOM Analysis (SonarQube)
+        uses: test-srm-digi/cbom-analyser@main
+        with:
+          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          output-format: sarif
+          fail-on-vulnerable: true
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: cbom.sarif
+```
+
+**Gradle project:** replace the build step with:
+```yaml
+      - name: Build (compile only)
+        run: ./gradlew classes
+```
+
+| Build Command | What it does | Output dir auto-detected |
+|---------------|-------------|--------------------------|
+| `mvn compile` | Compiles `src/main/java` → bytecode | `target/classes/` |
+| `./gradlew classes` | Same for Gradle | `build/classes/` |
+| `mvn package -DskipTests` | Compile + package (slower) | `target/classes/` + `.jar` |
+| *(no build step)* | Source-level analysis only | temp empty dir created automatically |
+
+#### Runner Selection Guide
+
+| SonarQube location | `runs-on` | Build step needed? |
+|--------------------|-----------|-------------------|
+| Internal corporate server (e.g. `sonar.dev.company.com`) | `self-hosted` | Optional (recommended for Java) |
+| Public URL (e.g. `https://sonarcloud.io`) | `ubuntu-latest` | Optional (recommended for Java) |
+| Not using SonarQube | `ubuntu-latest` | No |
+
+#### Setting Up a Self-Hosted Runner
+
+If your SonarQube is on an internal network, you need a **self-hosted runner**
+— a machine (your laptop, a VM, or a server) on the same network:
+
+1. In your repo go to **Settings → Actions → Runners → New self-hosted runner**.
+2. Select your OS (Linux/macOS/Windows) and follow the generated commands:
+   ```bash
+   mkdir actions-runner && cd actions-runner
+   curl -o actions-runner-linux-x64-2.321.0.tar.gz -L \
+     https://github.com/actions/runner/releases/download/v2.321.0/actions-runner-linux-x64-2.321.0.tar.gz
+   tar xzf ./actions-runner-linux-x64-2.321.0.tar.gz
+   ./config.sh --url https://github.com/YOUR_ORG/YOUR_REPO --token <TOKEN_FROM_GITHUB>
+   ./run.sh
+   # Or install as a service:
+   # sudo ./svc.sh install && sudo ./svc.sh start
+   ```
+3. Once it shows **Idle** in Settings → Runners, your workflows with `runs-on: self-hosted` will use it.
+
+> **Requirement:** The self-hosted runner must have **Docker** installed
+> (the action uses `Dockerfile.action`).
+
 > **How it works:** When both `sonar-host-url` and `sonar-token` are set the
 > backend's scanner aggregator runs `sonar-scanner` against the checkout,
 > fetches the resulting CycloneDX 1.6 CBOM from SonarQube, and merges it
 > with the regex + dependency + network scan results. When the inputs are
 > absent the scanner falls back to regex mode automatically.
 
-> **Tip:** You can host SonarQube + the IBM sonar-cryptography plugin with
-> `docker compose -f docker-compose.sonarqube.yml up -d` and use the URL of
-> a self-hosted runner or a tunnel (e.g. Tailscale) to connect.
-
 ### Setting Up SonarQube Secrets for a New Repository
 
 To use the SonarQube integration you need a running SonarQube instance and a
 project token. Follow these steps **once per GitHub repository**:
 
-#### 1. Start SonarQube (self-hosted)
+#### 1. Start SonarQube (or use an existing instance)
+
+If you have an existing corporate SonarQube (e.g. `sonar.dev.company.com`),
+skip to step 2. Otherwise spin one up locally:
 
 ```bash
 # From the cbom-analyser checkout — bundles the IBM sonar-cryptography plugin
@@ -198,9 +292,6 @@ docker compose -f docker-compose.sonarqube.yml up -d
 until curl -sf http://localhost:9090/api/system/status | grep -q '"UP"'; do sleep 5; done
 echo "SonarQube is ready"
 ```
-
-> Alternatively use an existing corporate SonarQube / SonarCloud instance —
-> ask your platform team for the URL and a token.
 
 #### 2. Generate a Token
 
@@ -228,12 +319,21 @@ echo "SonarQube is ready"
 ```yaml
 jobs:
   cbom:
-    runs-on: ubuntu-latest    # or a self-hosted runner with network access to SonarQube
+    runs-on: self-hosted      # use self-hosted if SonarQube is on an internal network
     permissions:
       contents: read
       security-events: write
     steps:
       - uses: actions/checkout@v4
+
+      # Optional: build Java project for bytecode-level analysis
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Build
+        run: mvn compile -q -DskipTests
 
       - name: CBOM Analysis
         uses: test-srm-digi/cbom-analyser@main
@@ -249,10 +349,9 @@ jobs:
           sarif_file: cbom.sarif
 ```
 
-> **Network note:** The GitHub Actions runner must be able to reach the
-> SonarQube URL. For a locally hosted instance use a **self-hosted runner**
-> on the same network, or expose SonarQube via a tunnel (Tailscale, Cloudflare
-> Tunnel, ngrok, etc.).
+> **Network note:** The runner must be able to reach the SonarQube URL.
+> Internal servers require a **self-hosted runner** — see
+> [Setting Up a Self-Hosted Runner](#setting-up-a-self-hosted-runner) above.
 
 #### Without SonarQube (default)
 
