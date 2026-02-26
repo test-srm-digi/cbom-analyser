@@ -18,7 +18,7 @@
   --dc1-text-muted: #A0AAB0;
 
   /* Sidebar */
-  --dc1-sidebar-bg: #102240;
+  --dc1-sidebar-bg: #002947;
   --dc1-sidebar-active: rgba(255,255,255,0.12);
   --dc1-sidebar-hover: rgba(255,255,255,0.07);
   --dc1-sidebar-text: rgba(255,255,255,0.7);
@@ -35,7 +35,7 @@
   --dc1-info-bg: #E8F4FC;
 
   /* Sizing */
-  --dc1-sidebar-w: 240px;
+  --dc1-sidebar-w: 260px;
   --dc1-topbar-h: 48px;
   --dc1-radius: 8px;
   --dc1-radius-sm: 4px;
@@ -91,13 +91,14 @@ body {
 }
 .dc1-brand-text {
   color: #FFFFFF;
-  font-size: 22px;
-  font-weight: 400;
+  font-size: 24px;
+  font-weight: 300;
   letter-spacing: 0.3px;
+  font-family: 'Roboto Light', 'Roboto', sans-serif;
 }
 .dc1-brand-one {
   color: #FFFFFF;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   letter-spacing: 0.3px;
 }
@@ -123,13 +124,13 @@ body {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 12px;
+  padding: 14px 18px;
   background: none;
   border: none;
   color: var(--dc1-sidebar-text-active);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   text-align: left;
   border-radius: 6px;
@@ -142,10 +143,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   color: rgba(255,255,255,0.7);
-  font-size: 16px;
+  font-size: 20px;
 }
 .dc1-nav-section-label { flex: 1; }
 .dc1-nav-chevron { font-size: 11px; color: rgba(255,255,255,0.45); transition: transform 0.2s; }
@@ -159,14 +160,14 @@ body {
 .dc1-nav-item {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 9px 14px 9px 22px;
-  margin: 1px 8px;
+  gap: 12px;
+  padding: 11px 18px 11px 24px;
+  margin: 2px 8px;
   background: none;
   border: none;
   color: var(--dc1-sidebar-text);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 400;
   text-align: left;
   transition: background 0.15s, color 0.15s;
@@ -182,7 +183,7 @@ body {
   color: var(--dc1-sidebar-text-active);
   font-weight: 500;
 }
-.dc1-nav-icon { width: 18px; text-align: center; font-size: 16px; }
+.dc1-nav-icon { width: 20px; text-align: center; font-size: 18px; }
 
 /* Other sidebar nav sections (Private CA, Trust Lifecycle, etc.) */
 .dc1-nav-section-other {
@@ -190,10 +191,10 @@ body {
   padding: 3px 0;
 }
 .dc1-nav-section-header-other {
-  padding: 10px 14px;
+  padding: 14px 18px;
   font-weight: 500;
-  font-size: 14px;
-  color: rgba(255,255,255,0.75);
+  font-size: 15px;
+  color: rgba(255,255,255,0.80);
   border-radius: 6px;
   margin: 0 8px;
   width: calc(100% - 16px);
@@ -206,10 +207,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  font-size: 15px;
-  opacity: 0.6;
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+  opacity: 0.7;
 }
 .dc1-nav-section-label-other { flex: 1; }
 .dc1-nav-chevron-small { font-size: 10px; transition: transform 0.2s; }
@@ -225,13 +226,13 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 14px 8px 48px;
+  padding: 9px 18px 9px 54px;
   margin: 1px 8px;
   background: none;
   border: none;
-  color: rgba(255,255,255,0.75);
+  color: rgba(255,255,255,0.80);
   cursor: default;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   text-align: left;
   border-radius: 6px;
@@ -240,7 +241,7 @@ body {
 .dc1-subnav-icon {
   width: 16px;
   text-align: center;
-  font-size: 13px;
+  font-size: 14px;
   opacity: 0.7;
 }
 
