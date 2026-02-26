@@ -1,94 +1,73 @@
-import { useState, useCallback } from 'react';
-import { Shield } from 'lucide-react';
-import {
-  ComplianceBanner,
-  QuantumSafetyDonut,
-  PrimitivesDonut,
-  FunctionsDonut,
-  CryptoBubbleChart,
-  AssetListView,
-  ReadinessScoreCard,
-  CBOMUploader,
-  NetworkScanner,
-  CBOMHeader,
-  ThirdPartyLibrariesView,
-} from './components';
+import { useState, useCallback, useRef } from 'react';
+import AppShell, { type NavPage } from './layouts/AppShell';
+import DashboardPage from './pages/DashboardPage';
+import InventoryPage from './pages/InventoryPage';
 import {
   CBOMDocument,
   QuantumReadinessScore,
   ComplianceSummary,
-  NetworkScanResult,
   UploadResponse,
 } from './types';
 import { SAMPLE_CBOM } from './sampleData';
 
 export default function App() {
+  const [activePage, setActivePage] = useState<NavPage>('dashboard');
   const [cbom, setCbom] = useState<CBOMDocument | null>(null);
   const [readinessScore, setReadinessScore] = useState<QuantumReadinessScore | null>(null);
   const [compliance, setCompliance] = useState<ComplianceSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [autoLoaded, setAutoLoaded] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /* ── Upload ──────────────────────────────────────────── */
 
   const handleUpload = useCallback(async (file: File) => {
     setIsLoading(true);
-    setError(null);
-
     try {
       const formData = new FormData();
       formData.append('cbom', file);
-
-      const resp = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
+      const resp = await fetch('/api/upload', { method: 'POST', body: formData });
       const data: UploadResponse = await resp.json();
-
       if (data.success && data.cbom) {
         setCbom(data.cbom);
         setReadinessScore(data.readinessScore || null);
         setCompliance(data.compliance || null);
       } else {
-        // Try parsing locally if backend is unavailable
         const text = await file.text();
         handleLocalParse(text);
       }
     } catch {
-      // Backend might not be running – parse client-side
       try {
         const text = await file.text();
         handleLocalParse(text);
-      } catch (parseErr) {
-        setError(`Failed to parse CBOM: ${(parseErr as Error).message}`);
+      } catch {
+        // silent
       }
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  function triggerUpload() {
+    fileInputRef.current?.click();
+  }
+
+  function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleUpload(file);
+  }
+
+  /* ── Local parse ─────────────────────────────────────── */
+
   function handleLocalParse(jsonText: string) {
     let data = JSON.parse(jsonText);
 
-    // Unwrap API response wrapper format: { success, cbom, readinessScore, ... }
     if (data.success !== undefined && data.cbom) {
-      // If the file is a saved API response, extract the inner CBOM
       const wrappedScore = data.readinessScore;
       const wrappedCompliance = data.compliance;
       data = data.cbom;
-
-      // If the wrapper already contains score/compliance, use them directly
       if (wrappedScore && wrappedCompliance) {
-        const doc: CBOMDocument = {
-          bomFormat: data.bomFormat || 'CycloneDX',
-          specVersion: data.specVersion || '1.6',
-          serialNumber: data.serialNumber,
-          version: data.version || 1,
-          metadata: data.metadata || { timestamp: new Date().toISOString() },
-          components: data.components || [],
-          cryptoAssets: data.cryptoAssets || [],
-          dependencies: data.dependencies,
-          thirdPartyLibraries: data.thirdPartyLibraries,
-        };
+        const doc = buildDoc(data);
         setCbom(doc);
         setReadinessScore(wrappedScore);
         setCompliance(wrappedCompliance);
@@ -96,20 +75,8 @@ export default function App() {
       }
     }
 
-    // Basic client-side CBOM parsing
-    const doc: CBOMDocument = {
-      bomFormat: data.bomFormat || 'CycloneDX',
-      specVersion: data.specVersion || '1.6',
-      serialNumber: data.serialNumber,
-      version: data.version || 1,
-      metadata: data.metadata || { timestamp: new Date().toISOString() },
-      components: data.components || [],
-      cryptoAssets: data.cryptoAssets || [],
-      dependencies: data.dependencies,
-      thirdPartyLibraries: data.thirdPartyLibraries,
-    };
+    const doc = buildDoc(data);
 
-    // If no cryptoAssets but has components with crypto-properties, map them
     if (doc.cryptoAssets.length === 0 && doc.components.length > 0) {
       for (const comp of doc.components as any[]) {
         const cp = comp.cryptoProperties || comp['crypto-properties'];
@@ -122,20 +89,18 @@ export default function App() {
               assetType: cp.assetType || cp['asset-type'] || 'algorithm',
               algorithmProperties: cp.algorithmProperties,
             },
-            location: comp.evidence?.occurrences?.[0] ? {
-              fileName: comp.evidence.occurrences[0].location || '',
-              lineNumber: comp.evidence.occurrences[0].line,
-            } : undefined,
+            location: comp.evidence?.occurrences?.[0]
+              ? { fileName: comp.evidence.occurrences[0].location || '', lineNumber: comp.evidence.occurrences[0].line }
+              : undefined,
             quantumSafety: 'unknown' as any,
           });
         }
       }
     }
 
-    // Client-side readiness calculation
-    const safe = doc.cryptoAssets.filter(a => a.quantumSafety === 'quantum-safe').length;
-    const notSafe = doc.cryptoAssets.filter(a => a.quantumSafety === 'not-quantum-safe').length;
-    const unknown = doc.cryptoAssets.filter(a => a.quantumSafety === 'unknown').length;
+    const safe = doc.cryptoAssets.filter((a) => a.quantumSafety === 'quantum-safe').length;
+    const notSafe = doc.cryptoAssets.filter((a) => a.quantumSafety === 'not-quantum-safe').length;
+    const unknown = doc.cryptoAssets.filter((a) => a.quantumSafety === 'unknown').length;
     const total = doc.cryptoAssets.length;
 
     setCbom(doc);
@@ -158,155 +123,65 @@ export default function App() {
     });
   }
 
-  function loadSampleData() {
-    setIsLoading(true);
-    setTimeout(() => {
-      handleLocalParse(JSON.stringify(SAMPLE_CBOM));
-      setIsLoading(false);
-    }, 500);
+  function buildDoc(data: any): CBOMDocument {
+    return {
+      bomFormat: data.bomFormat || 'CycloneDX',
+      specVersion: data.specVersion || '1.6',
+      serialNumber: data.serialNumber,
+      version: data.version || 1,
+      metadata: data.metadata || { timestamp: new Date().toISOString() },
+      components: data.components || [],
+      cryptoAssets: data.cryptoAssets || [],
+      dependencies: data.dependencies,
+      thirdPartyLibraries: data.thirdPartyLibraries,
+    };
   }
 
-  function handleNetworkScan(result: NetworkScanResult) {
-    if (!cbom) return;
-    // Add network asset to CBOM
-    const newAsset = {
-      id: crypto.randomUUID(),
-      name: result.cipherSuite,
-      type: 'network',
-      cryptoProperties: {
-        assetType: 'protocol',
-        protocolProperties: {
-          type: 'tls',
-          version: result.protocol,
-          cipherSuites: [{ name: result.cipherSuite }],
-        },
-      },
-      location: { fileName: `${result.host}:${result.port}` },
-      quantumSafety: result.isQuantumSafe ? 'quantum-safe' as const : 'not-quantum-safe' as const,
-    };
+  /* ── Auto-load sample data so dashboard isn't empty ──── */
 
-    const updatedCbom = {
-      ...cbom,
-      cryptoAssets: [...cbom.cryptoAssets, newAsset as any],
-    };
-    setCbom(updatedCbom);
-
-    // Recalculate score
-    const assets = updatedCbom.cryptoAssets;
-    const safe = assets.filter(a => a.quantumSafety === 'quantum-safe').length;
-    const notSafe = assets.filter(a => a.quantumSafety === 'not-quantum-safe').length;
-    const unknown = assets.filter(a => a.quantumSafety === 'unknown').length;
-    const total = assets.length;
-
-    setReadinessScore({
-      score: total > 0 ? Math.round(((safe + unknown * 0.5) / total) * 100) : 100,
-      totalAssets: total,
-      quantumSafe: safe,
-      notQuantumSafe: notSafe,
-      conditional: 0,
-      unknown,
-    });
-    setCompliance(prev => prev ? {
-      ...prev,
-      totalAssets: total,
-      compliantAssets: safe,
-      nonCompliantAssets: notSafe,
-      unknownAssets: unknown,
-      isCompliant: notSafe === 0,
-    } : null);
+  if (!cbom && !isLoading && !autoLoaded) {
+    setAutoLoaded(true);
+    setTimeout(() => handleLocalParse(JSON.stringify(SAMPLE_CBOM)), 0);
   }
 
-   console.log({cbom})
+  /* ── Render page ─────────────────────────────────────── */
+
+  function renderPage() {
+    switch (activePage) {
+      case 'dashboard':
+        return (
+          <DashboardPage
+            cbom={cbom}
+            readinessScore={readinessScore}
+            compliance={compliance}
+            onNavigate={(p) => setActivePage(p as NavPage)}
+            onUpload={triggerUpload}
+          />
+        );
+      case 'inventory':
+        return <InventoryPage cbom={cbom} readinessScore={readinessScore} />;
+      default:
+        return (
+          <div className="dc1-placeholder-page">
+            <h2>{activePage.charAt(0).toUpperCase() + activePage.slice(1)}</h2>
+            <p>This page is coming soon.</p>
+          </div>
+        );
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-qg-dark">
-      {/* Header */}
-      <header className="border-b border-qg-border">
-        <div className="mx-auto px-16 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Shield className="w-7 h-7 text-qg-accent" />
-            <div>
-              <h1 className="text-lg font-bold text-white tracking-tight">QuantumGuard</h1>
-              <p className="text-xs text-gray-500">CBOM Hub</p>
-            </div>
-          </div>
-          <p className="text-xs text-gray-500">
-            Explore the use of cryptography in software with Cryptography Bills of Materials (CBOM)
-          </p>
-        </div>
-      </header>
-
-      <main className="mx-auto px-16 py-6 space-y-6">
-        {/* Upload Section */}
-        {!cbom && (
-          <div className="space-y-4">
-            <CBOMUploader onUpload={handleUpload} isLoading={isLoading} />
-            <p className="text-sm text-gray-500 text-center">
-              If you do not have a CBOM, visualize our{' '}
-              <button
-                onClick={loadSampleData}
-                className="text-qg-accent hover:underline font-medium"
-              >
-                sample CBOM file →
-              </button>
-            </p>
-          </div>
-        )}
-
-        {error && (
-          <div className="bg-qg-red/10 border border-qg-red/30 rounded-lg px-16 py-3 text-qg-red text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Dashboard */}
-        {cbom && (
-          <div className="space-y-6 animate-fade-in">
-            {/* CBOM Header */}
-            <CBOMHeader cbom={cbom} />
-
-            {/* Compliance Banner */}
-            <ComplianceBanner compliance={compliance} />
-
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <QuantumSafetyDonut assets={cbom.cryptoAssets} />
-              <CryptoBubbleChart assets={cbom.cryptoAssets} />
-              <PrimitivesDonut assets={cbom.cryptoAssets} />
-              <FunctionsDonut assets={cbom.cryptoAssets} />
-            </div>
-
-            {/* Score + Network Scanner Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <ReadinessScoreCard score={readinessScore} />
-              <NetworkScanner onScanComplete={handleNetworkScan} />
-            </div>
-
-            {/* Asset List */}
-            <AssetListView assets={cbom.cryptoAssets} />
-
-            {/* Third-Party Crypto Libraries */}
-           
-            {cbom.thirdPartyLibraries && cbom.thirdPartyLibraries.length > 0 && (
-              <ThirdPartyLibrariesView libraries={cbom.thirdPartyLibraries} />
-            )}
-
-            {/* Upload another */}
-            {/* <div className="pt-4 border-t border-qg-border">
-              <p className="text-sm text-gray-500 mb-3">Upload another CBOM:</p>
-              <CBOMUploader onUpload={handleUpload} isLoading={isLoading} />
-            </div> */}
-          </div>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-qg-border mt-12 py-6">
-        <div className="mx-auto px-16 text-center text-xs text-gray-600">
-          <p>QuantumGuard CBOM Hub — Cryptographic Bill of Materials Analyzer</p>
-          <p className="mt-1">CycloneDX 1.6 Standard · NIST PQC Compliance</p>
-        </div>
-      </footer>
-    </div>
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,.cdx,.xml"
+        style={{ display: 'none' }}
+        onChange={onFileSelected}
+      />
+      <AppShell activePage={activePage} onNavigate={setActivePage}>
+        {renderPage()}
+      </AppShell>
+    </>
   );
 }
