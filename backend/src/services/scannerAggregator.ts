@@ -196,11 +196,24 @@ export async function runSonarCryptoScan(repoPath: string, excludePatterns?: str
 
     const projectKey = `quantumguard-${path.basename(repoPath).replace(/[^a-zA-Z0-9_-]/g, '-')}`;
 
+    // Detect Java compiled class directories (sonar.java.binaries is required when .java files exist)
+    const javaBinCandidates = ['target/classes', 'build/classes', 'out/production', 'bin'];
+    const javaBinDirs = javaBinCandidates
+      .map(d => path.join(repoPath, d))
+      .filter(d => fs.existsSync(d));
+    // If no compiled classes exist, create a temp empty dir so SonarQube doesn't error out
+    const tempBinDir = path.join(repoPath, '.sonar-tmp-bin');
+    if (javaBinDirs.length === 0) {
+      fs.mkdirSync(tempBinDir, { recursive: true });
+      javaBinDirs.push(tempBinDir);
+    }
+
     // Build sonar-scanner arguments
     const args = [
       `-Dsonar.projectKey=${projectKey}`,
       `-Dsonar.projectName="QuantumGuard Scan: ${path.basename(repoPath)}"`,
       `-Dsonar.sources=.`,
+      `-Dsonar.java.binaries=${javaBinDirs.map(d => path.relative(repoPath, d) || '.').join(',')}`,
       `-Dsonar.host.url=${sonarHostUrl}`,
       `-Dsonar.token=${sonarToken}`,
       `-Dsonar.scm.disabled=true`,
@@ -230,13 +243,27 @@ export async function runSonarCryptoScan(repoPath: string, excludePatterns?: str
       if (fs.existsSync(reportPath)) {
         console.log(`Found CBOM report at: ${reportPath}`);
         const report = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
+        // Clean up temp dir if we created one
+        if (fs.existsSync(tempBinDir)) {
+          fs.rmSync(tempBinDir, { recursive: true, force: true });
+        }
         return parseCBOMFile(JSON.stringify(report));
       }
+    }
+
+    // Clean up temp dir
+    if (fs.existsSync(tempBinDir)) {
+      fs.rmSync(tempBinDir, { recursive: true, force: true });
     }
 
     console.warn('No CBOM output file found after sonar scan. Falling back to regex.');
     return runRegexCryptoScan(repoPath, excludePatterns);
   } catch (error) {
+    // Clean up temp dir on failure
+    const tempBinDir = path.join(repoPath, '.sonar-tmp-bin');
+    if (fs.existsSync(tempBinDir)) {
+      fs.rmSync(tempBinDir, { recursive: true, force: true });
+    }
     console.warn(
       'Sonar-cryptography scanner not available or failed. ' +
       'Falling back to regex-based scanning.',
