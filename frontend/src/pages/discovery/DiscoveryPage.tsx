@@ -1,12 +1,4 @@
 import { useState } from 'react';
-import {
-  ShieldCheck,
-  Wifi,
-  Code2,
-  Cpu,
-  FileJson,
-  Package,
-} from 'lucide-react';
 import type { DiscoveryTab } from './types';
 import {
   CertificatesTab,
@@ -16,70 +8,55 @@ import {
   CodeAnalysisTab,
   CbomImportsTab,
 } from './tabs';
-import { CERTIFICATES, ENDPOINTS, SOFTWARE, DEVICES, CODE_FINDINGS, CBOM_IMPORTS } from './data';
 import s from './DiscoveryPage.module.scss';
 
 /* ═══════════════════════════════════════════════════════════════
-   Tab definitions — mapped to integration sources
+   Tab label map — for the page header
    ═══════════════════════════════════════════════════════════════ */
 
-const TABS: { id: DiscoveryTab; label: string; icon: React.ReactNode; count: number; source: string }[] = [
-  { id: 'certificates',  label: 'Certificates',   icon: <ShieldCheck className={s.tabIcon} />, count: CERTIFICATES.length,  source: 'DigiCert TLM' },
-  { id: 'endpoints',     label: 'Endpoints',      icon: <Wifi className={s.tabIcon} />,       count: ENDPOINTS.length,     source: 'Network Scanner' },
-  { id: 'software',      label: 'Software',       icon: <Package className={s.tabIcon} />,    count: SOFTWARE.length,      source: 'DigiCert STM' },
-  { id: 'devices',       label: 'Devices',        icon: <Cpu className={s.tabIcon} />,        count: DEVICES.length,       source: 'DigiCert DTM' },
-  { id: 'code-analysis', label: 'Code Analysis',  icon: <Code2 className={s.tabIcon} />,      count: CODE_FINDINGS.length, source: 'GitHub Scanner' },
-  { id: 'cbom-imports',  label: 'CBOM Imports',   icon: <FileJson className={s.tabIcon} />,   count: CBOM_IMPORTS.length,  source: 'CycloneDX Import' },
-];
+const TAB_META: Record<DiscoveryTab, { title: string; subtitle: string }> = {
+  certificates:   { title: 'Certificates',  subtitle: 'TLS / PKI certificates discovered via DigiCert TLM — algorithm inventory, expiry tracking, and PQC-readiness assessment.' },
+  endpoints:      { title: 'Endpoints',     subtitle: 'Network endpoints scanned for TLS configuration, cipher suites, and key-agreement protocols used in transit encryption.' },
+  software:       { title: 'Software',      subtitle: 'Software releases and signing artifacts discovered via DigiCert STM — signing algorithm and PQC migration status.' },
+  devices:        { title: 'Devices',       subtitle: 'IoT and managed devices discovered via DigiCert DTM — firmware crypto, certificate enrollment, and key-strength audit.' },
+  'code-analysis': { title: 'Code Analysis', subtitle: 'Cryptographic API usage detected in source repositories by the GitHub Scanner — algorithm, key size, and severity.' },
+  'cbom-imports':  { title: 'CBOM Imports',  subtitle: 'CycloneDX CBOM files imported from CI/CD pipelines — crypto component inventory and PQC-readiness breakdown.' },
+};
 
 /* ═══════════════════════════════════════════════════════════════
-   DiscoveryPage — orchestrator
+   DiscoveryPage — renders the active discovery sub-page
    ═══════════════════════════════════════════════════════════════ */
 
-export default function DiscoveryPage() {
-  const [activeTab, setActiveTab] = useState<DiscoveryTab>('certificates');
-  const [search, setSearch] = useState('');
+interface Props {
+  tab: DiscoveryTab;
+}
 
-  const handleTabChange = (tab: DiscoveryTab) => {
-    setActiveTab(tab);
-    setSearch('');
+export default function DiscoveryPage({ tab }: Props) {
+  const [search, setSearch] = useState('');
+  const meta = TAB_META[tab];
+
+  const tabContent = () => {
+    switch (tab) {
+      case 'certificates':   return <CertificatesTab search={search} setSearch={setSearch} />;
+      case 'endpoints':      return <EndpointsTab    search={search} setSearch={setSearch} />;
+      case 'software':       return <SoftwareTab     search={search} setSearch={setSearch} />;
+      case 'devices':        return <DevicesTab      search={search} setSearch={setSearch} />;
+      case 'code-analysis':  return <CodeAnalysisTab search={search} setSearch={setSearch} />;
+      case 'cbom-imports':   return <CbomImportsTab  search={search} setSearch={setSearch} />;
+    }
   };
 
   return (
     <div>
       {/* Header */}
       <div className={s.header}>
-        <h1 className={s.title}>Discovery</h1>
-        <p className={s.subtitle}>
-          Cryptographic asset inventory aggregated from all configured integrations — certificates, endpoints, software signing, devices, code analysis, and CBOM imports.
-        </p>
+        <p className={s.breadcrumb}>Discovery</p>
+        <h1 className={s.title}>{meta.title}</h1>
+        <p className={s.subtitle}>{meta.subtitle}</p>
       </div>
 
-      {/* Tabs */}
-      <div className={s.tabs}>
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={activeTab === t.id ? s.tabActive : s.tab}
-            onClick={() => handleTabChange(t.id)}
-          >
-            {t.icon}
-            <span>
-              {t.label}
-              <span className={s.sourceTag}>{t.source}</span>
-            </span>
-            <span className={activeTab === t.id ? s.tabCountActive : s.tabCount}>{t.count}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      {activeTab === 'certificates'  && <CertificatesTab search={search} setSearch={setSearch} />}
-      {activeTab === 'endpoints'     && <EndpointsTab    search={search} setSearch={setSearch} />}
-      {activeTab === 'software'      && <SoftwareTab     search={search} setSearch={setSearch} />}
-      {activeTab === 'devices'       && <DevicesTab      search={search} setSearch={setSearch} />}
-      {activeTab === 'code-analysis' && <CodeAnalysisTab search={search} setSearch={setSearch} />}
-      {activeTab === 'cbom-imports'  && <CbomImportsTab  search={search} setSearch={setSearch} />}
+      {/* Content */}
+      {tabContent()}
     </div>
   );
 }

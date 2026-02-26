@@ -1,11 +1,20 @@
 @use '../../styles/variables' as *;
 
 /* ═══════════════════════════════════════════════════════════════
-   DiscoveryPage — Orchestrator Styles (tabs + header)
+   DiscoveryPage — Header Styles
    ═══════════════════════════════════════════════════════════════ */
 
 .header {
   margin-bottom: 24px;
+}
+
+.breadcrumb {
+  font-size: 12px;
+  font-weight: 500;
+  color: $dc1-text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 4px;
 }
 
 .title {
@@ -20,70 +29,4 @@
   color: $dc1-text-secondary;
   margin: 0;
   line-height: 1.5;
-}
-
-/* ── Tabs ─────────────────────────────────────────────────── */
-.tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid $dc1-border;
-  overflow-x: auto;
-}
-
-.tab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 18px;
-  font-size: 13px;
-  font-weight: 500;
-  color: $dc1-text-secondary;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color $transition-fast, border-color $transition-fast;
-  margin-bottom: -1px;
-
-  &:hover { color: $dc1-text; }
-}
-
-.tabActive {
-  @extend .tab;
-  color: $dc1-blue;
-  border-bottom-color: $dc1-blue;
-  font-weight: 600;
-}
-
-.tabIcon {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-}
-
-.tabCount {
-  font-size: 11px;
-  font-weight: 600;
-  background: $neutral-100;
-  color: $dc1-text-secondary;
-  padding: 1px 7px;
-  border-radius: 10px;
-  margin-left: 2px;
-}
-
-.tabCountActive {
-  @extend .tabCount;
-  background: $blue-50;
-  color: $dc1-blue;
-}
-
-/* ── Source tag under tab label ────────────────────────────── */
-.sourceTag {
-  font-size: 10px;
-  font-weight: 500;
-  color: $dc1-text-muted;
-  display: block;
-  margin-top: 2px;
 }

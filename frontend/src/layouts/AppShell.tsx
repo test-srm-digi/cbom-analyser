@@ -1,4 +1,4 @@
-import { useState, ReactNode } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faGauge,
@@ -22,6 +22,14 @@ import {
   faChevronDown,
   faChevronRight,
 } from '@fortawesome/pro-solid-svg-icons';
+import {
+  faShieldCheck as faShieldCheckLight,
+  faWifi,
+  faBox,
+  faMicrochip,
+  faCode,
+  faFileCode,
+} from '@fortawesome/pro-light-svg-icons';
 
 /* ─── Types ─────────────────────────────────────────────────── */
 
@@ -34,6 +42,12 @@ export type NavPage =
   | 'policies'
   | 'integrations'
   | 'discovery'
+  | 'discovery-certificates'
+  | 'discovery-endpoints'
+  | 'discovery-software'
+  | 'discovery-devices'
+  | 'discovery-code-analysis'
+  | 'discovery-cbom-imports'
   | 'network'
   | 'settings'
   /* Other products */
@@ -49,13 +63,30 @@ interface Props {
 
 /* ─── Nav config ────────────────────────────────────────────── */
 
-const mainNavItems: { id: NavPage; label: string; icon: typeof faGauge }[] = [
+interface NavItem {
+  id: NavPage;
+  label: string;
+  icon: typeof faGauge;
+  children?: { id: NavPage; label: string; icon: typeof faGauge }[];
+}
+
+const mainNavItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: faGrid2 },
   { id: 'inventory', label: 'Inventory', icon: faTableCells },
   { id: 'visualize', label: 'Visualize', icon: faDiagramProject },
   { id: 'violations', label: 'Violations', icon: faTriangleExclamation },
   { id: 'integrations', label: 'Integrations', icon: faPlug },
-  { id: 'discovery', label: 'Discovery', icon: faMagnifyingGlass },
+  {
+    id: 'discovery', label: 'Discovery', icon: faMagnifyingGlass,
+    children: [
+      { id: 'discovery-certificates',   label: 'Certificates',  icon: faShieldCheckLight },
+      { id: 'discovery-endpoints',       label: 'Endpoints',     icon: faWifi },
+      { id: 'discovery-software',        label: 'Software',      icon: faBox },
+      { id: 'discovery-devices',         label: 'Devices',       icon: faMicrochip },
+      { id: 'discovery-code-analysis',   label: 'Code Analysis', icon: faCode },
+      { id: 'discovery-cbom-imports',    label: 'CBOM Imports',  icon: faFileCode },
+    ],
+  },
   { id: 'network', label: 'Network Scanner', icon: faBullseyeArrow },
   { id: 'tracking', label: 'Tracking', icon: faListCheck },
   { id: 'policies', label: 'Policies', icon: faShieldHalved },
@@ -83,6 +114,38 @@ const sidebarSections: SidebarSection[] = [
 export default function AppShell({ activePage, onNavigate, children }: Props) {
   const [qraExpanded, setQraExpanded] = useState(true);
   const [comingSoonModal, setComingSoonModal] = useState<SidebarSection | null>(null);
+  const [expandedParents, setExpandedParents] = useState<Set<NavPage>>(() => {
+    // auto-expand Discovery if a child page is active on mount
+    const set = new Set<NavPage>();
+    if (activePage.startsWith('discovery-')) set.add('discovery');
+    return set;
+  });
+
+  // auto-expand parent when navigating to a child page
+  useEffect(() => {
+    for (const item of mainNavItems) {
+      if (item.children?.some((c) => c.id === activePage)) {
+        setExpandedParents((prev) => {
+          if (prev.has(item.id)) return prev;
+          const next = new Set(prev);
+          next.add(item.id);
+          return next;
+        });
+      }
+    }
+  }, [activePage]);
+
+  const toggleParent = (id: NavPage) =>
+    setExpandedParents((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  /** Is this parent's section active (itself or any child)? */
+  const isParentActive = (item: NavItem) =>
+    activePage === item.id || (item.children?.some((c) => activePage === c.id) ?? false);
 
   return (
     <div className="dc1-shell">
@@ -117,17 +180,56 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
 
             {qraExpanded && (
               <ul className="dc1-nav-list">
-                {mainNavItems.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      className={`dc1-nav-item ${activePage === item.id ? 'dc1-nav-active' : ''}`}
-                      onClick={() => onNavigate(item.id)}
-                    >
-                      <FontAwesomeIcon icon={item.icon} className="dc1-nav-icon" />
-                      <span>{item.label}</span>
-                    </button>
-                  </li>
-                ))}
+                {mainNavItems.map((item) => {
+                  const hasChildren = !!item.children?.length;
+                  const expanded = expandedParents.has(item.id);
+                  const parentActive = isParentActive(item);
+
+                  return (
+                    <li key={item.id}>
+                      <button
+                        className={`dc1-nav-item ${parentActive ? 'dc1-nav-active' : ''}`}
+                        onClick={() => {
+                          if (hasChildren) {
+                            toggleParent(item.id);
+                            // Navigate to first child if not already on a child
+                            if (!activePage.startsWith(item.id + '-') && item.children) {
+                              onNavigate(item.children[0].id);
+                            }
+                          } else {
+                            onNavigate(item.id);
+                          }
+                        }}
+                      >
+                        <FontAwesomeIcon icon={item.icon} className="dc1-nav-icon" />
+                        <span>{item.label}</span>
+                        {hasChildren && (
+                          <FontAwesomeIcon
+                            icon={expanded ? faChevronDown : faChevronRight}
+                            style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5 }}
+                          />
+                        )}
+                      </button>
+
+                      {/* Child nav items */}
+                      {hasChildren && expanded && (
+                        <ul className="dc1-subnav-list">
+                          {item.children!.map((child) => (
+                            <li key={child.id}>
+                              <button
+                                className={`dc1-subnav-item ${activePage === child.id ? 'dc1-subnav-active' : ''}`}
+                                onClick={() => onNavigate(child.id)}
+                              >
+                                <FontAwesomeIcon icon={child.icon} className="dc1-subnav-icon" />
+                                <span>{child.label}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

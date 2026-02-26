@@ -7,6 +7,7 @@ import ViolationsPage from './pages/ViolationsPage';
 import NetworkPage from './pages/NetworkPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import DiscoveryPage from './pages/discovery';
+import type { DiscoveryTab } from './pages/discovery/types';
 import PlaceholderPage from './pages/PlaceholderPage';
 import {
   ShieldHalf,
@@ -177,7 +178,16 @@ export default function App() {
       case 'integrations':
         return <IntegrationsPage />;
       case 'discovery':
-        return <DiscoveryPage />;
+        // bare discovery → redirect to first child
+        setActivePage('discovery-certificates');
+        return null;
+      case 'discovery-certificates':
+      case 'discovery-endpoints':
+      case 'discovery-software':
+      case 'discovery-devices':
+      case 'discovery-code-analysis':
+      case 'discovery-cbom-imports':
+        return <DiscoveryPage tab={activePage.replace('discovery-', '') as DiscoveryTab} />;
       case 'network':
         return <NetworkPage />;
 
