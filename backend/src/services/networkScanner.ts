@@ -2,7 +2,7 @@
  * Network TLS Scanner
  *
  * Scans live endpoints for cryptographic properties (TLS version, cipher suites)
- * and maps findings into CycloneDX 1.6 CBOM format.
+ * and maps findings into CycloneDX 1.7 CBOM format.
  */
 import * as https from 'https';
 import * as tls from 'tls';
@@ -79,7 +79,7 @@ export async function scanNetworkCrypto(
 }
 
 /**
- * Convert a network scan result into a CycloneDX 1.6 CBOM CryptoAsset.
+ * Convert a network scan result into a CycloneDX 1.7 CBOM CryptoAsset.
  */
 export function networkResultToCBOMAsset(scanResult: NetworkScanResult): CryptoAsset {
   const protocolProfile = classifyAlgorithm(scanResult.protocol);

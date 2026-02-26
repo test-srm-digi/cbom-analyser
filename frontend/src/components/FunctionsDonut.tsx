@@ -1,21 +1,23 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { CryptoAsset } from '../types';
+import { TOOLTIP_STYLE, CHART_BLUE, CHART_PURPLE, CHART_ORANGE, CHART_YELLOW, CHART_GREEN, CHART_PINK, CHART_GRAY } from '../styles/dsTokens';
+import styles from './ChartCard.module.scss';
 
 interface FunctionsDonutProps {
   assets: CryptoAsset[];
 }
 
 const FUNCTION_COLORS: Record<string, string> = {
-  'Hash Function': '#58a6ff',
-  'Keygen': '#3fb950',
-  'Encrypt': '#f0883e',
-  'Decrypt': '#d29922',
-  'Sign': '#bc8cff',
+  'Hash Function': CHART_BLUE,
+  'Keygen': CHART_GREEN,
+  'Encrypt': CHART_ORANGE,
+  'Decrypt': CHART_YELLOW,
+  'Sign': CHART_PURPLE,
   'Verify': '#a371f7',
   'Key Exchange': '#7ee787',
   'Digest': '#56d364',
-  'Tag': '#f778ba',
-  'Other': '#8b949e',
+  'Tag': CHART_PINK,
+  'Other': CHART_GRAY,
 };
 
 function computeFunctionData(assets: CryptoAsset[]) {
@@ -44,9 +46,9 @@ export default function FunctionsDonut({ assets }: FunctionsDonutProps) {
   const total = new Set(data.map(d => d.name)).size;
 
   return (
-    <div className="bg-qg-card border border-qg-border rounded-lg p-4 animate-fade-in">
-      <h3 className="text-sm font-medium text-gray-400 mb-2">Crypto Functions</h3>
-      <div className="relative" style={{ height: 250 }}>
+    <div className={styles.card}>
+      <h3 className={styles.title}>Crypto Functions</h3>
+      <div className={styles.chartWrap} style={{ height: 250 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -64,25 +66,18 @@ export default function FunctionsDonut({ assets }: FunctionsDonutProps) {
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
               ))}
             </Pie>
-            <Tooltip
-              contentStyle={{
-                 backgroundColor: '#e6edf3',
-                border: '1px solid #30363d',
-                borderRadius: '8px',
-                color: '#161b22',
-              }}
-            />
+            <Tooltip contentStyle={TOOLTIP_STYLE} />
           </PieChart>
         </ResponsiveContainer>
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-bold text-white">{total}</span>
-          <span className="text-xs text-gray-400">Crypto Functions</span>
+        <div className={styles.centerLabel}>
+          <span className={styles.centerNumber}>{total}</span>
+          <span className={styles.centerText}>Crypto Functions</span>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2 mt-2 justify-center">
+      <div className={styles.legend}>
         {data.map(({ name, color }) => (
-          <div key={name} className="flex items-center gap-1 text-xs text-gray-400">
-            <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
+          <div key={name} className={styles.legendItem}>
+            <span className={styles.legendSquare} style={{ backgroundColor: color }} />
             {name}
           </div>
         ))}

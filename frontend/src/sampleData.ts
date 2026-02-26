@@ -1,6 +1,6 @@
 /**
  * Sample CBOM data mimicking a Keycloak-like project scan.
- * Demonstrates all CycloneDX 1.6 features including pqcVerdict,
+ * Demonstrates all CycloneDX 1.7 features including pqcVerdict,
  * detectionSource, thirdPartyLibraries, and extended asset types.
  */
 import {
@@ -14,7 +14,7 @@ import {
 
 export const SAMPLE_CBOM: CBOMDocument = {
   bomFormat: 'CycloneDX',
-  specVersion: '1.6',
+  specVersion: '1.7',
   serialNumber: 'urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79',
   version: 1,
   metadata: {
@@ -28,6 +28,10 @@ export const SAMPLE_CBOM: CBOMDocument = {
       version: 'main',
       type: 'application',
       group: 'github.com',
+    },
+    repository: {
+      url: 'https://github.com/keycloak/keycloak',
+      branch: 'main',
     },
   },
   components: [],

@@ -1,0 +1,40 @@
+// ══════════════════════════════════════════════════════════════
+//  DigiCert ONE — Quantum Readiness Advisor  ·  Global Styles
+// ══════════════════════════════════════════════════════════════
+@use 'variables' as *;
+
+// ── Reset ────────────────────────────────────────────────────
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: $dc1-font;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: $dc1-bg;
+  color: $dc1-text;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+// ── Animations ───────────────────────────────────────────────
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+// ── Scrollbar ────────────────────────────────────────────────
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: $dc1-bg; }
+::-webkit-scrollbar-thumb { background: $neutral-400; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: $neutral-500; }

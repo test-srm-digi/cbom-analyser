@@ -46,7 +46,7 @@ interface BedrockSuggestionRequest {
   lineNumber?: number;
   quantumSafety: string;
   recommendedPQC?: string;
-  // CycloneDX 1.6 fields
+  // CycloneDX 1.7 fields
   assetType?: string;
   detectionSource?: string;
   description?: string;
@@ -187,7 +187,7 @@ function generateFallbackSuggestion(
     };
   }
 
-  // ── Handle by asset type (CycloneDX 1.6) ──────────────────────────
+  // ── Handle by asset type (CycloneDX 1.7) ──────────────────────────
   if (assetType === 'protocol') {
     if (algorithmName.includes('SSL') || algorithmName.includes('TLSv1.0') || algorithmName.includes('TLSv1.1')) {
       return {

@@ -9,14 +9,16 @@ import {
   Cell,
 } from 'recharts';
 import { CryptoAsset } from '../types';
+import { TOOLTIP_STYLE, CHART_BLUE, CHART_PURPLE, CHART_ORANGE, CHART_GREEN, CHART_RED, CHART_YELLOW, CHART_PINK } from '../styles/dsTokens';
+import styles from './ChartCard.module.scss';
 
 interface CryptoBubbleChartProps {
   assets: CryptoAsset[];
 }
 
 const BUBBLE_COLORS = [
-  '#58a6ff', '#bc8cff', '#f0883e', '#3fb950', '#f85149',
-  '#d29922', '#f778ba', '#79c0ff', '#56d364', '#a371f7',
+  CHART_BLUE, CHART_PURPLE, CHART_ORANGE, CHART_GREEN, CHART_RED,
+  CHART_YELLOW, CHART_PINK, '#79c0ff', '#56d364', '#a371f7',
   '#7ee787', '#ffa657',
 ];
 
@@ -51,11 +53,8 @@ function BubbleTooltip({ active, payload }: BubbleTooltipProps) {
   return (
     <div
       style={{
-        backgroundColor: '#e6edf3',
-        border: '1px solid #30363d',
-        borderRadius: '8px',
+        ...TOOLTIP_STYLE,
         padding: '8px 12px',
-        color: '#161b22',
       }}
     >
       <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -78,8 +77,8 @@ export default function CryptoBubbleChart({ assets }: CryptoBubbleChartProps) {
   const data = computeBubbleData(assets);
 
   return (
-    <div className="bg-qg-card border border-qg-border rounded-lg p-4 animate-fade-in">
-      <h3 className="text-sm font-medium text-gray-400 mb-2">
+    <div className={styles.card}>
+      <h3 className={styles.title}>
         Algorithm Distribution ({data.length} types of crypto assets)
       </h3>
       <div style={{ height: 250 }}>
@@ -97,11 +96,10 @@ export default function CryptoBubbleChart({ assets }: CryptoBubbleChartProps) {
           </ScatterChart>
         </ResponsiveContainer>
       </div>
-      {/* Legend labels */}
-      <div className="flex flex-wrap gap-2 mt-2 justify-center">
+      <div className={styles.legend}>
         {data.slice(0, 14).map(({ name, color }) => (
-          <div key={name} className="flex items-center gap-1 text-xs text-gray-400">
-            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+          <div key={name} className={styles.legendItem}>
+            <span className={styles.legendDot} style={{ backgroundColor: color }} />
             {name}
           </div>
         ))}

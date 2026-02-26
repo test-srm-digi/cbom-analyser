@@ -1,23 +1,25 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { CryptoAsset } from '../types';
+import { TOOLTIP_STYLE, CHART_BLUE, CHART_PURPLE, CHART_ORANGE, CHART_YELLOW, CHART_GREEN, CHART_PINK, CHART_GRAY } from '../styles/dsTokens';
+import styles from './ChartCard.module.scss';
 
 interface PrimitivesDonutProps {
   assets: CryptoAsset[];
 }
 
 const PRIMITIVE_COLORS: Record<string, string> = {
-  'hash': '#58a6ff',
-  'block-cipher': '#bc8cff',
-  'pke': '#f0883e',
-  'signature': '#d29922',
-  'keygen': '#3fb950',
+  'hash': CHART_BLUE,
+  'block-cipher': CHART_PURPLE,
+  'pke': CHART_ORANGE,
+  'signature': CHART_YELLOW,
+  'keygen': CHART_GREEN,
   'digest': '#56d364',
-  'mac': '#f778ba',
+  'mac': CHART_PINK,
   'stream-cipher': '#79c0ff',
   'key-encapsulation': '#a371f7',
   'key-agreement': '#7ee787',
   'ae': '#ffa657',
-  'other': '#8b949e',
+  'other': CHART_GRAY,
 };
 
 function computePrimitiveData(assets: CryptoAsset[]) {
@@ -30,7 +32,7 @@ function computePrimitiveData(assets: CryptoAsset[]) {
     .map(([name, value]) => ({
       name,
       value,
-      color: PRIMITIVE_COLORS[name] || '#8b949e',
+      color: PRIMITIVE_COLORS[name] || CHART_GRAY,
     }))
     .sort((a, b) => b.value - a.value);
 }
@@ -56,9 +58,9 @@ export default function PrimitivesDonut({ assets }: PrimitivesDonutProps) {
   const total = new Set(data.map(d => d.name)).size;
 
   return (
-    <div className="bg-qg-card border border-qg-border rounded-lg p-4 animate-fade-in">
-      <h3 className="text-sm font-medium text-gray-400 mb-2">Crypto Primitives</h3>
-      <div className="relative" style={{ height: 250 }}>
+    <div className={styles.card}>
+      <h3 className={styles.title}>Crypto Primitives</h3>
+      <div className={styles.chartWrap} style={{ height: 250 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -77,26 +79,20 @@ export default function PrimitivesDonut({ assets }: PrimitivesDonutProps) {
               ))}
             </Pie>
             <Tooltip
-              contentStyle={{
-                  backgroundColor: '#e6edf3',
-                border: '1px solid #30363d',
-                borderRadius: '8px',
-                color: '#161b22',
-              }}
+              contentStyle={TOOLTIP_STYLE}
               formatter={(value: number, name: string) => [value, getPrimitiveLabel(name)]}
             />
           </PieChart>
         </ResponsiveContainer>
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-bold text-white">{total}</span>
-          <span className="text-xs text-gray-400">Crypto Primitives</span>
+        <div className={styles.centerLabel}>
+          <span className={styles.centerNumber}>{total}</span>
+          <span className={styles.centerText}>Crypto Primitives</span>
         </div>
       </div>
-      {/* Legend */}
-      <div className="flex flex-wrap gap-2 mt-2 justify-center">
+      <div className={styles.legend}>
         {data.map(({ name, color }) => (
-          <div key={name} className="flex items-center gap-1 text-xs text-gray-400">
-            <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
+          <div key={name} className={styles.legendItem}>
+            <span className={styles.legendSquare} style={{ backgroundColor: color }} />
             {getPrimitiveLabel(name)}
           </div>
         ))}

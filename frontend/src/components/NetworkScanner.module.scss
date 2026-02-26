@@ -1,0 +1,128 @@
+@use '../styles/variables' as *;
+
+.card {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 16px;
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 500;
+  color: $dc1-text-secondary;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.titleIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.input {
+  flex: 1;
+  background: $dc1-bg;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: $dc1-text;
+  outline: none;
+
+  &:focus {
+    border-color: $dc1-blue;
+  }
+
+  &::placeholder {
+    color: $dc1-text-muted;
+  }
+}
+
+.scanBtn {
+  background: rgba($dc1-blue, 0.15);
+  color: $dc1-blue;
+  border: 1px solid rgba($dc1-blue, 0.3);
+  border-radius: $dc1-radius-sm;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background $transition-fast;
+
+  &:hover {
+    background: rgba($dc1-blue, 0.25);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.scanIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.spinIcon {
+  width: 16px;
+  height: 16px;
+  animation: spin 1s linear infinite;
+}
+
+.error {
+  color: $dc1-danger;
+  font-size: 12px;
+  background: rgba($dc1-danger, 0.08);
+  border: 1px solid rgba($dc1-danger, 0.2);
+  border-radius: $dc1-radius-sm;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.result {
+  background: $dc1-bg;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  padding: 12px;
+  font-size: 12px;
+}
+
+.resultRow {
+  display: flex;
+  justify-content: space-between;
+
+  & + & {
+    margin-top: 6px;
+  }
+}
+
+.resultLabel {
+  color: $dc1-text-secondary;
+}
+
+.resultValue {
+  color: $dc1-text;
+  font-family: monospace;
+}
+
+.resultSafe {
+  color: $dc1-success;
+}
+
+.resultNotSafe {
+  color: $dc1-danger;
+}

@@ -30,7 +30,7 @@ const cbomStore: Map<string, CBOMDocument> = new Map();
 
 /**
  * POST /api/upload
- * Upload a CycloneDX 1.6 CBOM JSON file.
+ * Upload a CycloneDX CBOM JSON file (1.6 / 1.7).
  */
 router.post('/upload', upload.single('cbom'), (req: Request, res: Response) => {
   try {

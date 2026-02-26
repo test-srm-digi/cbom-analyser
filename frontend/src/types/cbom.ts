@@ -1,5 +1,5 @@
 /**
- * Frontend CBOM Types (mirrors backend CycloneDX 1.6 types)
+ * Frontend CBOM Types (mirrors backend CycloneDX 1.7 types)
  */
 
 export enum QuantumSafetyStatus {
@@ -45,7 +45,7 @@ export enum ComplianceStatus {
 }
 
 /**
- * CycloneDX 1.6 Asset Types — full taxonomy
+ * CycloneDX 1.7 Asset Types — full taxonomy
  */
 export enum AssetType {
   ALGORITHM = 'algorithm',
@@ -58,7 +58,7 @@ export enum AssetType {
 }
 
 /**
- * CycloneDX 1.6 Related Crypto Material sub-types
+ * CycloneDX 1.7 Related Crypto Material sub-types
  */
 export enum RelatedCryptoMaterialType {
   PUBLIC_KEY = 'public-key',
@@ -154,10 +154,16 @@ export interface CBOMComponent {
   group?: string;
 }
 
+export interface CBOMRepository {
+  url: string;
+  branch?: string;
+}
+
 export interface CBOMMetadata {
   timestamp: string;
   tools?: { vendor: string; name: string; version: string }[];
   component?: CBOMComponent;
+  repository?: CBOMRepository;
 }
 
 export interface CryptoDependency {

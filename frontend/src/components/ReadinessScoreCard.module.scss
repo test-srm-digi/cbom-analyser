@@ -1,0 +1,96 @@
+@use '../styles/variables' as *;
+
+.card {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 16px;
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 500;
+  color: $dc1-text-secondary;
+  margin-bottom: 12px;
+}
+
+.body {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+// ── Circular gauge ───────────────────────────────────────
+.gauge {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  flex-shrink: 0;
+}
+
+.gaugeSvg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.gaugeCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.gaugeScore {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.gaugeLabel {
+  font-size: 10px;
+  color: $dc1-text-secondary;
+}
+
+// ── Stat rows ────────────────────────────────────────────
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.statRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotGreen  { background: $dc1-success; }
+.dotRed    { background: $dc1-danger; }
+.dotCyan   { background: $chart-cyan; }
+.dotGray   { background: $neutral-300; }
+
+.statLabel {
+  color: $dc1-text-secondary;
+}
+
+.statValue {
+  color: $dc1-text;
+  font-weight: 600;
+}
+
+.total {
+  font-size: 12px;
+  color: $dc1-text-secondary;
+  margin-top: 4px;
+}
