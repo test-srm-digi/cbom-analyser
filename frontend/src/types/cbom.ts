@@ -267,7 +267,26 @@ export type IntegrationCategory = 'digicert' | 'scanner' | 'import' | 'repositor
 
 export type SyncSchedule = 'manual' | '1h' | '6h' | '12h' | '24h';
 
-export type ImportScope = 'certificates' | 'endpoints' | 'software' | 'keys';
+export type ImportScope =
+  // TLM — certificate lifecycle discovery
+  | 'certificates' | 'endpoints' | 'keys' | 'ca-hierarchies'
+  // STM — code signing & software supply chain
+  | 'signing-certificates' | 'keypairs' | 'releases' | 'threats'
+  // DTM — device fleet & IoT identity
+  | 'device-certificates' | 'devices' | 'firmware' | 'device-groups'
+  // Network scanner
+  | 'cipher-suites' | 'key-exchange'
+  // CBOM import
+  | 'crypto-components' | 'dependencies'
+  // GitHub scanner
+  | 'crypto-api-calls' | 'key-cert-files' | 'configurations';
+
+/** Scope option displayed in the configuration UI */
+export interface ScopeOption {
+  value: ImportScope;
+  label: string;
+  description: string;
+}
 
 /** Catalog entry — what integrations are available */
 export interface IntegrationTemplate {
@@ -279,6 +298,8 @@ export interface IntegrationTemplate {
   docsUrl: string;
   capabilities: string[];
   fields: IntegrationField[];
+  scopeOptions: ScopeOption[];
+  defaultScope: ImportScope[];
 }
 
 export interface IntegrationField {

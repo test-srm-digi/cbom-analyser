@@ -1,0 +1,423 @@
+@use '../../../styles/variables' as *;
+
+/* ═══════════════════════════════════════════════════════════════
+   Configuration Drawer (slide-out panel)
+   ═══════════════════════════════════════════════════════════════ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 560px;
+  height: 100vh;
+  background: $dc1-card;
+  box-shadow: -8px 0 40px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  z-index: 9001;
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 28px;
+  border-bottom: 1px solid $dc1-border;
+  position: relative;
+
+  h2 {
+    font-size: 17px;
+    font-weight: 700;
+    color: $dc1-text;
+    margin: 0;
+  }
+
+  p {
+    font-size: 13px;
+    color: $dc1-text-secondary;
+    margin: 2px 0 0;
+  }
+}
+
+.drawerHeaderIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: $dc1-blue-light;
+  color: $dc1-blue;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.drawerBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 28px 28px;
+}
+
+.drawerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 28px;
+  border-top: 1px solid $dc1-border;
+}
+
+.closeBtn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: $neutral-100;
+  color: $dc1-text-secondary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover { background: $neutral-200; }
+}
+
+/* ── Config sections ──────────────────────────────────────── */
+.configSection {
+  margin-bottom: 28px;
+}
+
+.configSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0 0 12px;
+}
+
+.configStepBadge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: $dc1-blue;
+  color: $dc1-card;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.configHint {
+  font-size: 12px;
+  color: $dc1-text-muted;
+  margin: 0 0 10px;
+}
+
+.docsLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: $dc1-blue;
+  text-decoration: none;
+  margin-bottom: 14px;
+  font-weight: 500;
+
+  &:hover { text-decoration: underline; }
+}
+
+/* ── Form fields ──────────────────────────────────────────── */
+.configFields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: $dc1-text-secondary;
+}
+
+.fieldRequired {
+  color: $dc1-danger;
+  margin-left: 2px;
+}
+
+.fieldHelp {
+  font-size: 11px;
+  color: $dc1-text-muted;
+  line-height: 1.3;
+}
+
+.inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.configInput {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  font-size: 13px;
+  color: $dc1-text;
+  background: $dc1-card;
+  transition: border-color $transition-fast;
+
+  &::placeholder { color: $dc1-text-muted; }
+
+  &:focus {
+    outline: none;
+    border-color: $dc1-blue;
+    box-shadow: 0 0 0 3px rgba($dc1-blue, 0.1);
+  }
+}
+
+.configSelect {
+  @extend .configInput;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23636A6E' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.configTextarea {
+  @extend .configInput;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.copyBtn {
+  position: absolute;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: $neutral-100;
+  color: $dc1-text-muted;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  &:hover { background: $neutral-200; color: $dc1-text; }
+}
+
+/* ── Spin animation ───────────────────────────────────────── */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Test connection row ──────────────────────────────────── */
+.testRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.testBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  color: $dc1-text;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background $transition-fast, border-color $transition-fast;
+
+  &:hover {
+    background: $neutral-50;
+    border-color: $neutral-400;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.testSuccess {
+  font-size: 12px;
+  color: $dc1-success;
+  font-weight: 500;
+}
+
+.testError {
+  font-size: 12px;
+  color: $dc1-danger;
+  font-weight: 500;
+}
+
+/* ── Import scope chips ───────────────────────────────────── */
+.scopeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+%scopeChipBase {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color $transition-fast, background $transition-fast;
+}
+
+.scopeChip {
+  @extend %scopeChipBase;
+
+  &:hover {
+    border-color: $dc1-blue;
+  }
+}
+
+.scopeChipActive {
+  @extend %scopeChipBase;
+  border-color: $dc1-blue;
+  background: $dc1-blue-light;
+}
+
+.scopeChipLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: $dc1-text;
+}
+
+.scopeChipDesc {
+  font-size: 11px;
+  color: $dc1-text-muted;
+}
+
+/* ── Schedule buttons ─────────────────────────────────────── */
+.scheduleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+%scheduleBtnBase {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background $transition-fast, border-color $transition-fast;
+}
+
+.scheduleBtn {
+  @extend %scheduleBtnBase;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  color: $dc1-text-secondary;
+
+  &:hover { border-color: $dc1-blue; color: $dc1-text; }
+}
+
+.scheduleBtnActive {
+  @extend %scheduleBtnBase;
+  border: 1px solid $dc1-blue;
+  background: $dc1-blue;
+  color: $dc1-card;
+}
+
+/* ── Capabilities list ────────────────────────────────────── */
+.capList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: $dc1-text;
+  }
+}
+
+.capIcon {
+  color: $dc1-success;
+  flex-shrink: 0;
+}
+
+/* ── Drawer action buttons ────────────────────────────────── */
+.cancelBtn {
+  padding: 9px 20px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  color: $dc1-text;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover { background: $neutral-50; }
+}
+
+.saveBtn {
+  padding: 9px 24px;
+  border-radius: $dc1-radius-sm;
+  border: none;
+  background: $dc1-blue;
+  color: $dc1-card;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover { background: $blue-400; }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

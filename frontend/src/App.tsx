@@ -5,7 +5,7 @@ import InventoryPage from './pages/InventoryPage';
 import VisualizePage from './pages/VisualizePage';
 import ViolationsPage from './pages/ViolationsPage';
 import NetworkPage from './pages/NetworkPage';
-import IntegrationsPage from './pages/IntegrationsPage';
+import IntegrationsPage from './pages/integrations';
 import DiscoveryPage from './pages/discovery';
 import type { DiscoveryTab } from './pages/discovery/types';
 import PlaceholderPage from './pages/PlaceholderPage';
