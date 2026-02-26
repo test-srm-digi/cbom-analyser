@@ -61,10 +61,16 @@ export default function CBOMHeader({ cbom }: CBOMHeaderProps) {
           </a>
         )}
         {repository?.branch && (
-          <span className={styles.tag}>
+          <a
+            className={styles.tag}
+            href={`${repository.url}/tree/${repository.branch}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`Branch: ${repository.branch}`}
+          >
             <GitBranch className={styles.tagIcon} />
             {repository.branch}
-          </span>
+          </a>
         )}
       </div>
     </div>

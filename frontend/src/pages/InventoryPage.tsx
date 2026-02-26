@@ -93,7 +93,7 @@ export default function InventoryPage({ cbom, readinessScore, onUpload, onLoadSa
         </button>
       </div>
 
-      {activeTab === 'assets' && <AssetListView assets={assets} />}
+      {activeTab === 'assets' && <AssetListView assets={assets} repository={cbom?.metadata?.repository} />}
       {activeTab === 'libraries' && <ThirdPartyLibrariesView libraries={libraries} />}
     </div>
   );

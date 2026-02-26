@@ -6,11 +6,12 @@ import {
   ShieldAlert, ShieldQuestion, Package, Filter,
   BarChart3, AlertTriangle, TrendingUp, Clock,
 } from 'lucide-react';
-import { CryptoAsset, QuantumSafetyStatus, ComplianceStatus, PQCReadinessVerdict } from '../types';
+import { CryptoAsset, QuantumSafetyStatus, ComplianceStatus, PQCReadinessVerdict, CBOMRepository } from '../types';
 import s from './AssetListView.module.scss';
 
 interface AssetListViewProps {
   assets: CryptoAsset[];
+  repository?: CBOMRepository;
 }
 
 interface SuggestionState {
@@ -175,16 +176,23 @@ function buildGitHubFileUrl(repoUrl: string, branch: string, basePath: string, f
   return lineNumber ? `${url}#L${lineNumber}` : url;
 }
 
-export default function AssetListView({ assets }: AssetListViewProps) {
+export default function AssetListView({ assets, repository }: AssetListViewProps) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [sortField, setSortField] = useState<'name' | 'primitive' | 'location' | 'safety'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [filterText, setFilterText] = useState('');
   const [safetyFilter, setSafetyFilter] = useState<Set<QuantumSafetyStatus | 'unknown'>>(new Set());
-  const [repoUrl, setRepoUrl] = useState('');
-  const [branch, setBranch] = useState('main');
-  const [customBranch, setCustomBranch] = useState('');
+  const [repoUrl, setRepoUrl] = useState(repository?.url ?? '');
+  const [branch, setBranch] = useState(() => {
+    const b = repository?.branch ?? 'main';
+    if (['main', 'master', 'develop'].includes(b)) return b;
+    return 'custom';
+  });
+  const [customBranch, setCustomBranch] = useState(() => {
+    const b = repository?.branch ?? '';
+    return ['main', 'master', 'develop'].includes(b) ? '' : b;
+  });
   const [basePath, setBasePath] = useState('');
   const [suggestions, setSuggestions] = useState<Record<string, SuggestionState>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);

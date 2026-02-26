@@ -83,7 +83,7 @@ export default function ViolationsPage({ cbom, onUpload, onLoadSample }: Props) 
           </p>
         </div>
       ) : (
-        <AssetListView assets={atRiskAssets} />
+        <AssetListView assets={atRiskAssets} repository={cbom?.metadata?.repository} />
       )}
       </>
       )}
