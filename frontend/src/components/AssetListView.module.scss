@@ -1,0 +1,1118 @@
+@use '../styles/variables' as *;
+
+// ── Shared badge mixin ──────────────────────────────────────
+@mixin badge($bg, $text, $ring) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  box-shadow: inset 0 0 0 1px $ring;
+  background: $bg;
+  color: $text;
+}
+
+@mixin smallBadge($bg, $text) {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: $bg;
+  color: $text;
+}
+
+// ── Card container ───────────────────────────────────────────
+.card {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  animation: fadeIn 0.4s ease forwards;
+}
+
+// ── Header ───────────────────────────────────────────────────
+.headerSection {
+  padding: 12px 16px;
+  border-bottom: 1px solid $dc1-border;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: $dc1-text;
+}
+
+.headerControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+// ── GitHub bar ───────────────────────────────────────────────
+.githubBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: $dc1-bg;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  padding: 6px 10px;
+}
+
+.githubField {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.githubFieldIcon {
+  width: 14px;
+  height: 14px;
+  color: $dc1-text-secondary;
+  flex-shrink: 0;
+}
+
+.githubFieldIconSm {
+  width: 12px;
+  height: 12px;
+  color: $dc1-text-secondary;
+  flex-shrink: 0;
+}
+
+.fieldInput {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 12px;
+  color: $dc1-text-secondary;
+  width: 192px;
+
+  &::placeholder {
+    color: $dc1-text-muted;
+  }
+}
+
+.fieldInputShort {
+  @extend .fieldInput;
+  width: 56px;
+}
+
+.fieldSelect {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 12px;
+  color: $dc1-text-secondary;
+  cursor: pointer;
+  appearance: none;
+  padding-right: 4px;
+}
+
+.fieldSep {
+  color: $dc1-text;
+}
+
+// ── Filter input ─────────────────────────────────────────────
+.filterInput {
+  background: $dc1-bg;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: $dc1-text-secondary;
+  width: 192px;
+  outline: none;
+
+  &:focus {
+    border-color: $dc1-blue;
+  }
+}
+
+// ── Insight button ───────────────────────────────────────────
+.insightBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(to right, rgba(#9333EA, 0.15), rgba(#2563EB, 0.15));
+  color: $dc1-text;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: linear-gradient(to right, rgba(#9333EA, 0.3), rgba(#2563EB, 0.3));
+    box-shadow: 0 2px 8px rgba(#9333EA, 0.15);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.insightBtnIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.insightBtnSpin {
+  @extend .insightBtnIcon;
+  animation: spin 1s linear infinite;
+}
+
+.slidersIcon {
+  width: 16px;
+  height: 16px;
+  color: $dc1-text-secondary;
+}
+
+// ── Filter chips ─────────────────────────────────────────────
+.filterChips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filterIcon {
+  width: 12px;
+  height: 12px;
+  color: $dc1-text-secondary;
+  flex-shrink: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  box-shadow: inset 0 0 0 1px;
+  cursor: pointer;
+  transition: all $transition-fast;
+  border: none;
+  background: none;
+}
+
+.chipNotSafe       { color: rgba($dc1-danger, 0.7);  box-shadow: inset 0 0 0 1px rgba($dc1-danger, 0.2);  background: rgba($dc1-danger, 0.08); }
+.chipNotSafeActive { color: $dc1-danger;              box-shadow: inset 0 0 0 1px rgba($dc1-danger, 0.6);  background: rgba($dc1-danger, 0.2); }
+.chipConditional       { color: rgba($chart-cyan, 0.7);  box-shadow: inset 0 0 0 1px rgba($chart-cyan, 0.2);  background: rgba($chart-cyan, 0.08); }
+.chipConditionalActive { color: darken($chart-cyan, 15%); box-shadow: inset 0 0 0 1px rgba($chart-cyan, 0.6);  background: rgba($chart-cyan, 0.2); }
+.chipSafe       { color: rgba($dc1-success, 0.7);  box-shadow: inset 0 0 0 1px rgba($dc1-success, 0.2);  background: rgba($dc1-success, 0.08); }
+.chipSafeActive { color: $dc1-success;              box-shadow: inset 0 0 0 1px rgba($dc1-success, 0.6);  background: rgba($dc1-success, 0.2); }
+.chipUnknown       { color: rgba($dc1-text-secondary, 0.7);  box-shadow: inset 0 0 0 1px rgba($dc1-text-secondary, 0.2);  background: rgba($dc1-text-secondary, 0.08); }
+.chipUnknownActive { color: $dc1-text-secondary;              box-shadow: inset 0 0 0 1px rgba($dc1-text-secondary, 0.6);  background: rgba($dc1-text-secondary, 0.2); }
+
+.chipIcon {
+  width: 10px;
+  height: 10px;
+}
+
+.chipCount {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.chipClear {
+  font-size: 10px;
+  color: $dc1-text-secondary;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: 2px;
+  text-decoration: underline;
+
+  &:hover {
+    color: $dc1-text;
+  }
+}
+
+// ── Project Insight panel ────────────────────────────────────
+.insightWrap {
+  margin: 12px 16px;
+}
+
+.insightLoading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(to right, rgba(#9333EA, 0.04), rgba(#2563EB, 0.04));
+  border: 1px solid rgba(#9333EA, 0.15);
+  border-radius: $dc1-radius;
+}
+
+.insightLoadIcon {
+  width: 20px;
+  height: 20px;
+  color: #9333EA;
+  animation: spin 1s linear infinite;
+  flex-shrink: 0;
+}
+
+.insightPulseBar {
+  flex: 1;
+}
+
+.insightPulseBarBig {
+  height: 12px;
+  width: 66%;
+  border-radius: $dc1-radius-sm;
+  background: rgba(#9333EA, 0.08);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.insightPulseBarSmall {
+  height: 8px;
+  width: 50%;
+  border-radius: $dc1-radius-sm;
+  background: rgba(#9333EA, 0.08);
+  animation: pulse 2s ease-in-out infinite;
+  margin-top: 6px;
+}
+
+.insightError {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: rgba($dc1-danger, 0.04);
+  border: 1px solid rgba($dc1-danger, 0.15);
+  border-radius: $dc1-radius;
+}
+
+.insightErrorMsg {
+  font-size: 12px;
+  color: $dc1-danger;
+}
+
+.dismissBtn {
+  color: $dc1-text-secondary;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+
+  &:hover {
+    color: $dc1-text;
+  }
+}
+
+.dismissIcon {
+  width: 14px;
+  height: 14px;
+}
+
+// ── Insight panel body ───────────────────────────────────────
+.insightPanel {
+  border-radius: $dc1-radius;
+  overflow: hidden;
+}
+
+.insightTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 8px;
+}
+
+.insightTopLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.insightTopTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.insightTopTitleIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.insightTopTitleText {
+  font-size: 12px;
+  font-weight: 600;
+  color: $dc1-text;
+}
+
+.insightRiskBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  box-shadow: inset 0 0 0 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.insightScoreBar {
+  padding: 0 16px 8px;
+}
+
+.insightScoreRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.insightTrack {
+  flex: 1;
+  height: 6px;
+  background: rgba(#D1D5DB, 0.5);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.insightFill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.7s ease;
+}
+
+.insightScoreText {
+  font-size: 12px;
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.insightHeadline {
+  padding: 0 16px 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.insightSummary {
+  padding: 0 16px 12px;
+  font-size: 11px;
+  color: $dc1-text-secondary;
+  line-height: 1.6;
+}
+
+.insightPrioritiesLabel {
+  font-size: 10px;
+  color: $dc1-text-secondary;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.insightPrioritiesLabelIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.insightPriorities {
+  padding: 0 16px 12px;
+}
+
+.insightPriorityRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  & + & {
+    margin-top: 6px;
+  }
+}
+
+.insightImpactBadge {
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: $dc1-radius-sm;
+  box-shadow: inset 0 0 0 1px;
+}
+
+.insightPriorityAction {
+  font-size: 11px;
+  color: $dc1-text-secondary;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.insightPriorityEffort {
+  flex-shrink: 0;
+  font-size: 9px;
+  color: $dc1-text-secondary;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.insightClockIcon {
+  width: 10px;
+  height: 10px;
+}
+
+.insightMigration {
+  padding: 8px 16px 12px;
+  border-top: 1px solid rgba(#fff, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.insightMigrationIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.insightMigrationText {
+  font-size: 10px;
+  color: $dc1-text-secondary;
+}
+
+.insightMigrationLabel {
+  font-weight: 500;
+  color: $dc1-text;
+}
+
+// ── Risk / impact color helpers ──────────────────────────────
+// Critical
+.riskBgCritical    { background: linear-gradient(to right, rgba($dc1-danger, 0.08), rgba($dc1-danger, 0.03)); border: 1px solid rgba($dc1-danger, 0.3); }
+.riskTextCritical  { color: $dc1-danger; }
+.riskBarCritical   { background: $dc1-danger; }
+.riskBadgeCritical { background: rgba($dc1-danger, 0.08); color: $dc1-danger; box-shadow: inset 0 0 0 1px rgba($dc1-danger, 0.3); }
+
+// High
+.riskBgHigh    { background: linear-gradient(to right, rgba(#F97316, 0.08), rgba(#F97316, 0.03)); border: 1px solid rgba(#F97316, 0.3); }
+.riskTextHigh  { color: #F97316; }
+.riskBarHigh   { background: #F97316; }
+.riskBadgeHigh { background: rgba(#F97316, 0.08); color: #F97316; box-shadow: inset 0 0 0 1px rgba(#F97316, 0.3); }
+
+// Moderate
+.riskBgModerate    { background: linear-gradient(to right, rgba($dc1-warning, 0.08), rgba($dc1-warning, 0.03)); border: 1px solid rgba($dc1-warning, 0.3); }
+.riskTextModerate  { color: $dc1-warning; }
+.riskBarModerate   { background: $dc1-warning; }
+.riskBadgeModerate { background: rgba($dc1-warning, 0.08); color: $dc1-warning; box-shadow: inset 0 0 0 1px rgba($dc1-warning, 0.3); }
+
+// Low
+.riskBgLow    { background: linear-gradient(to right, rgba($dc1-success, 0.08), rgba($dc1-success, 0.03)); border: 1px solid rgba($dc1-success, 0.3); }
+.riskTextLow  { color: $dc1-success; }
+.riskBarLow   { background: $dc1-success; }
+.riskBadgeLow { background: rgba($dc1-success, 0.08); color: $dc1-success; box-shadow: inset 0 0 0 1px rgba($dc1-success, 0.3); }
+
+// Fallback for "medium"
+.riskBadgeMedium {
+  background: rgba($dc1-warning, 0.08);
+  color: $dc1-warning;
+  box-shadow: inset 0 0 0 1px rgba($dc1-warning, 0.3);
+}
+
+// ── Table ────────────────────────────────────────────────────
+.tableWrap {
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+.table {
+  width: 100%;
+  font-size: 14px;
+  border-collapse: collapse;
+}
+
+.thead tr {
+  text-align: left;
+  color: $dc1-text-secondary;
+  font-size: 12px;
+  border-bottom: 1px solid $dc1-border;
+}
+
+.th {
+  padding: 8px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 600;
+
+  &:hover {
+    color: $dc1-text;
+  }
+}
+
+.thAi {
+  @extend .th;
+  min-width: 260px;
+  cursor: default;
+}
+
+.thAiInner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.aiSparkle {
+  width: 12px;
+  height: 12px;
+  color: #A78BFA;
+}
+
+.aiLabel {
+  background: linear-gradient(to right, #A78BFA, #60A5FA);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 600;
+}
+
+.thAction {
+  @extend .th;
+  width: 40px;
+  cursor: default;
+}
+
+.tr {
+  border-bottom: 1px solid rgba($dc1-border, 0.5);
+  transition: background $transition-fast;
+
+  &:hover {
+    background: rgba($dc1-bg, 0.5);
+  }
+}
+
+.td {
+  padding: 12px 16px;
+  vertical-align: middle;
+}
+
+// ── Safety badge column ──────────────────────────────────────
+.safeBadge    { @include badge(rgba($dc1-success, 0.15), $dc1-success, rgba($dc1-success, 0.3)); }
+.notSafeBadge { @include badge(rgba($dc1-danger, 0.15), $dc1-danger, rgba($dc1-danger, 0.3)); }
+.condBadge    { @include badge(rgba($chart-cyan, 0.15), darken($chart-cyan, 15%), rgba($chart-cyan, 0.3)); }
+.unknownBadge { @include badge(rgba($dc1-text-secondary, 0.15), $dc1-text-secondary, rgba($dc1-text-secondary, 0.3)); }
+
+.badgeIcon {
+  width: 10px;
+  height: 10px;
+}
+
+// ── Name column ──────────────────────────────────────────────
+.algoName {
+  color: $dc1-text;
+  font-weight: 500;
+}
+
+.keyLength {
+  color: $dc1-text-secondary;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.description {
+  font-size: 10px;
+  color: $dc1-text-secondary;
+  margin-top: 2px;
+  max-width: 340px;
+  line-height: 1.3;
+}
+
+// ── Primitive column ─────────────────────────────────────────
+.primitiveWrap {
+  font-size: 12px;
+}
+
+.primitiveName {
+  color: $dc1-text-secondary;
+  font-weight: 500;
+}
+
+.primitiveSub {
+  color: $dc1-text-muted;
+}
+
+// ── PQC Verdict column ──────────────────────────────────────
+.verdictCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.verdictGroup {
+  position: relative;
+}
+
+.verdictBadge {
+  cursor: help;
+}
+
+// PQC badge variants
+.pqcReady    { @include badge(rgba($dc1-success, 0.15), $dc1-success, rgba($dc1-success, 0.3)); }
+.pqcNotReady { @include badge(rgba($dc1-danger, 0.15), $dc1-danger, rgba($dc1-danger, 0.3)); }
+.pqcReview   { @include badge(rgba($dc1-warning, 0.15), darken($dc1-warning, 5%), rgba($dc1-warning, 0.3)); }
+
+.pqcConfidence {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.verdictConf {
+  @extend .pqcConfidence;
+}
+
+// PQC tooltip
+.verdictTooltip {
+  position: absolute;
+  z-index: 999;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 8px;
+  width: 288px;
+  padding: 12px;
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity $transition-fast;
+
+  .verdictGroup:hover & {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.tooltipBody {
+  font-size: 11px;
+  color: $dc1-text-secondary;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tooltipReason {
+  display: flex;
+  gap: 6px;
+}
+
+.tooltipRow {
+  @extend .tooltipReason;
+}
+
+.tooltipBullet {
+  color: $dc1-text-secondary;
+  flex-shrink: 0;
+}
+
+.tooltipReasonIcon {
+  color: $dc1-text-secondary;
+  flex-shrink: 0;
+}
+
+.tooltipParams {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba($dc1-border, 0.5);
+}
+
+.tooltipParamsTitle {
+  color: $dc1-text-secondary;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tooltipParamsGrid {
+  margin-top: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 8px;
+}
+
+.tooltipParamKey {
+  color: $dc1-text-secondary;
+}
+
+.tooltipParamVal {
+  color: $dc1-text;
+  font-family: monospace;
+  font-size: 10px;
+}
+
+.tooltipRec {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba($dc1-border, 0.5);
+  font-size: 10px;
+  color: $dc1-blue;
+}
+
+// Detection source badge
+.srcSonar      { @include smallBadge(rgba($dc1-blue, 0.08), rgba($dc1-blue, 0.7)); }
+.srcRegex      { @include smallBadge(rgba($dc1-text-secondary, 0.08), rgba($dc1-text-secondary, 0.7)); }
+.srcDependency { @include smallBadge(rgba(#D97706, 0.08), rgba(#D97706, 0.7)); }
+.srcNetwork    { @include smallBadge(rgba(#9333EA, 0.08), rgba(#9333EA, 0.7)); }
+
+.srcIcon {
+  width: 8px;
+  height: 8px;
+}
+
+// Confidence badge
+.confHigh   { @include badge(rgba($dc1-success, 0.15), $dc1-success, rgba($dc1-success, 0.3)); }
+.confMedium { @include badge(rgba($dc1-warning, 0.15), darken($dc1-warning, 5%), rgba($dc1-warning, 0.3)); }
+.confLow    { @include badge(rgba($dc1-text-secondary, 0.15), $dc1-text-secondary, rgba($dc1-text-secondary, 0.3)); }
+
+// ── Location column ──────────────────────────────────────────
+.locationWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.providerBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: rgba(#D97706, 0.9);
+  font-weight: 500;
+}
+
+.providerIcon {
+  width: 10px;
+  height: 10px;
+}
+
+.fileLink {
+  color: $dc1-blue;
+  font-size: 12px;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.noDash {
+  color: $dc1-text-secondary;
+  font-size: 12px;
+}
+
+// ── AI Suggestion column ─────────────────────────────────────
+.suggLoading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggSpinner {
+  width: 14px;
+  height: 14px;
+  color: #A78BFA;
+  animation: spin 1s linear infinite;
+}
+
+.suggPulse {
+  flex: 1;
+}
+
+.suggPulseBar1 {
+  height: 8px;
+  width: 75%;
+  border-radius: $dc1-radius-sm;
+  background: rgba(#9333EA, 0.08);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.suggPulseBar2 {
+  height: 8px;
+  width: 50%;
+  border-radius: $dc1-radius-sm;
+  background: rgba(#9333EA, 0.08);
+  animation: pulse 2s ease-in-out infinite;
+  margin-top: 6px;
+}
+
+// Result
+.suggResult {
+  position: relative;
+  border-left: 2px solid rgba(#9333EA, 0.6);
+  padding: 2px 4px 2px 12px;
+}
+
+.suggTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.suggActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity $transition-fast;
+
+  .suggResult:hover & {
+    opacity: 1;
+  }
+}
+
+.suggActionBtn {
+  padding: 2px;
+  border-radius: $dc1-radius-sm;
+  background: none;
+  border: none;
+  color: $dc1-text-secondary;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba($dc1-border, 0.6);
+    color: $dc1-text;
+  }
+}
+
+.suggActionIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.suggText {
+  font-size: 11px;
+  color: $dc1-text-secondary;
+  line-height: 1.6;
+  margin-bottom: 6px;
+}
+
+.suggTextCollapsed {
+  font-size: 10px;
+  color: $dc1-text-muted;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggCode {
+  position: relative;
+}
+
+.suggPre {
+  font-size: 10px;
+  line-height: 1.6;
+  background: rgba($dc1-bg, 0.8);
+  border: 1px solid rgba($dc1-border, 0.5);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: $dc1-success;
+  overflow-x: auto;
+  max-height: 96px;
+  font-family: monospace;
+  margin: 0;
+}
+
+.copyBtn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 4px;
+  border-radius: $dc1-radius-sm;
+  background: rgba($dc1-bg, 0.9);
+  border: 1px solid rgba($dc1-border, 0.5);
+  color: $dc1-text-secondary;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity $transition-fast;
+
+  .suggCode:hover & {
+    opacity: 1;
+  }
+
+  &:hover {
+    color: $dc1-text;
+  }
+}
+
+.copyIcon {
+  width: 10px;
+  height: 10px;
+}
+
+.copyIconDone {
+  @extend .copyIcon;
+  color: $dc1-success;
+}
+
+// Error retry
+.retryBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: $dc1-danger;
+  background: rgba($dc1-danger, 0.04);
+  border: 1px solid rgba($dc1-danger, 0.15);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover {
+    background: rgba($dc1-danger, 0.08);
+  }
+}
+
+.retryIcon {
+  width: 12px;
+  height: 12px;
+}
+
+// Idle state
+.suggIdle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.suggHint {
+  font-size: 10px;
+  color: $dc1-text-secondary;
+  line-height: 1.4;
+}
+
+.suggHintAlgo {
+  color: $dc1-text-secondary;
+  font-weight: 500;
+}
+
+.aiFixBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  font-size: 11px;
+  font-weight: 500;
+  background: linear-gradient(to right, rgba(#9333EA, 0.15), rgba(#2563EB, 0.15));
+  color: $dc1-text-secondary;
+  border: 1px solid rgba(#9333EA, 0.15);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: linear-gradient(to right, rgba(#9333EA, 0.3), rgba(#2563EB, 0.3));
+    border-color: rgba(#9333EA, 0.3);
+    color: $dc1-text;
+    box-shadow: 0 2px 6px rgba(#9333EA, 0.1);
+  }
+}
+
+.aiFixIcon {
+  width: 12px;
+  height: 12px;
+}
+
+// ── Action column ────────────────────────────────────────────
+.ghLink {
+  color: $dc1-blue;
+
+  &:hover {
+    color: $dc1-text;
+  }
+}
+
+.ghLinkDisabled {
+  color: $dc1-text-muted;
+  cursor: not-allowed;
+}
+
+.ghLinkIcon {
+  width: 14px;
+  height: 14px;
+}
+
+// ── Pagination ───────────────────────────────────────────────
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: $dc1-text-secondary;
+  border-top: 1px solid $dc1-border;
+}
+
+.paginationLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paginationSelect {
+  background: $dc1-bg;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  padding: 2px 4px;
+  color: $dc1-text-secondary;
+}
+
+.paginationInfo {
+  margin-left: 16px;
+}
+
+.paginationRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pageBtn {
+  padding: 4px;
+  border-radius: $dc1-radius-sm;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: $dc1-text-secondary;
+
+  &:hover {
+    background: rgba($dc1-border, 0.6);
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+}
+
+.pageBtnIcon {
+  width: 16px;
+  height: 16px;
+}

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileJson, Loader2 } from 'lucide-react';
+import styles from './CBOMUploader.module.scss';
 
 interface CBOMUploaderProps {
   onUpload: (file: File) => void;
@@ -24,38 +25,31 @@ export default function CBOMUploader({ onUpload, isLoading }: CBOMUploaderProps)
     disabled: isLoading,
   });
 
+  const dropzoneClass = [
+    styles.dropzone,
+    isDragActive ? styles.dropzoneActive : '',
+    isLoading ? styles.dropzoneLoading : '',
+  ].filter(Boolean).join(' ');
+
   return (
-    <div
-      {...getRootProps()}
-      className={`
-        border-2 border-dashed rounded-lg p-12 text-center cursor-pointer
-        transition-all duration-200
-        ${isDragActive
-          ? 'border-qg-accent bg-qg-accent/5'
-          : 'border-qg-border hover:border-gray-500 hover:bg-qg-card/50'
-        }
-        ${isLoading ? 'opacity-50 cursor-wait' : ''}
-      `}
-    >
+    <div {...getRootProps()} className={dropzoneClass}>
       <input {...getInputProps()} />
       {isLoading ? (
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 text-qg-accent animate-spin" />
-          <p className="text-gray-500">Processing {fileName}...</p>
+        <div className={styles.inner}>
+          <Loader2 className={styles.iconSpin} />
+          <p className={styles.subText}>Processing {fileName}...</p>
         </div>
       ) : fileName ? (
-        <div className="flex flex-col items-center gap-3">
-          <FileJson className="w-10 h-10 text-qg-green" />
-          <p className="text-qg-green">{fileName} loaded</p>
-          <p className="text-gray-500 text-sm">Drop another file to replace</p>
+        <div className={styles.inner}>
+          <FileJson className={styles.iconSuccess} />
+          <p className={styles.mainTextSuccess}>{fileName} loaded</p>
+          <p className={styles.subText}>Drop another file to replace</p>
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3">
-          <Upload className="w-10 h-10 text-qg-accent" />
-          <p className="text-qg-accent text-lg font-medium">
-            Drop a CBOM here to visualize it
-          </p>
-          <p className="text-gray-500 text-sm">(or click to browse)</p>
+        <div className={styles.inner}>
+          <Upload className={styles.icon} />
+          <p className={styles.mainText}>Drop a CBOM here to visualize it</p>
+          <p className={styles.subText}>(or click to browse)</p>
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { CryptoAsset } from '../types';
+import styles from './ChartCard.module.scss';
 
 interface PrimitivesDonutProps {
   assets: CryptoAsset[];
@@ -56,9 +57,9 @@ export default function PrimitivesDonut({ assets }: PrimitivesDonutProps) {
   const total = new Set(data.map(d => d.name)).size;
 
   return (
-    <div className="bg-qg-card border border-qg-border rounded-lg p-4 animate-fade-in">
-      <h3 className="text-sm font-medium text-gray-500 mb-2">Crypto Primitives</h3>
-      <div className="relative" style={{ height: 250 }}>
+    <div className={styles.card}>
+      <h3 className={styles.title}>Crypto Primitives</h3>
+      <div className={styles.chartWrap} style={{ height: 250 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -87,16 +88,15 @@ export default function PrimitivesDonut({ assets }: PrimitivesDonutProps) {
             />
           </PieChart>
         </ResponsiveContainer>
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-bold text-gray-800">{total}</span>
-          <span className="text-xs text-gray-500">Crypto Primitives</span>
+        <div className={styles.centerLabel}>
+          <span className={styles.centerNumber}>{total}</span>
+          <span className={styles.centerText}>Crypto Primitives</span>
         </div>
       </div>
-      {/* Legend */}
-      <div className="flex flex-wrap gap-2 mt-2 justify-center">
+      <div className={styles.legend}>
         {data.map(({ name, color }) => (
-          <div key={name} className="flex items-center gap-1 text-xs text-gray-500">
-            <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
+          <div key={name} className={styles.legendItem}>
+            <span className={styles.legendSquare} style={{ backgroundColor: color }} />
             {getPrimitiveLabel(name)}
           </div>
         ))}

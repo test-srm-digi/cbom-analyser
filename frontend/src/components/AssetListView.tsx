@@ -7,6 +7,7 @@ import {
   BarChart3, AlertTriangle, TrendingUp, Clock,
 } from 'lucide-react';
 import { CryptoAsset, QuantumSafetyStatus, ComplianceStatus, PQCReadinessVerdict } from '../types';
+import s from './AssetListView.module.scss';
 
 interface AssetListViewProps {
   assets: CryptoAsset[];
@@ -66,10 +67,10 @@ function getStatusLabel(status?: QuantumSafetyStatus): string {
 
 function getStatusBg(status?: QuantumSafetyStatus): string {
   switch (status) {
-    case QuantumSafetyStatus.QUANTUM_SAFE: return 'bg-green-500/15 ring-green-500/30 text-green-600';
-    case QuantumSafetyStatus.NOT_QUANTUM_SAFE: return 'bg-red-500/15 ring-red-500/30 text-red-600';
-    case QuantumSafetyStatus.CONDITIONAL: return 'bg-cyan-500/15 ring-cyan-500/30 text-cyan-600';
-    default: return 'bg-gray-500/15 ring-gray-500/30 text-gray-500';
+    case QuantumSafetyStatus.QUANTUM_SAFE: return s.safeBadge;
+    case QuantumSafetyStatus.NOT_QUANTUM_SAFE: return s.notSafeBadge;
+    case QuantumSafetyStatus.CONDITIONAL: return s.condBadge;
+    default: return s.unknownBadge;
   }
 }
 
@@ -84,15 +85,14 @@ function getStatusIcon(status?: QuantumSafetyStatus) {
 
 function confidenceBadge(level?: string) {
   if (!level) return null;
-  const styles: Record<string, string> = {
-    high: 'bg-green-500/15 text-green-600 ring-green-500/30',
-    medium: 'bg-yellow-500/15 text-yellow-600 ring-yellow-500/30',
-    low: 'bg-gray-500/15 text-gray-500 ring-gray-500/30',
+  const map: Record<string, string> = {
+    high: s.confHigh,
+    medium: s.confMedium,
+    low: s.confLow,
   };
-  const cls = styles[level] || styles.low;
   return (
-    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ring-1 ${cls}`}>
-      <ShieldCheck className="w-2.5 h-2.5" />
+    <span className={map[level] || s.confLow}>
+      <ShieldCheck className={s.badgeIcon} />
       {level}
     </span>
   );
@@ -103,57 +103,44 @@ function pqcVerdictBadge(asset: CryptoAsset) {
   if (!v) return null;
 
   const config: Record<string, { icon: typeof ShieldCheck; cls: string; label: string }> = {
-    [PQCReadinessVerdict.PQC_READY]: {
-      icon: ShieldCheck,
-      cls: 'bg-green-500/15 text-green-600 ring-green-500/30',
-      label: 'PQC Ready',
-    },
-    [PQCReadinessVerdict.NOT_PQC_READY]: {
-      icon: ShieldAlert,
-      cls: 'bg-red-500/15 text-red-600 ring-red-500/30',
-      label: 'Not PQC Ready',
-    },
-    [PQCReadinessVerdict.REVIEW_NEEDED]: {
-      icon: ShieldQuestion,
-      cls: 'bg-yellow-500/15 text-yellow-600 ring-yellow-500/30',
-      label: 'Review Needed',
-    },
+    [PQCReadinessVerdict.PQC_READY]: { icon: ShieldCheck, cls: s.pqcReady, label: 'PQC Ready' },
+    [PQCReadinessVerdict.NOT_PQC_READY]: { icon: ShieldAlert, cls: s.pqcNotReady, label: 'Not PQC Ready' },
+    [PQCReadinessVerdict.REVIEW_NEEDED]: { icon: ShieldQuestion, cls: s.pqcReview, label: 'Review Needed' },
   };
 
   const c = config[v.verdict] || config[PQCReadinessVerdict.REVIEW_NEEDED];
   const Icon = c.icon;
 
   return (
-    <div className="group/verdict relative">
-      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ring-1 cursor-help ${c.cls}`}>
-        <Icon className="w-2.5 h-2.5" />
+    <div className={s.verdictGroup}>
+      <span className={c.cls}>
+        <Icon className={s.badgeIcon} />
         {c.label}
-        <span className="text-[9px] opacity-70">{v.confidence}%</span>
+        <span className={s.verdictConf}>{v.confidence}%</span>
       </span>
-      {/* Tooltip with reasons */}
-      <div className="absolute z-[999] bottom-full left-0 mb-2 w-72 p-3 bg-qg-dark border border-qg-border rounded-lg shadow-xl opacity-0 pointer-events-none group-hover/verdict:opacity-100 group-hover/verdict:pointer-events-auto transition-opacity">
-        <div className="text-[11px] text-gray-600 space-y-1.5">
+      <div className={s.verdictTooltip}>
+        <div className={s.tooltipBody}>
           {v.reasons.map((r: string, i: number) => (
-            <div key={i} className="flex gap-1.5">
-              <span className="text-gray-500 flex-shrink-0">{r.includes('✓') ? '✓' : r.includes('✗') ? '✗' : '•'}</span>
+            <div key={i} className={s.tooltipRow}>
+              <span className={s.tooltipBullet}>{r.includes('✓') ? '✓' : r.includes('✗') ? '✗' : '•'}</span>
               <span>{r}</span>
             </div>
           ))}
           {v.parameters && Object.keys(v.parameters).length > 0 && (
-            <div className="mt-2 pt-2 border-t border-qg-border/50">
-              <span className="text-gray-500 text-[10px] font-medium uppercase tracking-wider">Detected Parameters</span>
-              <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5">
+            <div className={s.tooltipParams}>
+              <span className={s.tooltipParamsTitle}>Detected Parameters</span>
+              <div className={s.tooltipParamsGrid}>
                 {Object.entries(v.parameters).map(([k, val]) => (
                   <div key={k}>
-                    <span className="text-gray-500">{k}: </span>
-                    <span className="text-gray-600 font-mono text-[10px]">{String(val)}</span>
+                    <span className={s.tooltipParamKey}>{k}: </span>
+                    <span className={s.tooltipParamVal}>{String(val)}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
           {v.recommendation && (
-            <div className="mt-2 pt-2 border-t border-qg-border/50 text-[10px] text-blue-400">
+            <div className={s.tooltipRec}>
               {v.recommendation}
             </div>
           )}
@@ -165,15 +152,15 @@ function pqcVerdictBadge(asset: CryptoAsset) {
 
 function detectionSourceBadge(source?: string) {
   if (!source) return null;
-  const styles: Record<string, string> = {
-    sonar: 'bg-blue-500/10 text-blue-400/80',
-    regex: 'bg-gray-500/10 text-gray-500/80',
-    dependency: 'bg-amber-500/10 text-amber-600/80',
-    network: 'bg-purple-500/10 text-purple-400/80',
+  const map: Record<string, string> = {
+    sonar: s.srcSonar,
+    regex: s.srcRegex,
+    dependency: s.srcDependency,
+    network: s.srcNetwork,
   };
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[9px] font-medium px-1 py-0.5 rounded ${styles[source] || styles.regex}`}>
-      {source === 'dependency' && <Package className="w-2 h-2" />}
+    <span className={map[source] || s.srcRegex}>
+      {source === 'dependency' && <Package className={s.srcIcon} />}
       {source}
     </span>
   );
@@ -312,9 +299,9 @@ export default function AssetListView({ assets }: AssetListViewProps) {
 
   const toggleCollapse = useCallback((id: string) => {
     setSuggestions(prev => {
-      const s = prev[id];
-      if (!s) return prev;
-      return { ...prev, [id]: { ...s, collapsed: !s.collapsed } };
+      const entry = prev[id];
+      if (!entry) return prev;
+      return { ...prev, [id]: { ...entry, collapsed: !entry.collapsed } };
     });
   }, []);
 
@@ -419,30 +406,30 @@ export default function AssetListView({ assets }: AssetListViewProps) {
   }
 
   return (
-    <div className="bg-qg-card border border-qg-border rounded-lg animate-fade-in">
+    <div className={s.card}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-qg-border space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-700">List of all assets</h3>
-          <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-qg-dark border border-qg-border rounded px-2.5 py-1.5">
-            <div className="flex items-center gap-1.5" title="GitHub repository URL">
-              <Github className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+      <div className={s.headerSection}>
+        <div className={s.headerRow}>
+          <h3 className={s.headerTitle}>List of all assets</h3>
+          <div className={s.headerControls}>
+          <div className={s.githubBar}>
+            <div className={s.githubField} title="GitHub repository URL">
+              <Github className={s.githubFieldIcon} />
               <input
                 type="text"
                 placeholder="https://github.com/owner/repo"
                 value={repoUrl}
                 onChange={e => setRepoUrl(e.target.value.trim())}
-                className="bg-transparent text-xs text-gray-600 w-48 focus:outline-none placeholder:text-gray-600"
+                className={s.fieldInput}
               />
             </div>
-            <span className="text-gray-700">|</span>
-            <div className="flex items-center gap-1.5" title="Branch name">
-              <GitBranch className="w-3 h-3 text-gray-500 flex-shrink-0" />
+            <span className={s.fieldSep}>|</span>
+            <div className={s.githubField} title="Branch name">
+              <GitBranch className={s.githubFieldIconSm} />
               <select
                 value={branch}
                 onChange={e => setBranch(e.target.value)}
-                className="bg-transparent text-xs text-gray-500 focus:outline-none cursor-pointer appearance-none pr-1"
+                className={s.fieldSelect}
               >
                 <option value="main">main</option>
                 <option value="master">master</option>
@@ -455,19 +442,19 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                   placeholder="branch-name"
                   value={customBranch}
                   onChange={e => setCustomBranch(e.target.value.trim())}
-                  className="bg-transparent text-xs text-gray-600 w-20 focus:outline-none placeholder:text-gray-600"
+                  className={s.fieldInputShort}
                   autoFocus
                 />
               )}
             </div>
-            <span className="text-gray-700">|</span>
-            <div className="flex items-center gap-1.5" title="Base path prefix (e.g. ui/ or src/) — leave empty if scanning from repo root">
-              <FolderOpen className="w-3 h-3 text-gray-500 flex-shrink-0" />
+            <span className={s.fieldSep}>|</span>
+            <div className={s.githubField} title="Base path prefix (e.g. ui/ or src/) — leave empty if scanning from repo root">
+              <FolderOpen className={s.githubFieldIconSm} />
               <input
                 type="text"
                 value={basePath}
                 onChange={e => setBasePath(e.target.value.trim())}
-                className="bg-transparent text-xs text-gray-500 w-14 focus:outline-none"
+                className={s.fieldInputShort}
                 placeholder="/"
               />
             </div>
@@ -477,75 +464,59 @@ export default function AssetListView({ assets }: AssetListViewProps) {
             placeholder="Filter assets..."
             value={filterText}
             onChange={e => { setFilterText(e.target.value); setPage(1); }}
-            className="bg-qg-dark border border-qg-border rounded px-2 py-1 text-xs text-gray-600 w-48 focus:outline-none focus:border-qg-accent"
+            className={s.filterInput}
           />
           <button
             onClick={fetchProjectInsight}
             disabled={insight.loading}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600/80 to-blue-600/80 hover:from-purple-500 hover:to-blue-500 text-gray-800 text-[11px] font-medium px-3 py-1.5 rounded-md transition-all shadow-sm hover:shadow-purple-500/20 hover:shadow-md disabled:opacity-60"
+            className={s.insightBtn}
             title="Get a project-level quantum readiness insight"
           >
-            {insight.loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <BarChart3 className="w-3 h-3" />}
+            {insight.loading ? <Loader2 className={s.insightBtnSpin} /> : <BarChart3 className={s.insightBtnIcon} />}
             Project Insight
           </button>
-          <SlidersHorizontal className="w-4 h-4 text-gray-500" />
+          <SlidersHorizontal className={s.slidersIcon} />
         </div>
         </div>
 
         {/* Quantum Safety Filter Chips */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-            <Filter className="w-3 h-3 text-gray-500 flex-shrink-0" />
+        <div className={s.filterChips}>
+            <Filter className={s.filterIcon} />
             <button
               onClick={() => toggleSafetyFilter(QuantumSafetyStatus.NOT_QUANTUM_SAFE)}
-              className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full ring-1 transition-all ${
-                safetyFilter.has(QuantumSafetyStatus.NOT_QUANTUM_SAFE)
-                  ? 'bg-red-500/25 ring-red-500/60 text-red-300 shadow-sm shadow-red-500/10'
-                  : 'bg-red-500/10 ring-red-500/20 text-red-600/70 hover:ring-red-500/40'
-              }`}
+              className={`${s.chip} ${safetyFilter.has(QuantumSafetyStatus.NOT_QUANTUM_SAFE) ? s.chipNotSafeActive : s.chipNotSafe}`}
             >
-              <ShieldAlert className="w-2.5 h-2.5" />
+              <ShieldAlert className={s.chipIcon} />
               Not Safe
-              <span className="text-[9px] opacity-70">{safetyCounts.notSafe}</span>
+              <span className={s.chipCount}>{safetyCounts.notSafe}</span>
             </button>
             <button
               onClick={() => toggleSafetyFilter(QuantumSafetyStatus.CONDITIONAL)}
-              className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full ring-1 transition-all ${
-                safetyFilter.has(QuantumSafetyStatus.CONDITIONAL)
-                  ? 'bg-cyan-500/25 ring-cyan-500/60 text-cyan-300 shadow-sm shadow-cyan-500/10'
-                  : 'bg-cyan-500/10 ring-cyan-500/20 text-cyan-600/70 hover:ring-cyan-500/40'
-              }`}
+              className={`${s.chip} ${safetyFilter.has(QuantumSafetyStatus.CONDITIONAL) ? s.chipConditionalActive : s.chipConditional}`}
             >
-              <ShieldQuestion className="w-2.5 h-2.5" />
+              <ShieldQuestion className={s.chipIcon} />
               Conditional
-              <span className="text-[9px] opacity-70">{safetyCounts.conditional}</span>
+              <span className={s.chipCount}>{safetyCounts.conditional}</span>
             </button>
             <button
               onClick={() => toggleSafetyFilter(QuantumSafetyStatus.QUANTUM_SAFE)}
-              className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full ring-1 transition-all ${
-                safetyFilter.has(QuantumSafetyStatus.QUANTUM_SAFE)
-                  ? 'bg-green-500/25 ring-green-500/60 text-green-300 shadow-sm shadow-green-500/10'
-                  : 'bg-green-500/10 ring-green-500/20 text-green-600/70 hover:ring-green-500/40'
-              }`}
+              className={`${s.chip} ${safetyFilter.has(QuantumSafetyStatus.QUANTUM_SAFE) ? s.chipSafeActive : s.chipSafe}`}
             >
-              <ShieldCheck className="w-2.5 h-2.5" />
+              <ShieldCheck className={s.chipIcon} />
               Safe
-              <span className="text-[9px] opacity-70">{safetyCounts.safe}</span>
+              <span className={s.chipCount}>{safetyCounts.safe}</span>
             </button>
             <button
               onClick={() => toggleSafetyFilter('unknown' as any)}
-              className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-full ring-1 transition-all ${
-                safetyFilter.has('unknown' as any)
-                  ? 'bg-gray-500/25 ring-gray-500/60 text-gray-600 shadow-sm shadow-gray-500/10'
-                  : 'bg-gray-500/10 ring-gray-500/20 text-gray-500/70 hover:ring-gray-500/40'
-              }`}
+              className={`${s.chip} ${safetyFilter.has('unknown' as any) ? s.chipUnknownActive : s.chipUnknown}`}
             >
               Unknown
-              <span className="text-[9px] opacity-70">{safetyCounts.unknown}</span>
+              <span className={s.chipCount}>{safetyCounts.unknown}</span>
             </button>
             {safetyFilter.size > 0 && (
               <button
                 onClick={() => { setSafetyFilter(new Set()); setPage(1); }}
-                className="text-[10px] text-gray-500 hover:text-gray-600 ml-0.5 underline"
+                className={s.chipClear}
               >
                 clear
               </button>
@@ -555,111 +526,98 @@ export default function AssetListView({ assets }: AssetListViewProps) {
 
       {/* ── Project Insight Panel ─────────────────────────────── */}
       {(insight.loading || insight.data || insight.error) && (
-        <div className="mx-4 my-3">
+        <div className={s.insightWrap}>
           {insight.loading && (
-            <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-500/5 to-blue-500/5 border border-purple-500/20 rounded-lg">
-              <Loader2 className="w-5 h-5 text-purple-400 animate-spin flex-shrink-0" />
-              <div className="space-y-1.5 flex-1">
-                <div className="h-3 w-2/3 rounded bg-purple-500/10 animate-pulse" />
-                <div className="h-2 w-1/2 rounded bg-purple-500/10 animate-pulse" />
+            <div className={s.insightLoading}>
+              <Loader2 className={s.insightLoadIcon} />
+              <div className={s.insightPulseBar}>
+                <div className={s.insightPulseBarBig} />
+                <div className={s.insightPulseBarSmall} />
               </div>
             </div>
           )}
 
           {insight.error && (
-            <div className="flex items-center justify-between p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
-              <span className="text-xs text-red-600">{insight.error}</span>
-              <button onClick={() => setInsight({ loading: false })} className="text-gray-500 hover:text-gray-600">
-                <X className="w-3.5 h-3.5" />
+            <div className={s.insightError}>
+              <span className={s.insightErrorMsg}>{insight.error}</span>
+              <button onClick={() => setInsight({ loading: false })} className={s.dismissBtn}>
+                <X className={s.dismissIcon} />
               </button>
             </div>
           )}
 
           {insight.data && (() => {
             const d = insight.data!;
-            const riskColors: Record<string, { bg: string; ring: string; text: string; bar: string }> = {
-              critical: { bg: 'from-red-500/10 to-red-600/5', ring: 'border-red-500/30', text: 'text-red-600', bar: 'bg-red-500' },
-              high: { bg: 'from-orange-500/10 to-red-500/5', ring: 'border-orange-500/30', text: 'text-orange-400', bar: 'bg-orange-500' },
-              moderate: { bg: 'from-yellow-500/10 to-orange-500/5', ring: 'border-yellow-500/30', text: 'text-yellow-600', bar: 'bg-yellow-500' },
-              low: { bg: 'from-green-500/10 to-emerald-500/5', ring: 'border-green-500/30', text: 'text-green-600', bar: 'bg-green-500' },
-            };
-            const c = riskColors[d.riskLevel] || riskColors.moderate;
-            const impactColors: Record<string, string> = {
-              critical: 'bg-red-500/15 text-red-600 ring-red-500/30',
-              high: 'bg-orange-500/15 text-orange-400 ring-orange-500/30',
-              medium: 'bg-yellow-500/15 text-yellow-600 ring-yellow-500/30',
-              low: 'bg-green-500/15 text-green-600 ring-green-500/30',
+            const riskCap = d.riskLevel.charAt(0).toUpperCase() + d.riskLevel.slice(1);
+            const panelBg = s[`riskBg${riskCap}`] || s.riskBgModerate;
+            const textCls = s[`riskText${riskCap}`] || s.riskTextModerate;
+            const barCls = s[`riskBar${riskCap}`] || s.riskBarModerate;
+            const badgeCls = (level: string) => {
+              const cap = level.charAt(0).toUpperCase() + level.slice(1);
+              return s[`riskBadge${cap}`] || s.riskBadgeMedium;
             };
 
             return (
-              <div className={`bg-gradient-to-r ${c.bg} border ${c.ring} rounded-lg overflow-hidden`}>
+              <div className={`${s.insightPanel} ${panelBg}`}>
                 {/* Top bar with risk score and dismiss */}
-                <div className="flex items-center justify-between px-4 pt-3 pb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <BarChart3 className={`w-4 h-4 ${c.text}`} />
-                      <span className="text-xs font-semibold text-gray-700">Project Quantum Risk Assessment</span>
+                <div className={s.insightTopBar}>
+                  <div className={s.insightTopLeft}>
+                    <div className={s.insightTopTitle}>
+                      <BarChart3 className={`${s.insightTopTitleIcon} ${textCls}`} />
+                      <span className={s.insightTopTitleText}>Project Quantum Risk Assessment</span>
                     </div>
-                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ring-1 uppercase tracking-wider ${impactColors[d.riskLevel] || impactColors.medium}`}>
-                      <AlertTriangle className="w-2.5 h-2.5" />
+                    <span className={`${s.insightRiskBadge} ${badgeCls(d.riskLevel)}`}>
+                      <AlertTriangle className={s.badgeIcon} />
                       {d.riskLevel}
                     </span>
                   </div>
-                  <button onClick={() => setInsight({ loading: false })} className="text-gray-500 hover:text-gray-600 p-0.5">
-                    <X className="w-3.5 h-3.5" />
+                  <button onClick={() => setInsight({ loading: false })} className={s.dismissBtn}>
+                    <X className={s.dismissIcon} />
                   </button>
                 </div>
 
                 {/* Risk score bar */}
-                <div className="px-4 pb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-1.5 bg-gray-200/50 rounded-full overflow-hidden">
-                      <div className={`h-full ${c.bar} rounded-full transition-all duration-700`} style={{ width: `${d.riskScore}%` }} />
+                <div className={s.insightScoreBar}>
+                  <div className={s.insightScoreRow}>
+                    <div className={s.insightTrack}>
+                      <div className={`${s.insightFill} ${barCls}`} style={{ width: `${d.riskScore}%` }} />
                     </div>
-                    <span className={`text-xs font-mono font-bold ${c.text}`}>{d.riskScore}/100</span>
+                    <span className={`${s.insightScoreText} ${textCls}`}>{d.riskScore}/100</span>
                   </div>
                 </div>
 
                 {/* Headline */}
-                <div className="px-4 pb-2">
-                  <p className={`text-sm font-medium ${c.text}`}>{d.headline}</p>
-                </div>
+                <p className={`${s.insightHeadline} ${textCls}`}>{d.headline}</p>
 
                 {/* Summary */}
-                <div className="px-4 pb-3">
-                  <p className="text-[11px] text-gray-600 leading-relaxed">{d.summary}</p>
-                </div>
+                <p className={s.insightSummary}>{d.summary}</p>
 
                 {/* Priorities */}
-                <div className="px-4 pb-3">
-                  <div className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" />
+                <div className={s.insightPriorities}>
+                  <div className={s.insightPrioritiesLabel}>
+                    <TrendingUp className={s.insightPrioritiesLabelIcon} />
                     Prioritized Actions
                   </div>
-                  <div className="space-y-1.5">
-                    {d.priorities.map((p, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <span className={`flex-shrink-0 mt-0.5 inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded ring-1 ${impactColors[p.impact] || impactColors.medium}`}>
-                          {p.impact}
-                        </span>
-                        <span className="text-[11px] text-gray-600 leading-snug flex-1">{p.action}</span>
-                        <span className="flex-shrink-0 text-[9px] text-gray-500 font-medium flex items-center gap-0.5">
-                          <Clock className="w-2.5 h-2.5" />
-                          {p.effort}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  {d.priorities.map((p, i) => (
+                    <div key={i} className={s.insightPriorityRow}>
+                      <span className={`${s.insightImpactBadge} ${badgeCls(p.impact)}`}>
+                        {p.impact}
+                      </span>
+                      <span className={s.insightPriorityAction}>{p.action}</span>
+                      <span className={s.insightPriorityEffort}>
+                        <Clock className={s.insightClockIcon} />
+                        {p.effort}
+                      </span>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Migration estimate */}
-                <div className="px-4 pb-3 border-t border-white/5 pt-2">
-                  <div className="flex items-center gap-2">
-                    <Clock className={`w-3 h-3 ${c.text}`} />
-                    <span className="text-[10px] text-gray-500">
-                      <span className="font-medium text-gray-600">Migration Estimate:</span> {d.migrationEstimate}
-                    </span>
-                  </div>
+                <div className={s.insightMigration}>
+                  <Clock className={`${s.insightMigrationIcon} ${textCls}`} />
+                  <span className={s.insightMigrationText}>
+                    <span className={s.insightMigrationLabel}>Migration Estimate:</span> {d.migrationEstimate}
+                  </span>
                 </div>
               </div>
             );
@@ -668,59 +626,42 @@ export default function AssetListView({ assets }: AssetListViewProps) {
       )}
 
       {/* Table */}
-      <div style={{ overflowX: 'clip', overflowY: 'visible' }}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-500 text-xs border-b border-qg-border">
-              <th
-                className="px-4 py-2 cursor-pointer hover:text-gray-600 whitespace-nowrap"
-                onClick={() => toggleSort('safety')}
-              >
+      <div className={s.tableWrap}>
+        <table className={s.table}>
+          <thead className={s.thead}>
+            <tr>
+              <th className={s.th} onClick={() => toggleSort('safety')}>
                 Quantum Safety {sortField === 'safety' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
               </th>
-              <th
-                className="px-4 py-2 cursor-pointer hover:text-gray-600"
-                onClick={() => toggleSort('name')}
-              >
+              <th className={s.th} onClick={() => toggleSort('name')}>
                 Cryptographic asset {sortField === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
               </th>
-              <th
-                className="px-4 py-2 cursor-pointer hover:text-gray-600"
-                onClick={() => toggleSort('primitive')}
-              >
+              <th className={s.th} onClick={() => toggleSort('primitive')}>
                 Primitive {sortField === 'primitive' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
               </th>
-              <th className="px-4 py-2">PQC Verdict</th>
-              <th
-                className="px-4 py-2 cursor-pointer hover:text-gray-600"
-                onClick={() => toggleSort('location')}
-              >
+              <th className={s.th}>PQC Verdict</th>
+              <th className={s.th} onClick={() => toggleSort('location')}>
                 Location {sortField === 'location' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
               </th>
-              <th className="px-4 py-2 min-w-[260px]">
-                <span className="flex items-center gap-1.5">
-                  <span className="relative flex h-3 w-3">
-                    <Sparkles className="w-3 h-3 text-purple-400" />
-                  </span>
-                  <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent font-semibold">AI Suggested Fix</span>
+              <th className={s.thAi}>
+                <span className={s.thAiInner}>
+                  <Sparkles className={s.aiSparkle} />
+                  <span className={s.aiLabel}>AI Suggested Fix</span>
                 </span>
               </th>
-              <th className="px-4 py-2 w-10"></th>
+              <th className={s.thAction}></th>
             </tr>
           </thead>
           <tbody>
             {paged.map((asset) => (
-              <tr
-                key={asset.id}
-                className="border-b border-qg-border/50 hover:bg-qg-dark/50 transition-colors"
-              >
+              <tr key={asset.id} className={s.tr}>
                 {/* Quantum Safety badge */}
-                <td className="px-4 py-3">
+                <td className={s.td}>
                   {(() => {
                     const Icon = getStatusIcon(asset.quantumSafety);
                     return (
-                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ring-1 ${getStatusBg(asset.quantumSafety)}`}>
-                        <Icon className="w-2.5 h-2.5" />
+                      <span className={getStatusBg(asset.quantumSafety)}>
+                        <Icon className={s.badgeIcon} />
                         {getStatusLabel(asset.quantumSafety)}
                       </span>
                     );
@@ -728,23 +669,23 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                 </td>
 
                 {/* Algorithm name */}
-                <td className="px-4 py-3">
-                  <span className="text-gray-700 font-medium">{asset.name}</span>
+                <td className={s.td}>
+                  <span className={s.algoName}>{asset.name}</span>
                   {asset.keyLength && (
-                    <span className="text-gray-500 text-xs ml-2">({asset.keyLength}-bit)</span>
+                    <span className={s.keyLength}>({asset.keyLength}-bit)</span>
                   )}
                   {asset.description && (
-                    <p className="text-[10px] text-gray-500 mt-0.5 max-w-[340px] leading-tight" title={asset.description}>
+                    <p className={s.description} title={asset.description}>
                       {asset.description.length > 120 ? asset.description.slice(0, 117) + '…' : asset.description}
                     </p>
                   )}
                 </td>
 
                 {/* Primitive */}
-                <td className="px-4 py-3">
-                  <div className="text-xs">
+                <td className={s.td}>
+                  <div className={s.primitiveWrap}>
                     {getPrimitiveLabel(asset.cryptoProperties?.algorithmProperties?.primitive).split('\n').map((line, i) => (
-                      <div key={i} className={i === 0 ? 'text-gray-600 font-medium' : 'text-gray-500'}>
+                      <div key={i} className={i === 0 ? s.primitiveName : s.primitiveSub}>
                         {line}
                       </div>
                     ))}
@@ -752,119 +693,119 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                 </td>
 
                 {/* PQC Verdict */}
-                <td className="px-4 py-3">
-                  <div className="flex flex-col gap-1">
+                <td className={s.td}>
+                  <div className={s.verdictCell}>
                     {pqcVerdictBadge(asset)}
                     {detectionSourceBadge(asset.detectionSource)}
                   </div>
                 </td>
 
                 {/* Location */}
-                <td className="px-4 py-3">
+                <td className={s.td}>
                   {asset.location ? (
-                    <div className="flex flex-col gap-0.5">
+                    <div className={s.locationWrap}>
                       {asset.detectionSource === 'dependency' && asset.provider && (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-amber-600/90 font-medium">
-                          <Package className="w-2.5 h-2.5" />
+                        <span className={s.providerBadge}>
+                          <Package className={s.providerIcon} />
                           {asset.provider}
                         </span>
                       )}
-                      <span className="text-qg-accent text-xs hover:underline cursor-pointer">
+                      <span className={s.fileLink}>
                         {asset.location.fileName}
                         {asset.location.lineNumber ? `:${asset.location.lineNumber}` : ''}
                       </span>
                     </div>
                   ) : (
-                    <span className="text-gray-600 text-xs">—</span>
+                    <span className={s.noDash}>—</span>
                   )}
                 </td>
 
                 {/* Suggested Fix */}
-                <td className="px-4 py-3 min-w-[260px]">
+                <td className={s.td} style={{ minWidth: 260 }}>
                   {(() => {
-                    const s = suggestions[asset.id];
+                    const sg = suggestions[asset.id];
 
                     /* ---------- Loading ---------- */
-                    if (s?.loading) {
+                    if (sg?.loading) {
                       return (
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="w-3.5 h-3.5 text-purple-400 animate-spin" />
-                          <div className="space-y-1.5 flex-1">
-                            <div className="h-2 w-3/4 rounded bg-purple-500/10 animate-pulse" />
-                            <div className="h-2 w-1/2 rounded bg-purple-500/10 animate-pulse" />
+                        <div className={s.suggLoading}>
+                          <Loader2 className={s.suggSpinner} />
+                          <div className={s.suggPulse}>
+                            <div className={s.suggPulseBar1} />
+                            <div className={s.suggPulseBar2} />
                           </div>
                         </div>
                       );
                     }
 
                     /* ---------- Result ---------- */
-                    if (s?.fix) {
+                    if (sg?.fix) {
                       return (
-                        <div className="relative border-l-2 border-purple-500/60 pl-3 pr-1 py-0.5 group/card">
+                        <div className={s.suggResult}>
                           {/* Top row: confidence badge + actions */}
-                          <div className="flex items-center justify-between mb-1.5">
-                            {confidenceBadge(s.confidence)}
-                            <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                              <button onClick={() => toggleCollapse(asset.id)} className="p-0.5 rounded hover:bg-qg-border/60 text-gray-500 hover:text-gray-600" title={s.collapsed ? 'Expand' : 'Collapse'}>
-                                {s.collapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+                          <div className={s.suggTopRow}>
+                            {confidenceBadge(sg.confidence)}
+                            <div className={s.suggActions}>
+                              <button onClick={() => toggleCollapse(asset.id)} className={s.suggActionBtn} title={sg.collapsed ? 'Expand' : 'Collapse'}>
+                                {sg.collapsed ? <ChevronDown className={s.suggActionIcon} /> : <ChevronUp className={s.suggActionIcon} />}
                               </button>
-                              <button onClick={() => dismissSuggestion(asset.id)} className="p-0.5 rounded hover:bg-qg-border/60 text-gray-500 hover:text-gray-600" title="Dismiss">
-                                <X className="w-3 h-3" />
+                              <button onClick={() => dismissSuggestion(asset.id)} className={s.suggActionBtn} title="Dismiss">
+                                <X className={s.suggActionIcon} />
                               </button>
                             </div>
                           </div>
 
-                          {!s.collapsed && (
+                          {!sg.collapsed && (
                             <>
-                              <p className="text-[11px] text-gray-600 leading-relaxed mb-1.5">{s.fix}</p>
-                              {s.codeSnippet && (
-                                <div className="relative group/snippet">
-                                  <pre className="text-[10px] leading-relaxed bg-qg-dark/80 border border-qg-border/50 rounded-md px-2.5 py-2 text-green-600 overflow-x-auto max-h-24 font-mono">{s.codeSnippet}</pre>
+                              <p className={s.suggText}>{sg.fix}</p>
+                              {sg.codeSnippet && (
+                                <div className={s.suggCode}>
+                                  <pre className={s.suggPre}>{sg.codeSnippet}</pre>
                                   <button
-                                    onClick={() => copySnippet(asset.id, s.codeSnippet!)}
-                                    className="absolute top-1.5 right-1.5 p-1 rounded bg-qg-dark/90 border border-qg-border/50 text-gray-500 hover:text-gray-700 opacity-0 group-hover/snippet:opacity-100 transition-opacity"
+                                    onClick={() => copySnippet(asset.id, sg.codeSnippet!)}
+                                    className={s.copyBtn}
                                     title="Copy code"
                                   >
-                                    {copiedId === asset.id ? <Check className="w-2.5 h-2.5 text-green-600" /> : <Copy className="w-2.5 h-2.5" />}
+                                    {copiedId === asset.id ? <Check className={s.copyIconDone} /> : <Copy className={s.copyIcon} />}
                                   </button>
                                 </div>
                               )}
                             </>
                           )}
 
-                          {s.collapsed && (
-                            <p className="text-[10px] text-gray-500 truncate">{s.fix}</p>
+                          {sg.collapsed && (
+                            <p className={s.suggTextCollapsed}>{sg.fix}</p>
                           )}
                         </div>
                       );
                     }
 
                     /* ---------- Error ---------- */
-                    if (s?.error) {
+                    if (sg?.error) {
                       return (
                         <button
                           onClick={() => fetchSuggestion(asset)}
-                          className="flex items-center gap-1.5 text-[11px] text-red-600 hover:text-red-300 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-md px-2.5 py-1.5 transition-colors"
+                          className={s.retryBtn}
                         >
-                          <Sparkles className="w-3 h-3" /> Retry
+                          <Sparkles className={s.retryIcon} /> Retry
                         </button>
                       );
                     }
 
                     /* ---------- Idle (show PQC hint + button) ---------- */
                     return (
-                      <div className="flex flex-col gap-1">
+                      <div className={s.suggIdle}>
                         {asset.recommendedPQC && (
-                          <span className="text-[10px] text-gray-500 leading-snug">
-                            Migrate to <span className="text-gray-500 font-medium">{asset.recommendedPQC}</span>
+                          <span className={s.suggHint}>
+                            Migrate to <span className={s.suggHintAlgo}>{asset.recommendedPQC}</span>
                           </span>
                         )}
                         <button
                           onClick={() => fetchSuggestion(asset)}
-                          className="group/btn flex items-center gap-1.5 w-fit text-[11px] font-medium bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/40 hover:to-blue-600/40 text-purple-300 hover:text-gray-800 border border-purple-500/20 hover:border-purple-500/40 rounded-md px-2.5 py-1 transition-all hover:shadow-sm hover:shadow-purple-500/10"
+                          className={s.aiFixBtn}
                           title="Get AI-powered migration suggestion"
                         >
-                          <Sparkles className="w-3 h-3 group-hover/btn:animate-pulse" />
+                          <Sparkles className={s.aiFixIcon} />
                           AI Fix
                         </button>
                       </div>
@@ -873,18 +814,19 @@ export default function AssetListView({ assets }: AssetListViewProps) {
                 </td>
 
                 {/* Action — link to file on GitHub */}
-                <td className="px-4 py-3">
+                <td className={s.td}>
                   {repoUrl && asset.location?.fileName ? (
                     <a
                       href={buildGitHubFileUrl(repoUrl, effectiveBranch, basePath, asset.location.fileName, asset.location.lineNumber)}
                       target="_blank"
                       rel="noopener noreferrer"
+                      className={s.ghLink}
                       title="View on GitHub"
                     >
-                      <ExternalLink className="w-3.5 h-3.5 text-qg-accent hover:text-gray-800 cursor-pointer" />
+                      <ExternalLink className={s.ghLinkIcon} />
                     </a>
                   ) : (
-                    <ExternalLink className="w-3.5 h-3.5 text-gray-600 cursor-not-allowed" />
+                    <ExternalLink className={`${s.ghLinkIcon} ${s.ghLinkDisabled}`} />
                   )}
                 </td>
               </tr>
@@ -894,38 +836,38 @@ export default function AssetListView({ assets }: AssetListViewProps) {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-4 py-3 text-xs text-gray-500 border-t border-qg-border">
-        <div className="flex items-center gap-2">
+      <div className={s.pagination}>
+        <div className={s.paginationLeft}>
           <span>Items per page:</span>
           <select
             value={perPage}
             onChange={e => { setPerPage(Number(e.target.value)); setPage(1); }}
-            className="bg-qg-dark border border-qg-border rounded px-1 py-0.5 text-gray-600"
+            className={s.paginationSelect}
           >
             {ITEMS_PER_PAGE_OPTIONS.map(n => (
               <option key={n} value={n}>{n}</option>
             ))}
           </select>
-          <span className="ml-4">
+          <span className={s.paginationInfo}>
             {(page - 1) * perPage + 1}-{Math.min(page * perPage, filtered.length)} of {filtered.length} items
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className={s.paginationRight}>
           <span>{page}</span>
           <span>of {totalPages} pages</span>
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="p-1 rounded hover:bg-qg-border disabled:opacity-30"
+            className={s.pageBtn}
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className={s.pageBtnIcon} />
           </button>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="p-1 rounded hover:bg-qg-border disabled:opacity-30"
+            className={s.pageBtn}
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className={s.pageBtnIcon} />
           </button>
         </div>
       </div>

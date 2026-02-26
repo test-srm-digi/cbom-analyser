@@ -1,0 +1,94 @@
+// ══════════════════════════════════════════════════════════════
+//  DigiCert ONE — Quantum Readiness Advisor  ·  Design Tokens
+//  Follows the snowbird-securesigning variable pattern
+// ══════════════════════════════════════════════════════════════
+
+// Primary palette
+$dc1-blue:        #0174C3;
+$dc1-blue-dark:   #005EA2;
+$dc1-blue-light:  #E8F4FC;
+
+// Neutrals
+$dc1-white:    #FFFFFF;
+$dc1-bg:       #F5F6F8;
+$dc1-card:     #FFFFFF;
+$dc1-border:   #E2E5EA;
+$dc1-text:     #353535;
+$dc1-text-secondary: #636A6E;
+$dc1-text-muted:     #A0AAB0;
+
+// Sidebar
+$dc1-sidebar-bg:          #1B2A4A;
+$dc1-sidebar-active:      rgba(255,255,255,0.12);
+$dc1-sidebar-hover:       rgba(255,255,255,0.07);
+$dc1-sidebar-text:        rgba(255,255,255,0.7);
+$dc1-sidebar-text-active: #FFFFFF;
+
+// Semantic
+$dc1-success:    #27A872;
+$dc1-success-bg: #E8FAF0;
+$dc1-danger:     #DC2626;
+$dc1-danger-bg:  #FEF2F2;
+$dc1-warning:    #F5B517;
+$dc1-warning-bg: #FFFBEB;
+$dc1-info:       #0174C3;
+$dc1-info-bg:    #E8F4FC;
+
+// Chart palette
+$chart-blue:    #58a6ff;
+$chart-purple:  #bc8cff;
+$chart-orange:  #f0883e;
+$chart-green:   #3fb950;
+$chart-red:     #f85149;
+$chart-yellow:  #d29922;
+$chart-pink:    #f778ba;
+$chart-cyan:    #22d3ee;
+$chart-gray:    #8b949e;
+
+// Sizing
+$dc1-sidebar-w: 260px;
+$dc1-topbar-h:  48px;
+$dc1-radius:    8px;
+$dc1-radius-sm: 4px;
+$dc1-radius-lg: 12px;
+
+// Font
+$dc1-font: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+// Spacing (8pt grid)
+$spacing-0: 4px;
+$spacing-1: 8px;
+$spacing-2: 16px;
+$spacing-3: 24px;
+$spacing-4: 32px;
+
+// Transition
+$transition-fast: 0.15s ease;
+$transition-medium: 0.3s ease;
+
+// ── CSS custom properties (for runtime theming) ─────────────
+:root {
+  --dc1-blue: #{$dc1-blue};
+  --dc1-blue-dark: #{$dc1-blue-dark};
+  --dc1-blue-light: #{$dc1-blue-light};
+  --dc1-white: #{$dc1-white};
+  --dc1-bg: #{$dc1-bg};
+  --dc1-card: #{$dc1-card};
+  --dc1-border: #{$dc1-border};
+  --dc1-text: #{$dc1-text};
+  --dc1-text-secondary: #{$dc1-text-secondary};
+  --dc1-text-muted: #{$dc1-text-muted};
+  --dc1-sidebar-bg: #{$dc1-sidebar-bg};
+  --dc1-sidebar-active: #{$dc1-sidebar-active};
+  --dc1-sidebar-hover: #{$dc1-sidebar-hover};
+  --dc1-sidebar-text: #{$dc1-sidebar-text};
+  --dc1-sidebar-text-active: #{$dc1-sidebar-text-active};
+  --dc1-success: #{$dc1-success};
+  --dc1-success-bg: #{$dc1-success-bg};
+  --dc1-danger: #{$dc1-danger};
+  --dc1-danger-bg: #{$dc1-danger-bg};
+  --dc1-warning: #{$dc1-warning};
+  --dc1-warning-bg: #{$dc1-warning-bg};
+  --dc1-info: #{$dc1-info};
+  --dc1-info-bg: #{$dc1-info-bg};
+}

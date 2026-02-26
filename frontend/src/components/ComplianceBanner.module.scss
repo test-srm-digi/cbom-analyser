@@ -1,0 +1,71 @@
+@use '../styles/variables' as *;
+
+.banner {
+  width: 100%;
+  border-radius: $dc1-radius;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: fadeIn 0.4s ease forwards;
+}
+
+.compliant {
+  background: rgba($dc1-success, 0.1);
+  border: 1px solid rgba($dc1-success, 0.3);
+}
+
+.nonCompliant {
+  background: rgba($dc1-danger, 0.1);
+  border: 1px solid rgba($dc1-danger, 0.3);
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.iconGreen {
+  color: $dc1-success;
+}
+
+.iconRed {
+  color: $dc1-danger;
+}
+
+.body {
+  flex: 1;
+}
+
+.statusGreen {
+  font-weight: 600;
+  color: $dc1-success;
+}
+
+.statusRed {
+  font-weight: 600;
+  color: $dc1-danger;
+}
+
+.separator {
+  color: $dc1-text-secondary;
+  margin: 0 8px;
+}
+
+.message {
+  color: $dc1-text-secondary;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: $dc1-text-secondary;
+}
+
+.metaIcon {
+  width: 12px;
+  height: 12px;
+}

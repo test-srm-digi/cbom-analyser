@@ -9,6 +9,7 @@ import {
   Cell,
 } from 'recharts';
 import { CryptoAsset } from '../types';
+import styles from './ChartCard.module.scss';
 
 interface CryptoBubbleChartProps {
   assets: CryptoAsset[];
@@ -78,8 +79,8 @@ export default function CryptoBubbleChart({ assets }: CryptoBubbleChartProps) {
   const data = computeBubbleData(assets);
 
   return (
-    <div className="bg-qg-card border border-qg-border rounded-lg p-4 animate-fade-in">
-      <h3 className="text-sm font-medium text-gray-500 mb-2">
+    <div className={styles.card}>
+      <h3 className={styles.title}>
         Algorithm Distribution ({data.length} types of crypto assets)
       </h3>
       <div style={{ height: 250 }}>
@@ -97,11 +98,10 @@ export default function CryptoBubbleChart({ assets }: CryptoBubbleChartProps) {
           </ScatterChart>
         </ResponsiveContainer>
       </div>
-      {/* Legend labels */}
-      <div className="flex flex-wrap gap-2 mt-2 justify-center">
+      <div className={styles.legend}>
         {data.slice(0, 14).map(({ name, color }) => (
-          <div key={name} className="flex items-center gap-1 text-xs text-gray-500">
-            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+          <div key={name} className={styles.legendItem}>
+            <span className={styles.legendDot} style={{ backgroundColor: color }} />
             {name}
           </div>
         ))}

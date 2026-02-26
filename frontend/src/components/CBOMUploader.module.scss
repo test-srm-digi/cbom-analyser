@@ -1,0 +1,66 @@
+@use '../styles/variables' as *;
+
+.dropzone {
+  border: 2px dashed $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 48px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color $transition-fast, background $transition-fast;
+
+  &:hover {
+    border-color: $dc1-text-secondary;
+    background: rgba($dc1-card, 0.5);
+  }
+}
+
+.dropzoneActive {
+  border-color: $dc1-blue;
+  background: rgba($dc1-blue, 0.04);
+}
+
+.dropzoneLoading {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon {
+  width: 40px;
+  height: 40px;
+  color: $dc1-blue;
+}
+
+.iconSuccess {
+  width: 40px;
+  height: 40px;
+  color: $dc1-success;
+}
+
+.iconSpin {
+  width: 40px;
+  height: 40px;
+  color: $dc1-blue;
+  animation: spin 1s linear infinite;
+}
+
+.mainText {
+  color: $dc1-blue;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.mainTextSuccess {
+  color: $dc1-success;
+}
+
+.subText {
+  color: $dc1-text-secondary;
+  font-size: 14px;
+}

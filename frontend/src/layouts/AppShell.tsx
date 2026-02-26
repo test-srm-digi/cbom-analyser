@@ -13,7 +13,6 @@ import {
 import {
   faChevronDown,
   faChevronRight,
-  faMoon,
 } from '@fortawesome/pro-solid-svg-icons';
 import digicertLogo from '../assets/images/digicert-logo.svg';
 
@@ -130,20 +129,7 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
         {/* Top header bar */}
         <header className="dc1-topbar">
           <div className="dc1-topbar-left" />
-          <div className="dc1-topbar-right">
-            <div className="dc1-topbar-account">
-              <span>Acme Corporation</span>
-              <FontAwesomeIcon icon={faChevronDown} size="xs" />
-            </div>
-            <button className="dc1-topbar-btn">Feature Flags</button>
-            <div className="dc1-topbar-version">
-              <span>V.1 (defa</span>
-              <FontAwesomeIcon icon={faChevronDown} size="xs" />
-            </div>
-            <button className="dc1-topbar-icon-btn">
-              <FontAwesomeIcon icon={faMoon} />
-            </button>
-          </div>
+          <div className="dc1-topbar-right" />
         </header>
 
         {/* Page content */}

@@ -1,6 +1,7 @@
-/* ═══════════════════════════════════════════════════════════════
-   DigiCert ONE — Quantum Readiness Advisor  •  Design Tokens
-   ═══════════════════════════════════════════════════════════════ */
+// ═══════════════════════════════════════════════════════════════
+//  DigiCert ONE — Quantum Readiness Advisor  ·  Main Stylesheet
+// ═══════════════════════════════════════════════════════════════
+@use './styles/global';
 :root {
   /* Primary palette */
   --dc1-blue: #0174C3;

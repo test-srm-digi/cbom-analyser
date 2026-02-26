@@ -1,5 +1,6 @@
 import { GitBranch, Package, Hash, Tag } from 'lucide-react';
 import { CBOMDocument } from '../types';
+import styles from './CBOMHeader.module.scss';
 
 interface CBOMHeaderProps {
   cbom: CBOMDocument | null;
@@ -12,38 +13,37 @@ export default function CBOMHeader({ cbom }: CBOMHeaderProps) {
   const assetCount = cbom.cryptoAssets.length;
 
   return (
-    <div className="animate-fade-in">
-      <h2 className="text-xl font-bold text-gray-800 mb-1">
+    <div className={styles.wrap}>
+      <h2 className={styles.heading}>
         {component?.group ? `${component.group}/` : ''}
         {component?.name || 'Unknown Project'}
       </h2>
-      <p className="text-gray-500 text-sm mb-3">
-        <span className="font-semibold text-gray-800">{assetCount}</span> cryptographic assets found.
+      <p className={styles.subtext}>
+        <span className={styles.count}>{assetCount}</span> cryptographic assets found.
       </p>
 
-      {/* Tags */}
-      <div className="flex flex-wrap gap-2">
+      <div className={styles.tags}>
         {component?.version && (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-qg-card border border-qg-border text-xs text-gray-600">
-            <GitBranch className="w-3 h-3" />
+          <span className={styles.tag}>
+            <GitBranch className={styles.tagIcon} />
             {component.version}
           </span>
         )}
         {component?.type && (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-qg-card border border-qg-border text-xs text-gray-600">
-            <Package className="w-3 h-3" />
+          <span className={styles.tag}>
+            <Package className={styles.tagIcon} />
             {component.type}
           </span>
         )}
         {cbom.serialNumber && (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-qg-card border border-qg-border text-xs text-gray-600">
-            <Hash className="w-3 h-3" />
+          <span className={styles.tag}>
+            <Hash className={styles.tagIcon} />
             {cbom.serialNumber.substring(0, 20)}...
           </span>
         )}
         {cbom.specVersion && (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-qg-card border border-qg-border text-xs text-gray-600">
-            <Tag className="w-3 h-3" />
+          <span className={styles.tag}>
+            <Tag className={styles.tagIcon} />
             CycloneDX {cbom.specVersion}
           </span>
         )}
