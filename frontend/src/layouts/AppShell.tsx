@@ -42,7 +42,20 @@ export type NavPage =
   | 'integrations'
   | 'discovery'
   | 'network'
-  | 'settings';
+  | 'settings'
+  /* Trust Lifecycle */
+  | 'reporting'
+  | 'account'
+  /* Software Trust */
+  | 'stm-dashboard'
+  | 'stm-release-security'
+  | 'stm-keypairs'
+  | 'stm-certificates'
+  | 'stm-releases'
+  /* Other products */
+  | 'private-ca'
+  | 'device-trust'
+  | 'document-trust';
 
 interface Props {
   activePage: NavPage;
@@ -65,27 +78,34 @@ const mainNavItems: { id: NavPage; label: string; icon: typeof faGauge }[] = [
   { id: 'settings', label: 'Settings', icon: faGear },
 ];
 
+interface SidebarChild {
+  label: string;
+  icon: typeof faGauge;
+  navPage: NavPage;
+}
+
 interface SidebarSection {
   label: string;
   icon: typeof faGauge;
   expandable: boolean;
-  children?: { label: string; icon: typeof faGauge }[];
+  navPage?: NavPage;           // for non-expandable top-level items
+  children?: SidebarChild[];
 }
 
 const sidebarSections: SidebarSection[] = [
-  { label: 'Private CA', icon: faShieldCheck, expandable: false },
+  { label: 'Private CA', icon: faShieldCheck, expandable: false, navPage: 'private-ca' },
   {
     label: 'Trust Lifecycle',
     icon: faArrowsRotate,
     expandable: true,
     children: [
-      { label: 'Dashboard', icon: faGrid2 },
-      { label: 'Inventory', icon: faTableCells },
-      { label: 'Policies', icon: faShieldHalved },
-      { label: 'Integrations', icon: faPlug },
-      { label: 'Discovery & automation tools', icon: faMagnifyingGlass },
-      { label: 'Reporting', icon: faChartLine },
-      { label: 'Account', icon: faUserGear },
+      { label: 'Dashboard',                    icon: faGrid2,           navPage: 'dashboard' },
+      { label: 'Inventory',                    icon: faTableCells,      navPage: 'inventory' },
+      { label: 'Policies',                     icon: faShieldHalved,    navPage: 'policies' },
+      { label: 'Integrations',                 icon: faPlug,            navPage: 'integrations' },
+      { label: 'Discovery & automation tools', icon: faMagnifyingGlass, navPage: 'discovery' },
+      { label: 'Reporting',                    icon: faChartLine,       navPage: 'reporting' },
+      { label: 'Account',                      icon: faUserGear,        navPage: 'account' },
     ],
   },
   {
@@ -93,15 +113,15 @@ const sidebarSections: SidebarSection[] = [
     icon: faLock,
     expandable: true,
     children: [
-      { label: 'Dashboard', icon: faGrid2 },
-      { label: 'Release security', icon: faRocketLaunch },
-      { label: 'Keypairs', icon: faKey },
-      { label: 'Certificates', icon: faCertificate },
-      { label: 'Releases', icon: faBoxOpen },
+      { label: 'Dashboard',        icon: faGrid2,        navPage: 'stm-dashboard' },
+      { label: 'Release security', icon: faRocketLaunch, navPage: 'stm-release-security' },
+      { label: 'Keypairs',         icon: faKey,          navPage: 'stm-keypairs' },
+      { label: 'Certificates',     icon: faCertificate,  navPage: 'stm-certificates' },
+      { label: 'Releases',         icon: faBoxOpen,      navPage: 'stm-releases' },
     ],
   },
-  { label: 'Device Trust', icon: faTabletScreenButton, expandable: true },
-  { label: 'Document Trust', icon: faFileSignature, expandable: true },
+  { label: 'Device Trust',   icon: faTabletScreenButton, expandable: false, navPage: 'device-trust' },
+  { label: 'Document Trust', icon: faFileSignature,       expandable: false, navPage: 'document-trust' },
 ];
 
 /* ─── Component ─────────────────────────────────────────────── */
@@ -165,11 +185,20 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
           {/* Other sidebar sections */}
           {sidebarSections.map((section) => {
             const isExpanded = !!expandedSections[section.label];
+            const sectionActive = section.navPage
+              ? activePage === section.navPage
+              : section.children?.some((c) => c.navPage === activePage);
             return (
               <div key={section.label} className="dc1-nav-section dc1-nav-section-other">
                 <button
-                  className="dc1-nav-section-header dc1-nav-section-header-other"
-                  onClick={() => section.expandable && toggleSection(section.label)}
+                  className={`dc1-nav-section-header dc1-nav-section-header-other ${sectionActive ? 'dc1-nav-section-header-active' : ''}`}
+                  onClick={() => {
+                    if (section.expandable) {
+                      toggleSection(section.label);
+                    } else if (section.navPage) {
+                      onNavigate(section.navPage);
+                    }
+                  }}
                 >
                   <span className="dc1-nav-section-icon-other">
                     <FontAwesomeIcon icon={section.icon} />
@@ -187,10 +216,13 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
                   <ul className="dc1-subnav-list">
                     {section.children.map((child) => (
                       <li key={child.label}>
-                        <span className="dc1-subnav-item">
+                        <button
+                          className={`dc1-subnav-item ${activePage === child.navPage ? 'dc1-subnav-active' : ''}`}
+                          onClick={() => onNavigate(child.navPage)}
+                        >
                           <FontAwesomeIcon icon={child.icon} className="dc1-subnav-icon" />
                           <span>{child.label}</span>
-                        </span>
+                        </button>
                       </li>
                     ))}
                   </ul>

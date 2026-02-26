@@ -232,18 +232,40 @@ body {
   background: none;
   border: none;
   color: rgba(255,255,255,0.85);
-  cursor: default;
+  cursor: pointer;
   font-size: 15px;
   font-weight: 400;
   text-align: left;
   border-radius: 8px;
   width: calc(100% - 16px);
+  transition: background 0.15s ease, color 0.15s ease;
+  font-family: inherit;
+
+  &:hover {
+    background: var(--dc1-sidebar-hover);
+    color: #fff;
+  }
+}
+.dc1-subnav-active {
+  background: var(--dc1-sidebar-active);
+  color: var(--dc1-sidebar-text-active);
+  font-weight: 500;
 }
 .dc1-subnav-icon {
   width: 18px;
   text-align: center;
   font-size: 15px;
   opacity: 0.75;
+}
+.dc1-subnav-active .dc1-subnav-icon {
+  opacity: 1;
+}
+
+/* Active section header highlight */
+.dc1-nav-section-header-active {
+  color: #fff !important;
+  .dc1-nav-section-icon-other { opacity: 1; }
+  .dc1-nav-section-label-other { color: #fff; }
 }
 
 /* ── Main area ─────────────────────────────────────────────── */
