@@ -172,6 +172,8 @@ export default function App() {
         return <IntegrationsPage />;
       case 'discovery':
         return <DiscoveryPage />;
+      case 'network':
+        return <NetworkPage />;
       default:
         return (
           <div className="dc1-placeholder-page">
