@@ -843,22 +843,13 @@ $_pqc-review: $warning-200;
   height: 11px;
 }
 
-// PQC tooltip
-.verdictTooltip {
-  position: absolute;
+// PQC tooltip — rendered via portal at document.body with position:fixed
+.verdictTooltipPortal {
+  position: fixed;
   z-index: 10000;
-  bottom: 100%;
-  left: 0;
-  padding-bottom: 6px;         // invisible bridge so cursor can travel to tooltip
   width: 288px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity $transition-fast;
-
-  .verdictGroup:hover & {
-    opacity: 1;
-    pointer-events: auto;      // keep tooltip interactive while hovered
-  }
+  transform: translateY(-100%) translateY(-6px);   // place above the trigger
+  pointer-events: auto;
 }
 
 .verdictTooltipInner {

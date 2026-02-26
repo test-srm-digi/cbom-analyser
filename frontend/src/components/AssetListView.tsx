@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ExternalLink, ChevronLeft, ChevronRight, SlidersHorizontal,
   Github, GitBranch, FolderOpen, Sparkles, Loader2,
@@ -99,8 +100,19 @@ function confidenceBadge(level?: string) {
   );
 }
 
-function pqcVerdictBadge(asset: CryptoAsset) {
+function PqcVerdictBadge({ asset }: { asset: CryptoAsset }) {
   const v = asset.pqcVerdict;
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    if (hovered && cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      setPos({ top: rect.top, left: rect.left });
+    }
+  }, [hovered]);
+
   if (!v) return null;
 
   const config: Record<string, { labelCls: string; stripCls: string; arcCls: string; label: string }> = {
@@ -110,13 +122,46 @@ function pqcVerdictBadge(asset: CryptoAsset) {
   };
 
   const c = config[v.verdict] || config[PQCReadinessVerdict.REVIEW_NEEDED];
-  // SVG ring gauge: radius 12, circumference ≈ 75.4
   const circumference = 2 * Math.PI * 12;
   const offset = circumference - (circumference * v.confidence) / 100;
   const source = asset.detectionSource || '';
 
+  const tooltip = (
+    <div className={s.tooltipBody}>
+      {v.reasons.map((r: string, i: number) => (
+        <div key={i} className={s.tooltipRow}>
+          <span className={s.tooltipBullet}>{r.includes('✓') ? '✓' : r.includes('✗') ? '✗' : '•'}</span>
+          <span>{r}</span>
+        </div>
+      ))}
+      {v.parameters && Object.keys(v.parameters).length > 0 && (
+        <div className={s.tooltipParams}>
+          <span className={s.tooltipParamsTitle}>Detected Parameters</span>
+          <div className={s.tooltipParamsGrid}>
+            {Object.entries(v.parameters).map(([k, val]) => (
+              <div key={k}>
+                <span className={s.tooltipParamKey}>{k}: </span>
+                <span className={s.tooltipParamVal}>{String(val)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {v.recommendation && (
+        <div className={s.tooltipRec}>
+          {v.recommendation}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className={s.verdictGroup}>
+    <div
+      className={s.verdictGroup}
+      ref={cardRef}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <div className={s.verdictCard}>
         <div className={c.stripCls} />
         <div className={s.verdictCardBody}>
@@ -138,36 +183,19 @@ function pqcVerdictBadge(asset: CryptoAsset) {
           </div>
         </div>
       </div>
-      <div className={s.verdictTooltip}>
-        <div className={s.verdictTooltipInner}>
-          <div className={s.tooltipBody}>
-            {v.reasons.map((r: string, i: number) => (
-              <div key={i} className={s.tooltipRow}>
-                <span className={s.tooltipBullet}>{r.includes('✓') ? '✓' : r.includes('✗') ? '✗' : '•'}</span>
-                <span>{r}</span>
-              </div>
-            ))}
-            {v.parameters && Object.keys(v.parameters).length > 0 && (
-              <div className={s.tooltipParams}>
-                <span className={s.tooltipParamsTitle}>Detected Parameters</span>
-                <div className={s.tooltipParamsGrid}>
-                  {Object.entries(v.parameters).map(([k, val]) => (
-                    <div key={k}>
-                      <span className={s.tooltipParamKey}>{k}: </span>
-                      <span className={s.tooltipParamVal}>{String(val)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {v.recommendation && (
-              <div className={s.tooltipRec}>
-                {v.recommendation}
-              </div>
-            )}
+      {hovered && pos && createPortal(
+        <div
+          className={s.verdictTooltipPortal}
+          style={{ top: pos.top, left: pos.left }}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+        >
+          <div className={s.verdictTooltipInner}>
+            {tooltip}
           </div>
-        </div>
-      </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -773,7 +801,7 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                 {/* PQC Verdict */}
                 <td className={s.td}>
                   <div className={s.verdictCell}>
-                    {pqcVerdictBadge(asset)}
+                    <PqcVerdictBadge asset={asset} />
                   </div>
                 </td>
 
