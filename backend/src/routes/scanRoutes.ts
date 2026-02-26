@@ -56,6 +56,11 @@ router.post('/scan-code', async (req: Request, res: Response) => {
     const repository = await resolveRepository(repoPath, repoUrl, branch);
     const cbom = await runSonarCryptoScan(repoPath, excludePatterns, repository);
 
+    // Safety-net: ensure repository metadata is always present on the final CBOM
+    if (repository && !cbom.metadata.repository) {
+      cbom.metadata.repository = repository;
+    }
+
     // Store result
     const storeKey = cbom.serialNumber || `scan-${Date.now()}`;
     cbomStore.set(storeKey, cbom);
@@ -95,6 +100,11 @@ router.post('/scan-code/regex', async (req: Request, res: Response) => {
     const repository = await resolveRepository(repoPath, repoUrl, branch);
     const cbom = await runRegexCryptoScan(repoPath, excludePatterns, repository);
 
+    // Safety-net: ensure repository metadata is always present on the final CBOM
+    if (repository && !cbom.metadata.repository) {
+      cbom.metadata.repository = repository;
+    }
+
     const storeKey = cbom.serialNumber || `regex-scan-${Date.now()}`;
     cbomStore.set(storeKey, cbom);
 
@@ -132,6 +142,11 @@ router.post('/scan-code/full', async (req: Request, res: Response) => {
 
     const repository = await resolveRepository(repoPath, repoUrl, branch);
     const cbom = await runFullScan(repoPath, networkHosts, repository);
+
+    // Safety-net: ensure repository metadata is always present on the final CBOM
+    if (repository && !cbom.metadata.repository) {
+      cbom.metadata.repository = repository;
+    }
 
     const storeKey = cbom.serialNumber || `full-scan-${Date.now()}`;
     cbomStore.set(storeKey, cbom);
