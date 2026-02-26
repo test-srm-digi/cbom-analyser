@@ -641,11 +641,6 @@ $_risk-high: $warning-100;
   font-weight: 600;
 }
 
-.thAction {
-  @extend .th;
-  width: 40px;
-  cursor: default;
-}
 
 .tr {
   border-bottom: 1px solid rgba($dc1-border, 0.5);
@@ -1162,23 +1157,19 @@ $_pqc-review: $warning-200;
   height: 12px;
 }
 
-// ── Action column ────────────────────────────────────────────
-.ghLink {
-  color: $dc1-blue;
-
-  &:hover {
-    color: $dc1-text;
-  }
-}
-
-.ghLinkDisabled {
-  color: $dc1-text-muted;
-  cursor: not-allowed;
-}
-
+// ── External link icon (inline in location) ─────────────────
 .ghLinkIcon {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
+  margin-left: 4px;
+  vertical-align: -1px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.fileLink:hover .ghLinkIcon {
+  opacity: 1;
 }
 
 // ── Pagination ───────────────────────────────────────────────

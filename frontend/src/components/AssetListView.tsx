@@ -699,7 +699,6 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                 </span>
                 <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 5)} />
               </th>
-              <th className={s.thAction}></th>
             </tr>
           </thead>
           <tbody>
@@ -770,6 +769,7 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                         >
                           {asset.location.fileName}
                           {asset.location.lineNumber ? `:${asset.location.lineNumber}` : ''}
+                          <ExternalLink className={s.ghLinkIcon} />
                         </a>
                       ) : (
                         <span className={s.fileLink}>
@@ -876,22 +876,7 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                   })()}
                 </td>
 
-                {/* Action — link to file on GitHub */}
-                <td className={s.td}>
-                  {repoUrl && asset.location?.fileName ? (
-                    <a
-                      href={buildGitHubFileUrl(repoUrl, effectiveBranch, basePath, asset.location.fileName, asset.location.lineNumber)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={s.ghLink}
-                      title="View on GitHub"
-                    >
-                      <ExternalLink className={s.ghLinkIcon} />
-                    </a>
-                  ) : (
-                    <ExternalLink className={`${s.ghLinkIcon} ${s.ghLinkDisabled}`} />
-                  )}
-                </td>
+
               </tr>
             ))}
           </tbody>
