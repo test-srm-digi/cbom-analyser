@@ -176,54 +176,58 @@ export default function ConfigDrawer({
             </div>
           </div>
 
-          {/* Step 3: Import Scope */}
-          <div className={s.configSection}>
-            <h3 className={s.configSectionTitle}>
-              <span className={s.configStepBadge}>3</span>
-              Import Scope
-            </h3>
-            <p className={s.configHint}>Select the types of assets to import from this source</p>
-            <div className={s.scopeGrid}>
-              {template.scopeOptions.map((opt) => {
-                const active = configScope.includes(opt.value);
-                return (
+          {/* Step 3: Import Scope (hidden for integrations that don't need it) */}
+          {!template.hideScope && template.scopeOptions && template.scopeOptions.length > 0 && (
+            <div className={s.configSection}>
+              <h3 className={s.configSectionTitle}>
+                <span className={s.configStepBadge}>3</span>
+                Import Scope
+              </h3>
+              <p className={s.configHint}>Select the types of assets to import from this source</p>
+              <div className={s.scopeGrid}>
+                {template.scopeOptions.map((opt) => {
+                  const active = configScope.includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      className={active ? s.scopeChipActive : s.scopeChip}
+                      onClick={() =>
+                        onConfigScopeChange((prev) =>
+                          active ? prev.filter((v) => v !== opt.value) : [...prev, opt.value],
+                        )
+                      }
+                    >
+                      <span className={s.scopeChipLabel}>{opt.label}</span>
+                      <span className={s.scopeChipDesc}>{opt.description}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Sync Schedule (hidden for CI/CD-driven integrations) */}
+          {!template.hideSchedule && (
+            <div className={s.configSection}>
+              <h3 className={s.configSectionTitle}>
+                <span className={s.configStepBadge}>{template.hideScope ? 3 : 4}</span>
+                Sync Schedule
+              </h3>
+              <p className={s.configHint}>How often should this integration pull new data?</p>
+              <div className={s.scheduleRow}>
+                {SCHEDULE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
-                    className={active ? s.scopeChipActive : s.scopeChip}
-                    onClick={() =>
-                      onConfigScopeChange((prev) =>
-                        active ? prev.filter((v) => v !== opt.value) : [...prev, opt.value],
-                      )
-                    }
+                    className={configSchedule === opt.value ? s.scheduleBtnActive : s.scheduleBtn}
+                    onClick={() => onConfigScheduleChange(opt.value)}
                   >
-                    <span className={s.scopeChipLabel}>{opt.label}</span>
-                    <span className={s.scopeChipDesc}>{opt.description}</span>
+                    <Clock size={13} />
+                    {opt.label}
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-
-          {/* Step 4: Sync Schedule */}
-          <div className={s.configSection}>
-            <h3 className={s.configSectionTitle}>
-              <span className={s.configStepBadge}>4</span>
-              Sync Schedule
-            </h3>
-            <p className={s.configHint}>How often should this integration pull new data?</p>
-            <div className={s.scheduleRow}>
-              {SCHEDULE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  className={configSchedule === opt.value ? s.scheduleBtnActive : s.scheduleBtn}
-                  onClick={() => onConfigScheduleChange(opt.value)}
-                >
-                  <Clock size={13} />
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
 
           {/* Capabilities */}
           <div className={s.configSection}>

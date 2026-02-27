@@ -10,6 +10,7 @@ import s from '../components/shared.module.scss';
 interface Props {
   search: string;
   setSearch: (v: string) => void;
+  onGoToIntegrations?: () => void;
 }
 
 const STEPS: IntegrationStep[] = [
@@ -19,7 +20,7 @@ const STEPS: IntegrationStep[] = [
   { step: 4, title: 'Review device inventory', description: 'Device certificates, firmware versions, enrollment status, and PQC readiness will appear here after sync.' },
 ];
 
-export default function DevicesTab({ search, setSearch }: Props) {
+export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Props) {
   const { data: apiData = [], isLoading } = useGetDevicesQuery();
   const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateDevicesMutation();
   const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllDevicesMutation();
@@ -84,6 +85,7 @@ export default function DevicesTab({ search, setSearch }: Props) {
         steps={STEPS}
         loading={isSampleLoading}
         onLoadSample={() => bulkCreate({ items: DEVICES.map(({ id, ...rest }) => rest) })}
+        onGoToIntegrations={onGoToIntegrations}
       />
     );
   }

@@ -153,7 +153,7 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
 
       { key: 'cronSchedule', label: 'Cron Schedule', type: 'text', placeholder: '0 2 * * 1', required: false, helpText: 'Cron expression for scheduled runs (e.g., "0 2 * * 1" = every Monday at 2 AM UTC)', visibleWhen: { field: 'triggers', values: ['schedule'] } },
 
-      { key: 'language', label: 'Project Language', type: 'select', required: true, helpText: 'Primary language — determines scanner tooling in the workflow', options: [
+      { key: 'language', label: 'Project Languages', type: 'multi-select', required: true, helpText: 'Select all languages in your project — scanner steps will be generated for each', defaultValue: 'java', options: [
         { value: 'java', label: 'Java' },
         { value: 'python', label: 'Python' },
         { value: 'javascript', label: 'JavaScript / TypeScript' },
@@ -187,13 +187,8 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
       // ── Generate Workflow Button ──
       { key: 'workflowYaml', label: 'Generate Workflow YAML', type: 'generate-btn', required: false, helpText: 'Generate a ready-to-use GitHub Actions workflow based on your configuration' },
     ],
-    scopeOptions: [
-      { value: 'crypto-components', label: 'Crypto Components', description: 'Algorithms, protocols, and crypto primitives from CBOM' },
-      { value: 'certificates',      label: 'Certificates',      description: 'Certificates referenced in the CBOM' },
-      { value: 'keys',              label: 'Keys',              description: 'Key material and parameters in the CBOM' },
-      { value: 'dependencies',      label: 'Dependencies',      description: 'Crypto library dependencies and versions' },
-    ],
-    defaultScope: ['crypto-components', 'certificates', 'keys', 'dependencies'],
+    hideScope: true,
+    hideSchedule: true,
   },
 ];
 

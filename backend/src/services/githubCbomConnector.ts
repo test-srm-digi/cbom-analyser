@@ -303,7 +303,7 @@ export async function fetchCbomImportsFromGitHub(
 /* ── Workflow YAML templates ───────────────────────────────── */
 
 interface WorkflowOptions {
-  language: string;
+  language: string;         // comma-separated when multiple
   branch?: string;
   branches?: string[];
   triggers?: string[];
@@ -371,7 +371,9 @@ export function generateWorkflowYaml(options: WorkflowOptions): string {
 
   const runsOn = selfHostedRunner ? `[${runnerLabel}]` : 'ubuntu-latest';
 
-  const scannerStep = getScannerStep(language);
+  // Scanner steps — one per selected language
+  const languages = language.split(',').map((l: string) => l.trim()).filter(Boolean);
+  const scannerStep = languages.map((lang: string) => getScannerStep(lang)).join('\n');
 
   const sonarStep = sonarEnabled ? `
       - name: SonarQube Scan

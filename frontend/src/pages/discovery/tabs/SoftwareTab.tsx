@@ -10,6 +10,7 @@ import s from '../components/shared.module.scss';
 interface Props {
   search: string;
   setSearch: (v: string) => void;
+  onGoToIntegrations?: () => void;
 }
 
 const STEPS: IntegrationStep[] = [
@@ -19,7 +20,7 @@ const STEPS: IntegrationStep[] = [
   { step: 4, title: 'Review software releases', description: 'Code-signing certificates, signing algorithms, hash algorithms, and crypto library data will appear here after sync.' },
 ];
 
-export default function SoftwareTab({ search, setSearch }: Props) {
+export default function SoftwareTab({ search, setSearch, onGoToIntegrations }: Props) {
   const { data: apiData = [], isLoading } = useGetSoftwareListQuery();
   const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateSoftwareMutation();
   const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllSoftwareMutation();
@@ -88,6 +89,7 @@ export default function SoftwareTab({ search, setSearch }: Props) {
         steps={STEPS}
         loading={isSampleLoading}
         onLoadSample={() => bulkCreate({ items: SOFTWARE.map(({ id, ...rest }) => rest) })}
+        onGoToIntegrations={onGoToIntegrations}
       />
     );
   }

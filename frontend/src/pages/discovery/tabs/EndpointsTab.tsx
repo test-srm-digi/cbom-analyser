@@ -10,6 +10,7 @@ import s from '../components/shared.module.scss';
 interface Props {
   search: string;
   setSearch: (v: string) => void;
+  onGoToIntegrations?: () => void;
 }
 
 const STEPS: IntegrationStep[] = [
@@ -19,7 +20,7 @@ const STEPS: IntegrationStep[] = [
   { step: 4, title: 'Review discovered endpoints', description: 'TLS endpoints, cipher suites, key exchange algorithms, and certificate chains will appear here after the scan completes.' },
 ];
 
-export default function EndpointsTab({ search, setSearch }: Props) {
+export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: Props) {
   const { data: apiData = [], isLoading } = useGetEndpointsQuery();
   const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateEndpointsMutation();
   const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllEndpointsMutation();
@@ -83,6 +84,7 @@ export default function EndpointsTab({ search, setSearch }: Props) {
         steps={STEPS}
         loading={isSampleLoading}
         onLoadSample={() => bulkCreate({ items: ENDPOINTS.map(({ id, ...rest }) => rest) })}
+        onGoToIntegrations={onGoToIntegrations}
       />
     );
   }

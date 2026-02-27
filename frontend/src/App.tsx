@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import AppShell, { type NavPage } from './layouts/AppShell';
 import DashboardPage from './pages/DashboardPage';
 import InventoryPage from './pages/InventoryPage';
@@ -23,8 +24,61 @@ import {
 } from './types';
 import { SAMPLE_CBOM } from './sampleData';
 
+/* ── NavPage ↔ URL path mapping ──────────────────────────── */
+
+const PAGE_TO_PATH: Record<NavPage, string> = {
+  'cbom-analyzer':           '/cbom-analyzer',
+  dashboard:                 '/dashboard',
+  inventory:                 '/inventory',
+  visualize:                 '/visualize',
+  violations:                '/violations',
+  tracking:                  '/tracking',
+  policies:                  '/policies',
+  integrations:              '/integrations',
+  discovery:                 '/discovery',
+  'discovery-certificates':  '/discovery/certificates',
+  'discovery-endpoints':     '/discovery/endpoints',
+  'discovery-software':      '/discovery/software',
+  'discovery-devices':       '/discovery/devices',
+  'discovery-cbom-imports':  '/discovery/cbom-imports',
+  'cbom-detail':             '/discovery/cbom-imports/detail',
+  network:                   '/network',
+  settings:                  '/settings',
+  'private-ca':              '/private-ca',
+  'device-trust':            '/device-trust',
+  'document-trust':          '/document-trust',
+};
+
+const PATH_TO_PAGE: Record<string, NavPage> = Object.fromEntries(
+  Object.entries(PAGE_TO_PATH).map(([k, v]) => [v, k as NavPage]),
+) as Record<string, NavPage>;
+
+function pathToPage(pathname: string): NavPage {
+  // exact match first
+  if (PATH_TO_PAGE[pathname]) return PATH_TO_PAGE[pathname];
+  // cbom-detail with id suffix
+  if (pathname.startsWith('/discovery/cbom-imports/detail')) return 'cbom-detail';
+  // fallback
+  return 'dashboard';
+}
+
 export default function App() {
-  const [activePage, setActivePage] = useState<NavPage>('dashboard');
+  const location = useLocation();
+  const nav = useNavigate();
+  const activePage = useMemo(() => pathToPage(location.pathname), [location.pathname]);
+
+  // Redirect bare root to /dashboard
+  useEffect(() => {
+    if (location.pathname === '/') {
+      nav('/dashboard', { replace: true });
+    }
+  }, [location.pathname, nav]);
+
+  const setActivePage = useCallback(
+    (page: NavPage) => nav(PAGE_TO_PATH[page]),
+    [nav],
+  );
+
   const [cbom, setCbom] = useState<CBOMDocument | null>(null);
   const [readinessScore, setReadinessScore] = useState<QuantumReadinessScore | null>(null);
   const [compliance, setCompliance] = useState<ComplianceSummary | null>(null);
@@ -162,7 +216,7 @@ export default function App() {
     switch (activePage) {
       case 'cbom-analyzer':
         // bare parent → redirect to first child
-        setActivePage('dashboard');
+        nav('/dashboard', { replace: true });
         return null;
       case 'dashboard':
         return (
@@ -187,7 +241,7 @@ export default function App() {
         return <IntegrationsPage />;
       case 'discovery':
         // bare discovery → redirect to first child
-        setActivePage('discovery-certificates');
+        nav('/discovery/certificates', { replace: true });
         return null;
       case 'discovery-certificates':
       case 'discovery-endpoints':
@@ -198,6 +252,7 @@ export default function App() {
           <DiscoveryPage
             tab={activePage.replace('discovery-', '') as DiscoveryTab}
             onViewCbom={(id) => { setSelectedCbomId(id); setActivePage('cbom-detail'); }}
+            onGoToIntegrations={() => setActivePage('integrations')}
           />
         );
       case 'cbom-detail':

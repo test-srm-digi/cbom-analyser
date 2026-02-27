@@ -28,19 +28,20 @@ const TAB_META: Record<DiscoveryTab, { title: string; subtitle: string }> = {
 interface Props {
   tab: DiscoveryTab;
   onViewCbom?: (id: string) => void;
+  onGoToIntegrations?: () => void;
 }
 
-export default function DiscoveryPage({ tab, onViewCbom }: Props) {
+export default function DiscoveryPage({ tab, onViewCbom, onGoToIntegrations }: Props) {
   const [search, setSearch] = useState('');
   const meta = TAB_META[tab];
 
   const tabContent = () => {
     switch (tab) {
-      case 'certificates':   return <CertificatesTab search={search} setSearch={setSearch} />;
-      case 'endpoints':      return <EndpointsTab    search={search} setSearch={setSearch} />;
-      case 'software':       return <SoftwareTab     search={search} setSearch={setSearch} />;
-      case 'devices':        return <DevicesTab      search={search} setSearch={setSearch} />;
-      case 'cbom-imports':   return <CbomImportsTab  search={search} setSearch={setSearch} onViewCbom={onViewCbom} />;
+      case 'certificates':   return <CertificatesTab search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
+      case 'endpoints':      return <EndpointsTab    search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
+      case 'software':       return <SoftwareTab     search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
+      case 'devices':        return <DevicesTab      search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
+      case 'cbom-imports':   return <CbomImportsTab  search={search} setSearch={setSearch} onViewCbom={onViewCbom} onGoToIntegrations={onGoToIntegrations} />;
     }
   };
 

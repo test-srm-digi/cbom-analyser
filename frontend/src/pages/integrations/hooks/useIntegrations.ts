@@ -44,7 +44,7 @@ export function useIntegrations() {
   const openNewConfig = useCallback((template: IntegrationTemplate) => {
     setConfigPanel({ template });
     setConfigValues({});
-    setConfigScope([...template.defaultScope]);
+    setConfigScope([...(template.defaultScope ?? [])]);
     setConfigSchedule('24h');
     setConfigName(template.name);
     setTestStatus('idle');

@@ -575,6 +575,32 @@
   line-height: 1.5;
 }
 
+/* ── Go to Integrations button ────────────────────────────── */
+.goToIntegrationsBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 10px 24px;
+  border-radius: $dc1-radius-sm;
+  border: none;
+  background: $dc1-blue;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background $transition-fast, box-shadow $transition-fast;
+
+  &:hover {
+    background: darken($dc1-blue, 8%);
+    box-shadow: 0 2px 8px rgba($dc1-blue, 0.25);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
 /* ── Steps card ───────────────────────────────────────────── */
 .stepsCard {
   background: $dc1-card;

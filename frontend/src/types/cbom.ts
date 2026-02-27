@@ -298,8 +298,12 @@ export interface IntegrationTemplate {
   docsUrl: string;
   capabilities: string[];
   fields: IntegrationField[];
-  scopeOptions: ScopeOption[];
-  defaultScope: ImportScope[];
+  scopeOptions?: ScopeOption[];
+  defaultScope?: ImportScope[];
+  /** Hide the Import Scope section in the config drawer */
+  hideScope?: boolean;
+  /** Hide the Sync Schedule section in the config drawer */
+  hideSchedule?: boolean;
 }
 
 export interface IntegrationField {

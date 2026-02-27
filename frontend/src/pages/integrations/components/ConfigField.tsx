@@ -19,7 +19,7 @@ interface ConfigFieldProps {
    Full workflow YAML generator — uses ALL config options
    ───────────────────────────────────────────────────────────────── */
 function generateFullWorkflowYaml(values: Record<string, string>): string {
-  const language = values.language || 'java';
+  const languages = (values.language || 'java').split(',').map((l) => l.trim()).filter(Boolean);
   const branches = (values.branches || 'main').split(',').map((b) => b.trim()).filter(Boolean);
   const triggers = (values.triggers || 'push,pull_request').split(',').map((t) => t.trim()).filter(Boolean);
   const artifactName = values.artifactName || 'cbom-report';
@@ -101,8 +101,8 @@ function generateFullWorkflowYaml(values: Record<string, string>): string {
   // Runner
   const runsOn = selfHosted ? `[${runnerLabel}]` : 'ubuntu-latest';
 
-  // Scanner step based on language
-  const scannerStep = getScannerStep(language);
+  // Scanner steps — one per selected language
+  const scannerStep = languages.map((lang) => getScannerStep(lang)).join('\n');
 
   // Sonar step
   const sonarStep = sonarEnabled ? `

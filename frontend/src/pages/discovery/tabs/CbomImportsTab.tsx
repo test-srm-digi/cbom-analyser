@@ -11,6 +11,7 @@ interface Props {
   search: string;
   setSearch: (v: string) => void;
   onViewCbom?: (id: string) => void;
+  onGoToIntegrations?: () => void;
 }
 
 const STEPS: IntegrationStep[] = [
@@ -20,7 +21,7 @@ const STEPS: IntegrationStep[] = [
   { step: 4, title: 'Review imported data', description: 'Component counts, crypto algorithms, PQC readiness scores, and processing status will appear here after import.' },
 ];
 
-export default function CbomImportsTab({ search, setSearch, onViewCbom }: Props) {
+export default function CbomImportsTab({ search, setSearch, onViewCbom, onGoToIntegrations }: Props) {
   const { data: apiData = [], isLoading } = useGetCbomImportsQuery();
   const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateCbomImportsMutation();
   const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllCbomImportsMutation();
@@ -91,6 +92,7 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom }: Props)
         steps={STEPS}
         loading={isSampleLoading}
         onLoadSample={() => bulkCreate({ items: CBOM_IMPORTS.map(({ id, ...rest }) => rest) })}
+        onGoToIntegrations={onGoToIntegrations}
       />
     );
   }

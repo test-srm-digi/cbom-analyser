@@ -10,6 +10,7 @@ import s from '../components/shared.module.scss';
 interface Props {
   search: string;
   setSearch: (v: string) => void;
+  onGoToIntegrations?: () => void;
 }
 
 /* ── Integration setup steps ──────────────────────────────── */
@@ -20,7 +21,7 @@ const STEPS: IntegrationStep[] = [
   { step: 4, title: 'Review discovered certificates', description: 'Certificates, CA hierarchies, and TLS endpoint data will appear here automatically after the sync completes.' },
 ];
 
-export default function CertificatesTab({ search, setSearch }: Props) {
+export default function CertificatesTab({ search, setSearch, onGoToIntegrations }: Props) {
   const { data: apiData = [], isLoading } = useGetCertificatesQuery();
   const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateCertificatesMutation();
   const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllCertificatesMutation();
@@ -91,6 +92,7 @@ export default function CertificatesTab({ search, setSearch }: Props) {
         steps={STEPS}
         loading={isSampleLoading}
         onLoadSample={() => bulkCreate({ items: CERTIFICATES.map(({ id, ...rest }) => rest) })}
+        onGoToIntegrations={onGoToIntegrations}
       />
     );
   }
