@@ -3,7 +3,7 @@ import { Eye, ExternalLink } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, DeviceStatusBadge, EmptyState } from '../components';
 import type { IntegrationStep } from '../components';
 import { DEVICES } from '../data';
-import { useGetDevicesQuery, useBulkCreateDevicesMutation } from '../../../store/api';
+import { useGetDevicesQuery, useBulkCreateDevicesMutation, useDeleteAllDevicesMutation } from '../../../store/api';
 import type { DiscoveryDevice, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
 
@@ -22,6 +22,7 @@ const STEPS: IntegrationStep[] = [
 export default function DevicesTab({ search, setSearch }: Props) {
   const { data: apiData = [], isLoading } = useGetDevicesQuery();
   const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateDevicesMutation();
+  const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllDevicesMutation();
   const data = apiData;
   const loaded = data.length > 0;
 
@@ -82,7 +83,7 @@ export default function DevicesTab({ search, setSearch }: Props) {
         integrationDescription="Import your IoT and OT device fleet from DTM. Discover device certificates, firmware crypto capabilities, enrollment status, and identify devices needing PQC migration."
         steps={STEPS}
         loading={isSampleLoading}
-        onLoadSample={() => bulkCreate({ integrationId: 'sample', items: DEVICES.map(({ id, ...rest }) => rest) })}
+        onLoadSample={() => bulkCreate({ items: DEVICES.map(({ id, ...rest }) => rest) })}
       />
     );
   }
@@ -101,6 +102,8 @@ export default function DevicesTab({ search, setSearch }: Props) {
         search={search}
         setSearch={setSearch}
         placeholder="Search by device name, type, manufacturer, or algorithm..."
+        onReset={() => deleteAll()}
+        resetLoading={isResetLoading}
       />
 
       <DataTable

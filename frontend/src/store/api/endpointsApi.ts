@@ -22,7 +22,7 @@ interface ApiResponse<T> {
 }
 
 /* ── Request types ─────────────────────────────────────────── */
-export type CreateEndpointRequest = Omit<DiscoveryEndpoint, 'id'> & { integrationId: string };
+export type CreateEndpointRequest = Omit<DiscoveryEndpoint, 'id'> & { integrationId?: string };
 export type UpdateEndpointRequest = { id: string } & Partial<Omit<DiscoveryEndpoint, 'id'>>;
 
 /* ── API definition ────────────────────────────────────────── */
@@ -62,11 +62,11 @@ export const endpointsApi = createApi({
       invalidatesTags: [{ type: 'Endpoint', id: 'LIST' }],
     }),
 
-    bulkCreateEndpoints: builder.mutation<DiscoveryEndpoint[], { integrationId: string; items: Omit<DiscoveryEndpoint, 'id'>[] }>({
-      query: ({ items, integrationId }) => ({
+    bulkCreateEndpoints: builder.mutation<DiscoveryEndpoint[], { items: Omit<DiscoveryEndpoint, 'id'>[] }>({
+      query: ({ items }) => ({
         url: '/endpoints/bulk',
         method: 'POST',
-        body: { items: items.map((i) => ({ ...i, integrationId })) },
+        body: { items },
       }),
       transformResponse: (r: ApiResponse<DiscoveryEndpoint[]>) => r.data,
       invalidatesTags: [{ type: 'Endpoint', id: 'LIST' }],
@@ -87,6 +87,11 @@ export const endpointsApi = createApi({
       query: (integId) => ({ url: `/endpoints/integration/${integId}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Endpoint', id: 'LIST' }],
     }),
+
+    deleteAllEndpoints: builder.mutation<void, void>({
+      query: () => ({ url: '/endpoints/all', method: 'DELETE' }),
+      invalidatesTags: [{ type: 'Endpoint', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -99,4 +104,5 @@ export const {
   useUpdateEndpointMutation,
   useDeleteEndpointMutation,
   useDeleteEndpointsByIntegrationMutation,
+  useDeleteAllEndpointsMutation,
 } = endpointsApi;

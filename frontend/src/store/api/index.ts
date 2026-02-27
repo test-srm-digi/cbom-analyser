@@ -22,6 +22,7 @@ export {
   useUpdateCertificateMutation,
   useDeleteCertificateMutation,
   useDeleteCertificatesByIntegrationMutation,
+  useDeleteAllCertificatesMutation,
 } from './certificatesApi';
 
 export type { CreateCertificateRequest, UpdateCertificateRequest } from './certificatesApi';
@@ -36,6 +37,7 @@ export {
   useUpdateEndpointMutation,
   useDeleteEndpointMutation,
   useDeleteEndpointsByIntegrationMutation,
+  useDeleteAllEndpointsMutation,
 } from './endpointsApi';
 
 export type { CreateEndpointRequest, UpdateEndpointRequest } from './endpointsApi';
@@ -50,6 +52,7 @@ export {
   useUpdateSoftwareMutation,
   useDeleteSoftwareMutation,
   useDeleteSoftwareByIntegrationMutation,
+  useDeleteAllSoftwareMutation,
 } from './softwareApi';
 
 export type { CreateSoftwareRequest, UpdateSoftwareRequest } from './softwareApi';
@@ -64,6 +67,7 @@ export {
   useUpdateDeviceMutation,
   useDeleteDeviceMutation,
   useDeleteDevicesByIntegrationMutation,
+  useDeleteAllDevicesMutation,
 } from './devicesApi';
 
 export type { CreateDeviceRequest, UpdateDeviceRequest } from './devicesApi';
@@ -78,6 +82,7 @@ export {
   useUpdateCbomImportMutation,
   useDeleteCbomImportMutation,
   useDeleteCbomImportsByIntegrationMutation,
+  useDeleteAllCbomImportsMutation,
 } from './cbomImportsApi';
 
 export type { CreateCbomImportRequest, UpdateCbomImportRequest } from './cbomImportsApi';

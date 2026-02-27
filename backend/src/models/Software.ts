@@ -9,7 +9,7 @@ import sequelize from '../config/database';
 
 export interface SoftwareAttributes {
   id: string;
-  integrationId: string;
+  integrationId: string | null;
   name: string;
   version: string;
   vendor: string;
@@ -26,7 +26,7 @@ export interface SoftwareAttributes {
 }
 
 export interface SoftwareCreationAttributes
-  extends Optional<SoftwareAttributes, 'id' | 'releaseDate' | 'sbomLinked' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<SoftwareAttributes, 'id' | 'integrationId' | 'releaseDate' | 'sbomLinked' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -35,7 +35,7 @@ class Software
   implements SoftwareAttributes
 {
   declare id: string;
-  declare integrationId: string;
+  declare integrationId: string | null;
   declare name: string;
   declare version: string;
   declare vendor: string;
@@ -60,10 +60,8 @@ Software.init(
     },
     integrationId: {
       type: DataTypes.STRING(36),
-      allowNull: false,
+      allowNull: true,
       field: 'integration_id',
-      references: { model: 'integrations', key: 'id' },
-      onDelete: 'CASCADE',
     },
     name: {
       type: DataTypes.STRING(255),

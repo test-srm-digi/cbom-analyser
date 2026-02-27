@@ -357,9 +357,16 @@ function buildCbomContent(
 }
 
 export async function fetchCbomImports(
-  _config: ConnectorConfig,
+  config: ConnectorConfig,
   integrationId: string,
 ): Promise<ConnectorResult<Record<string, unknown>>> {
+  // ── Real GitHub Actions mode ──
+  if (config.importMethod === 'artifact' && config.githubRepo && config.githubToken) {
+    const { fetchCbomImportsFromGitHub } = await import('./githubCbomConnector');
+    return fetchCbomImportsFromGitHub(config, integrationId);
+  }
+
+  // ── Simulated data mode (dev / demo) ──
   const apps = ['Keycloak', 'Spring Petclinic', 'Node API Gateway', 'Python ML Service', 'Go Microservice'];
   const formats = ['CycloneDX', 'CycloneDX'];
   const versions = ['1.6', '1.7'];

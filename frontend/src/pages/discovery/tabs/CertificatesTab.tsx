@@ -3,7 +3,7 @@ import { Zap, Eye, ExternalLink } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, CertStatusBadge, EmptyState } from '../components';
 import type { IntegrationStep } from '../components';
 import { CERTIFICATES } from '../data';
-import { useGetCertificatesQuery, useBulkCreateCertificatesMutation } from '../../../store/api';
+import { useGetCertificatesQuery, useBulkCreateCertificatesMutation, useDeleteAllCertificatesMutation } from '../../../store/api';
 import type { DiscoveryCertificate, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
 
@@ -23,6 +23,7 @@ const STEPS: IntegrationStep[] = [
 export default function CertificatesTab({ search, setSearch }: Props) {
   const { data: apiData = [], isLoading } = useGetCertificatesQuery();
   const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateCertificatesMutation();
+  const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllCertificatesMutation();
   const data = apiData;
   const loaded = data.length > 0;
 
@@ -89,7 +90,7 @@ export default function CertificatesTab({ search, setSearch }: Props) {
         integrationDescription="Import TLS/PKI certificates, CA hierarchies, and endpoint data via the TLM REST API. Automatically track key algorithms, expiry dates, and PQC-readiness across your managed certificate infrastructure."
         steps={STEPS}
         loading={isSampleLoading}
-        onLoadSample={() => bulkCreate({ integrationId: 'sample', items: CERTIFICATES.map(({ id, ...rest }) => rest) })}
+        onLoadSample={() => bulkCreate({ items: CERTIFICATES.map(({ id, ...rest }) => rest) })}
       />
     );
   }
@@ -108,6 +109,8 @@ export default function CertificatesTab({ search, setSearch }: Props) {
         search={search}
         setSearch={setSearch}
         placeholder="Search by common name, CA vendor, algorithm, or source..."
+        onReset={() => deleteAll()}
+        resetLoading={isResetLoading}
       />
 
       <DataTable

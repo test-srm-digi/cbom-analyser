@@ -8,6 +8,7 @@ import {
   Clock,
   Info,
 } from 'lucide-react';
+import { useState } from 'react';
 import type { ConfigPanelState, TestStatus, ImportScope, SyncSchedule } from '../types';
 import { SCHEDULE_OPTIONS } from '../constants';
 import { categoryIcon } from '../utils';
@@ -46,6 +47,57 @@ export default function ConfigDrawer({
   onClose,
 }: ConfigDrawerProps) {
   const { template, integration } = panel;
+
+  /* Track which collapsible sections are collapsed */
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    template.fields.forEach((f) => {
+      if (f.type === 'section-header' && f.collapsed) {
+        initial[f.key] = true;
+      }
+    });
+    return initial;
+  });
+
+  const toggleSection = (key: string) => {
+    setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  /**
+   * Determine which fields are visible, respecting both `visibleWhen`
+   * and collapsible sections (fields after a collapsed section-header
+   * until the next section-header are hidden).
+   */
+  const getVisibleFields = () => {
+    const fields = template.fields;
+    const result: typeof fields = [];
+    let currentSection: string | null = null;
+
+    for (const field of fields) {
+      // Check visibleWhen
+      if (field.visibleWhen) {
+        const depValue = configValues[field.visibleWhen.field] || '';
+        // For multi-select values, check if any selected value matches
+        const depValues = depValue.split(',');
+        const matches = field.visibleWhen.values.some((v) => depValues.includes(v));
+        if (!matches) continue;
+      }
+
+      if (field.type === 'section-header') {
+        currentSection = field.key;
+        result.push(field);
+        continue;
+      }
+
+      // If inside a collapsed section, skip
+      if (currentSection && collapsedSections[currentSection]) {
+        continue;
+      }
+
+      result.push(field);
+    }
+    return result;
+  };
 
   return (
     <div className={s.overlay} onClick={onClose}>
@@ -89,18 +141,15 @@ export default function ConfigDrawer({
             )}
 
             <div className={s.configFields}>
-              {template.fields
-                .filter((field) => {
-                  if (!field.visibleWhen) return true;
-                  const depValue = configValues[field.visibleWhen.field] || '';
-                  return field.visibleWhen.values.includes(depValue);
-                })
-                .map((field) => (
+              {getVisibleFields().map((field) => (
                   <ConfigField
                     key={field.key}
                     field={field}
                     value={configValues[field.key] || ''}
                     onChange={(val) => onConfigValuesChange((prev) => ({ ...prev, [field.key]: val }))}
+                    allValues={configValues}
+                    onToggleSection={toggleSection}
+                    isSectionCollapsed={field.type === 'section-header' ? !!collapsedSections[field.key] : undefined}
                   />
                 ))}
             </div>

@@ -186,6 +186,51 @@
   height: 16px;
 }
 
+/* ── Reset / Clear data button ────────────────────────────── */
+.resetBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid $dc1-danger;
+  border-radius: $dc1-radius-sm;
+  background: $dc1-card;
+  color: $dc1-danger;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background $transition-fast, color $transition-fast;
+  white-space: nowrap;
+
+  &:hover {
+    background: $dc1-danger;
+    color: #fff;
+
+    .resetIcon { color: #fff; }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    &:hover { background: $dc1-card; color: $dc1-danger; }
+  }
+}
+
+.resetIcon {
+  width: 14px;
+  height: 14px;
+  color: $dc1-danger;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
 /* ── Table card ───────────────────────────────────────────── */
 .tableCard {
   background: $dc1-card;

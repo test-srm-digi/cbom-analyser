@@ -9,7 +9,7 @@ import sequelize from '../config/database';
 
 export interface CertificateAttributes {
   id: string;
-  integrationId: string;
+  integrationId: string | null;
   commonName: string;
   caVendor: string;
   status: 'Issued' | 'Expired' | 'Revoked' | 'Pending';
@@ -25,7 +25,7 @@ export interface CertificateAttributes {
 }
 
 export interface CertificateCreationAttributes
-  extends Optional<CertificateAttributes, 'id' | 'expiryDate' | 'serialNumber' | 'signatureAlgorithm' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<CertificateAttributes, 'id' | 'integrationId' | 'expiryDate' | 'serialNumber' | 'signatureAlgorithm' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -34,7 +34,7 @@ class Certificate
   implements CertificateAttributes
 {
   declare id: string;
-  declare integrationId: string;
+  declare integrationId: string | null;
   declare commonName: string;
   declare caVendor: string;
   declare status: CertificateAttributes['status'];
@@ -58,10 +58,8 @@ Certificate.init(
     },
     integrationId: {
       type: DataTypes.STRING(36),
-      allowNull: false,
+      allowNull: true,
       field: 'integration_id',
-      references: { model: 'integrations', key: 'id' },
-      onDelete: 'CASCADE',
     },
     commonName: {
       type: DataTypes.STRING(255),

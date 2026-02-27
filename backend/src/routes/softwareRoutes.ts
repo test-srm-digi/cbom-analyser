@@ -92,6 +92,17 @@ router.put('/software/:id', async (req: Request, res: Response) => {
   }
 });
 
+/* ── DELETE /api/software/all ──────────────────────────────── */
+router.delete('/software/all', async (_req: Request, res: Response) => {
+  try {
+    const count = await Software.destroy({ where: {}, truncate: true });
+    res.json({ success: true, message: `Deleted ${count} software records` });
+  } catch (error) {
+    console.error('Error deleting all software:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete all software' });
+  }
+});
+
 /* ── DELETE /api/software/:id ─────────────────────────────── */
 router.delete('/software/:id', async (req: Request, res: Response) => {
   try {

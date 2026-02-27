@@ -92,6 +92,17 @@ router.put('/endpoints/:id', async (req: Request, res: Response) => {
   }
 });
 
+/* ── DELETE /api/endpoints/all ─────────────────────────────── */
+router.delete('/endpoints/all', async (_req: Request, res: Response) => {
+  try {
+    const count = await Endpoint.destroy({ where: {}, truncate: true });
+    res.json({ success: true, message: `Deleted ${count} endpoints` });
+  } catch (error) {
+    console.error('Error deleting all endpoints:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete all endpoints' });
+  }
+});
+
 /* ── DELETE /api/endpoints/:id ────────────────────────────── */
 router.delete('/endpoints/:id', async (req: Request, res: Response) => {
   try {

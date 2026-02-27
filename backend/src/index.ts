@@ -65,20 +65,22 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
-app.listen(PORT, async () => {
-  console.log(`
+// Initialize database BEFORE accepting requests (avoids FK / table-not-found race)
+(async () => {
+  await initDatabase();
+
+  app.listen(PORT, async () => {
+    console.log(`
   ╔═══════════════════════════════════════════════╗
   ║   QuantumGuard CBOM Hub – Backend             ║
   ║   Running on http://localhost:${PORT}            ║
   ╚═══════════════════════════════════════════════╝
-  `);
+    `);
 
-  // Initialize database
-  await initDatabase();
-
-  // Initialize sync scheduler (reads DB for active schedules)
-  await initScheduler();
-});
+    // Initialize sync scheduler (reads DB for active schedules)
+    await initScheduler();
+  });
+})();
 
 // Graceful shutdown — stop cron jobs before exit
 process.on('SIGTERM', () => {

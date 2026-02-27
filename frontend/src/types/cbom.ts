@@ -305,7 +305,16 @@ export interface IntegrationTemplate {
 export interface IntegrationField {
   key: string;
   label: string;
-  type: 'text' | 'password' | 'url' | 'textarea' | 'select' | 'cidr' | 'port-range' | 'file';
+  type:
+    | 'text' | 'password' | 'url' | 'textarea' | 'select' | 'cidr' | 'port-range' | 'file'
+    | 'yaml-code'
+    | 'checkbox'       // toggle switch
+    | 'multi-select'   // select with multiple values (chips)
+    | 'tags'           // freeform tag/chip input
+    | 'number'         // numeric input with optional min/max
+    | 'info-panel'     // read-only informational block
+    | 'section-header' // collapsible section divider
+    | 'generate-btn';  // button that triggers YAML generation
   placeholder?: string;
   required: boolean;
   helpText?: string;
@@ -314,6 +323,19 @@ export interface IntegrationField {
   visibleWhen?: { field: string; values: string[] };
   /** Accepted file types for type='file' (e.g. '.json,.xml') */
   accept?: string;
+  /** Default value (used for tags, checkboxes, etc.) */
+  defaultValue?: string;
+  /** Min/max for number fields */
+  min?: number;
+  max?: number;
+  /** Suffix label for number fields (e.g., '%') */
+  suffix?: string;
+  /** Whether this section starts collapsed (for section-header) */
+  collapsed?: boolean;
+  /** Info panel variant */
+  variant?: 'info' | 'warning' | 'tip';
+  /** Markdown-like content for info-panel */
+  content?: string;
 }
 
 /** A user-configured integration instance */

@@ -22,7 +22,7 @@ interface ApiResponse<T> {
 }
 
 /* ── Request types ─────────────────────────────────────────── */
-export type CreateCbomImportRequest = Omit<DiscoveryCbomImport, 'id'> & { integrationId: string };
+export type CreateCbomImportRequest = Omit<DiscoveryCbomImport, 'id'> & { integrationId?: string };
 export type UpdateCbomImportRequest = { id: string } & Partial<Omit<DiscoveryCbomImport, 'id'>>;
 
 /* ── API definition ────────────────────────────────────────── */
@@ -62,11 +62,11 @@ export const cbomImportsApi = createApi({
       invalidatesTags: [{ type: 'CbomImport', id: 'LIST' }],
     }),
 
-    bulkCreateCbomImports: builder.mutation<DiscoveryCbomImport[], { integrationId: string; items: Omit<DiscoveryCbomImport, 'id'>[] }>({
-      query: ({ items, integrationId }) => ({
+    bulkCreateCbomImports: builder.mutation<DiscoveryCbomImport[], { items: Omit<DiscoveryCbomImport, 'id'>[] }>({
+      query: ({ items }) => ({
         url: '/cbom-imports/bulk',
         method: 'POST',
-        body: { items: items.map((i) => ({ ...i, integrationId })) },
+        body: { items },
       }),
       transformResponse: (r: ApiResponse<DiscoveryCbomImport[]>) => r.data,
       invalidatesTags: [{ type: 'CbomImport', id: 'LIST' }],
@@ -87,6 +87,11 @@ export const cbomImportsApi = createApi({
       query: (integId) => ({ url: `/cbom-imports/integration/${integId}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'CbomImport', id: 'LIST' }],
     }),
+
+    deleteAllCbomImports: builder.mutation<void, void>({
+      query: () => ({ url: '/cbom-imports/all', method: 'DELETE' }),
+      invalidatesTags: [{ type: 'CbomImport', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -99,4 +104,5 @@ export const {
   useUpdateCbomImportMutation,
   useDeleteCbomImportMutation,
   useDeleteCbomImportsByIntegrationMutation,
+  useDeleteAllCbomImportsMutation,
 } = cbomImportsApi;

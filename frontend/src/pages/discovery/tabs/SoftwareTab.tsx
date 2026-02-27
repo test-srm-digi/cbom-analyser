@@ -3,7 +3,7 @@ import { Eye, ExternalLink, Zap } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, LibChips, EmptyState } from '../components';
 import type { IntegrationStep } from '../components';
 import { SOFTWARE } from '../data';
-import { useGetSoftwareListQuery, useBulkCreateSoftwareMutation } from '../../../store/api';
+import { useGetSoftwareListQuery, useBulkCreateSoftwareMutation, useDeleteAllSoftwareMutation } from '../../../store/api';
 import type { DiscoverySoftware, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
 
@@ -22,6 +22,7 @@ const STEPS: IntegrationStep[] = [
 export default function SoftwareTab({ search, setSearch }: Props) {
   const { data: apiData = [], isLoading } = useGetSoftwareListQuery();
   const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateSoftwareMutation();
+  const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllSoftwareMutation();
   const data = apiData;
   const loaded = data.length > 0;
 
@@ -86,7 +87,7 @@ export default function SoftwareTab({ search, setSearch }: Props) {
         integrationDescription="Import code signing certificates, software hashes, and SBOM-linked cryptographic assets from STM. Analyze signing algorithms used across your software supply chain and plan PQC migration."
         steps={STEPS}
         loading={isSampleLoading}
-        onLoadSample={() => bulkCreate({ integrationId: 'sample', items: SOFTWARE.map(({ id, ...rest }) => rest) })}
+        onLoadSample={() => bulkCreate({ items: SOFTWARE.map(({ id, ...rest }) => rest) })}
       />
     );
   }
@@ -105,6 +106,8 @@ export default function SoftwareTab({ search, setSearch }: Props) {
         search={search}
         setSearch={setSearch}
         placeholder="Search by release name, vendor, algorithm, or library..."
+        onReset={() => deleteAll()}
+        resetLoading={isResetLoading}
       />
 
       <DataTable

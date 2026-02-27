@@ -92,6 +92,17 @@ router.put('/certificates/:id', async (req: Request, res: Response) => {
   }
 });
 
+/* ── DELETE /api/certificates/all ──────────────────────────── */
+router.delete('/certificates/all', async (_req: Request, res: Response) => {
+  try {
+    const count = await Certificate.destroy({ where: {}, truncate: true });
+    res.json({ success: true, message: `Deleted ${count} certificates` });
+  } catch (error) {
+    console.error('Error deleting all certificates:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete all certificates' });
+  }
+});
+
 /* ── DELETE /api/certificates/:id ─────────────────────────── */
 router.delete('/certificates/:id', async (req: Request, res: Response) => {
   try {

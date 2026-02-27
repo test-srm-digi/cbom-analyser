@@ -22,7 +22,7 @@ interface ApiResponse<T> {
 }
 
 /* ── Request types ─────────────────────────────────────────── */
-export type CreateCertificateRequest = Omit<DiscoveryCertificate, 'id'> & { integrationId: string };
+export type CreateCertificateRequest = Omit<DiscoveryCertificate, 'id'> & { integrationId?: string };
 export type UpdateCertificateRequest = { id: string } & Partial<Omit<DiscoveryCertificate, 'id'>>;
 
 /* ── API definition ────────────────────────────────────────── */
@@ -62,11 +62,11 @@ export const certificatesApi = createApi({
       invalidatesTags: [{ type: 'Certificate', id: 'LIST' }],
     }),
 
-    bulkCreateCertificates: builder.mutation<DiscoveryCertificate[], { integrationId: string; items: Omit<DiscoveryCertificate, 'id'>[] }>({
-      query: ({ items, integrationId }) => ({
+    bulkCreateCertificates: builder.mutation<DiscoveryCertificate[], { items: Omit<DiscoveryCertificate, 'id'>[] }>({
+      query: ({ items }) => ({
         url: '/certificates/bulk',
         method: 'POST',
-        body: { items: items.map((i) => ({ ...i, integrationId })) },
+        body: { items },
       }),
       transformResponse: (r: ApiResponse<DiscoveryCertificate[]>) => r.data,
       invalidatesTags: [{ type: 'Certificate', id: 'LIST' }],
@@ -87,6 +87,11 @@ export const certificatesApi = createApi({
       query: (integId) => ({ url: `/certificates/integration/${integId}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Certificate', id: 'LIST' }],
     }),
+
+    deleteAllCertificates: builder.mutation<void, void>({
+      query: () => ({ url: '/certificates/all', method: 'DELETE' }),
+      invalidatesTags: [{ type: 'Certificate', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -99,4 +104,5 @@ export const {
   useUpdateCertificateMutation,
   useDeleteCertificateMutation,
   useDeleteCertificatesByIntegrationMutation,
+  useDeleteAllCertificatesMutation,
 } = certificatesApi;

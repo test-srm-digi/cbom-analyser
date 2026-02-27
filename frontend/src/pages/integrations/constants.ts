@@ -125,22 +125,67 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
     vendor: 'CycloneDX',
     category: 'import',
     description:
-      'Upload or link CycloneDX CBOM (Cryptographic Bill of Materials) files from your CI/CD pipeline, SBOM tools, or manual audit. Supports CycloneDX 1.6+ with crypto extensions.',
+      'Ingest CycloneDX CBOM (Cryptographic Bill of Materials) artifacts from your GitHub Actions CI/CD pipeline. Supports CycloneDX 1.6+ with crypto extensions.',
     docsUrl: 'https://cyclonedx.org/capabilities/cbom/',
     capabilities: [
       'CycloneDX 1.6 / 1.7 CBOM parsing',
       'JSON & XML format support',
-      'CI/CD artifact ingestion',
-      'URL-based remote fetch',
-      'Merge & deduplication across imports',
+      'CI/CD artifact ingestion via GitHub Actions',
+      'Incremental sync — only new workflow runs',
+      'Auto-generated workflow YAML for your repo',
     ],
     fields: [
-      { key: 'importMethod', label: 'Import Method', type: 'select', required: true, options: [{ value: 'upload', label: 'File Upload' }, { value: 'url', label: 'URL Fetch' }, { value: 'artifact', label: 'CI/CD Artifact (GitHub Actions)' }] },
-      { key: 'cbomFile', label: 'CBOM File', type: 'file', required: true, helpText: 'Select a CycloneDX CBOM file (JSON or XML)', accept: '.json,.xml', visibleWhen: { field: 'importMethod', values: ['upload'] } },
-      { key: 'url', label: 'CBOM URL', type: 'url', placeholder: 'https://example.com/cbom.json', required: true, helpText: 'Direct link to a CycloneDX CBOM JSON or XML file', visibleWhen: { field: 'importMethod', values: ['url'] } },
-      { key: 'githubRepo', label: 'GitHub Repository', type: 'text', placeholder: 'owner/repo', required: true, helpText: 'GitHub repository (e.g., acme/my-app)', visibleWhen: { field: 'importMethod', values: ['artifact'] } },
-      { key: 'githubToken', label: 'GitHub Token', type: 'password', placeholder: 'ghp_xxxxxxxxxxxx', required: true, helpText: 'Personal access token with actions:read scope', visibleWhen: { field: 'importMethod', values: ['artifact'] } },
-      { key: 'artifactName', label: 'Artifact Name', type: 'text', placeholder: 'cbom-report', required: false, helpText: 'GitHub Actions artifact name (defaults to latest)', visibleWhen: { field: 'importMethod', values: ['artifact'] } },
+      // ── GitHub Actions: Repository Connection ──
+      { key: 'githubRepo', label: 'GitHub Repository', type: 'text', placeholder: 'owner/repo', required: true, helpText: 'GitHub repository (e.g., acme/my-app)' },
+      { key: 'githubToken', label: 'GitHub Token', type: 'password', placeholder: 'ghp_xxxxxxxxxxxx', required: true, helpText: 'Personal access token with actions:read and actions:write scope' },
+
+      // ── Workflow Configuration Section ──
+      { key: '_wfConfigHeader', label: 'Workflow Configuration', type: 'section-header', required: false, helpText: 'Configure your GitHub Actions workflow for CBOM scanning' },
+
+      { key: 'branches', label: 'Branches', type: 'tags', required: false, defaultValue: 'main', placeholder: 'Type a branch name and press Enter', helpText: 'Branches to run the workflow on (default: main)' },
+
+      { key: 'triggers', label: 'Trigger Events', type: 'multi-select', required: false, helpText: 'When should the workflow run?', defaultValue: 'push,pull_request', options: [
+        { value: 'push', label: 'Push to branch' },
+        { value: 'pull_request', label: 'Pull Request' },
+        { value: 'release', label: 'Release published' },
+        { value: 'schedule', label: 'Scheduled (cron)' },
+      ] },
+
+      { key: 'cronSchedule', label: 'Cron Schedule', type: 'text', placeholder: '0 2 * * 1', required: false, helpText: 'Cron expression for scheduled runs (e.g., "0 2 * * 1" = every Monday at 2 AM UTC)', visibleWhen: { field: 'triggers', values: ['schedule'] } },
+
+      { key: 'language', label: 'Project Language', type: 'select', required: true, helpText: 'Primary language — determines scanner tooling in the workflow', options: [
+        { value: 'java', label: 'Java' },
+        { value: 'python', label: 'Python' },
+        { value: 'javascript', label: 'JavaScript / TypeScript' },
+        { value: 'go', label: 'Go' },
+        { value: 'dotnet', label: 'C# / .NET' },
+        { value: 'other', label: 'Other' },
+      ] },
+
+      { key: 'artifactName', label: 'Artifact Name', type: 'text', placeholder: 'cbom-report', required: false, helpText: 'Name of the uploaded artifact (default: cbom-report)' },
+
+      // ── Runner Configuration ──
+      { key: 'selfHostedRunner', label: 'Use self-hosted runner', type: 'checkbox', required: false, defaultValue: 'false', helpText: 'Run the workflow on your own infrastructure instead of GitHub-hosted runners' },
+      { key: 'runnerLabel', label: 'Runner Label', type: 'text', placeholder: 'self-hosted, linux, x64', required: false, helpText: 'Comma-separated labels for your self-hosted runner', visibleWhen: { field: 'selfHostedRunner', values: ['true'] } },
+
+      // ── Sonar Integration ──
+      { key: 'sonarEnabled', label: 'Enable SonarQube / SonarCloud integration', type: 'checkbox', required: false, defaultValue: 'false', helpText: 'Add SonarQube or SonarCloud analysis step to the workflow' },
+      { key: '_sonarInfo', label: 'SonarQube Setup', type: 'info-panel', required: false, variant: 'tip', content: '**Setting up SonarQube for CBOM scanning:**\n\n1. Create a SonarQube/SonarCloud account and project\n2. Add `SONAR_TOKEN` to your repository secrets\n3. Add `SONAR_HOST_URL` secret (for SonarQube Server)\n4. The IBM Sonar Cryptography plugin detects crypto usage\n\n**Resources:**\n- [IBM Sonar Cryptography Plugin](https://github.com/IBM/sonar-cryptography)\n- [SonarCloud Setup Guide](https://docs.sonarcloud.io/getting-started/github/)\n- [SonarQube GitHub Actions](https://docs.sonarsource.com/sonarqube/latest/analyzing-source-code/ci-integration/github-actions/)', visibleWhen: { field: 'sonarEnabled', values: ['true'] } },
+      { key: 'sonarProjectKey', label: 'Sonar Project Key', type: 'text', placeholder: 'org_project-key', required: false, helpText: 'Your SonarQube/SonarCloud project key', visibleWhen: { field: 'sonarEnabled', values: ['true'] } },
+
+      // ── PQC Threshold ──
+      { key: 'pqcThresholdEnabled', label: 'Enforce PQC readiness threshold', type: 'checkbox', required: false, defaultValue: 'false', helpText: 'Fail the workflow if post-quantum cryptography readiness is below the threshold' },
+      { key: 'pqcThreshold', label: 'Minimum PQC-safe percentage', type: 'number', required: false, defaultValue: '80', placeholder: '80', min: 0, max: 100, suffix: '%', helpText: 'Workflow will fail if the percentage of quantum-safe components is below this value', visibleWhen: { field: 'pqcThresholdEnabled', values: ['true'] } },
+
+      // ── Advanced Settings ──
+      { key: '_advancedHeader', label: 'Advanced Settings', type: 'section-header', required: false, collapsed: true, helpText: 'Additional workflow customization options' },
+      { key: 'excludePaths', label: 'Excluded Paths', type: 'tags', required: false, placeholder: 'e.g. vendor/**, test/**, docs/**', helpText: 'Glob patterns of files/directories to exclude from scanning' },
+      { key: 'retentionDays', label: 'Artifact Retention (days)', type: 'number', required: false, defaultValue: '90', placeholder: '90', min: 1, max: 400, suffix: 'days', helpText: 'How long to keep the CBOM artifact in GitHub' },
+      { key: 'failOnError', label: 'Fail workflow on scan errors', type: 'checkbox', required: false, defaultValue: 'true', helpText: 'If the scanner encounters errors, fail the workflow run' },
+      { key: 'uploadToRelease', label: 'Attach CBOM to GitHub Releases', type: 'checkbox', required: false, defaultValue: 'false', helpText: 'Automatically attach the CBOM report to GitHub releases' },
+
+      // ── Generate Workflow Button ──
+      { key: 'workflowYaml', label: 'Generate Workflow YAML', type: 'generate-btn', required: false, helpText: 'Generate a ready-to-use GitHub Actions workflow based on your configuration' },
     ],
     scopeOptions: [
       { value: 'crypto-components', label: 'Crypto Components', description: 'Algorithms, protocols, and crypto primitives from CBOM' },

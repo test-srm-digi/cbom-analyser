@@ -107,12 +107,15 @@ export async function executeSyncForIntegration(
 
   /* ── Step 4: Fetch data from external source ─────────────── */
   let fetchedRecords: Record<string, unknown>[] = [];
+  let fetchMeta: Record<string, unknown> = {};
   try {
     // Mark as syncing
     await integration.update({ status: 'testing' });
 
     const config = (integration.config || {}) as ConnectorConfig;
-    const result = await connector.fetch(config, integrationId);
+    // Pass lastSync into config so connectors can do incremental fetches
+    const configWithSync = { ...config, lastSync: integration.lastSync || undefined };
+    const result = await connector.fetch(configWithSync, integrationId);
 
     if (!result.success) {
       errors.push(...result.errors);
@@ -120,6 +123,7 @@ export async function executeSyncForIntegration(
     }
 
     fetchedRecords = result.data;
+    fetchMeta = (result as any).meta || {};
     if (result.errors.length > 0) {
       errors.push(...result.errors);
     }
@@ -130,17 +134,23 @@ export async function executeSyncForIntegration(
     return { success: false, syncLogId, itemsFetched: fetchedRecords.length, itemsCreated: 0, itemsDeleted: 0, errors, durationMs: Date.now() - startTime };
   }
 
-  /* ── Step 5: Delete old data + bulk insert new data ──────── */
+  /* ── Step 5: Persist data (full refresh or incremental) ──── */
   const TargetModel = MODEL_MAP[connector.model];
   let deletedCount = 0;
   let createdCount = 0;
 
+  // Incremental mode: connector signals via meta.incremental = true
+  // (used by GitHub Actions CBOM connector — only appends new records)
+  const isIncremental = !!fetchMeta.incremental;
+
   if (TargetModel) {
     try {
-      // Full refresh: delete old → insert new
-      deletedCount = await (TargetModel as any).destroy({
-        where: { integrationId },
-      });
+      if (!isIncremental) {
+        // Full refresh: delete old → insert new
+        deletedCount = await (TargetModel as any).destroy({
+          where: { integrationId },
+        });
+      }
 
       if (fetchedRecords.length > 0) {
         const created = await (TargetModel as any).bulkCreate(

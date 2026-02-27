@@ -9,7 +9,7 @@ import sequelize from '../config/database';
 
 export interface EndpointAttributes {
   id: string;
-  integrationId: string;
+  integrationId: string | null;
   hostname: string;
   ipAddress: string;
   port: number;
@@ -25,7 +25,7 @@ export interface EndpointAttributes {
 }
 
 export interface EndpointCreationAttributes
-  extends Optional<EndpointAttributes, 'id' | 'lastScanned' | 'certCommonName' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<EndpointAttributes, 'id' | 'integrationId' | 'lastScanned' | 'certCommonName' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -34,7 +34,7 @@ class Endpoint
   implements EndpointAttributes
 {
   declare id: string;
-  declare integrationId: string;
+  declare integrationId: string | null;
   declare hostname: string;
   declare ipAddress: string;
   declare port: number;
@@ -58,10 +58,8 @@ Endpoint.init(
     },
     integrationId: {
       type: DataTypes.STRING(36),
-      allowNull: false,
+      allowNull: true,
       field: 'integration_id',
-      references: { model: 'integrations', key: 'id' },
-      onDelete: 'CASCADE',
     },
     hostname: {
       type: DataTypes.STRING(255),

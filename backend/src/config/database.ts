@@ -2,7 +2,7 @@
  * Sequelize database configuration & connection
  * Database: MariaDB — dcone-quantum-gaurd
  */
-import { Sequelize, QueryTypes } from 'sequelize';
+import { Sequelize } from 'sequelize';
 
 const sequelize = new Sequelize({
   database: process.env.DB_DATABASE || 'dcone-quantum-gaurd',
@@ -28,19 +28,6 @@ export async function initDatabase(): Promise<void> {
     // Sync models — alter:true adds/modifies columns to match model definitions
     await sequelize.sync({ alter: true });
     console.log('  ✓ Database models synced');
-
-    // Seed a "sample" integration so Load Sample Data FK references succeed
-    const [existing] = await sequelize.query(
-      `SELECT id FROM integrations WHERE id = 'sample' LIMIT 1`,
-      { type: QueryTypes.SELECT as unknown as undefined },
-    ) as unknown as Array<{ id: string }>;
-    if (!existing) {
-      await sequelize.query(
-        `INSERT INTO integrations (id, template_type, name, description, status, enabled, config, import_scope, sync_schedule, created_at, updated_at)
-         VALUES ('sample', 'sample', 'Sample Data', 'Auto-seeded integration for sample/demo data', 'connected', 1, '{}', '[]', 'manual', NOW(), NOW())`,
-      );
-      console.log('  ✓ Seeded "sample" integration for demo data');
-    }
   } catch (error) {
     console.error('  ✗ Database connection failed:', (error as Error).message);
     console.error('    Make sure MariaDB is running and the database exists.');

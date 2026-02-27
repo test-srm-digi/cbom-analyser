@@ -1,13 +1,15 @@
-import { Search, Download, SlidersHorizontal } from 'lucide-react';
+import { Search, Download, SlidersHorizontal, RotateCcw } from 'lucide-react';
 import s from './shared.module.scss';
 
 interface Props {
   search: string;
   setSearch: (v: string) => void;
   placeholder: string;
+  onReset?: () => void;
+  resetLoading?: boolean;
 }
 
-export default function Toolbar({ search, setSearch, placeholder }: Props) {
+export default function Toolbar({ search, setSearch, placeholder, onReset, resetLoading }: Props) {
   return (
     <div className={s.toolbar}>
       <div className={s.searchBar}>
@@ -26,6 +28,17 @@ export default function Toolbar({ search, setSearch, placeholder }: Props) {
       <button className={s.filterToggle}>
         <SlidersHorizontal className={s.filterIcon} />
       </button>
+      {onReset && (
+        <button
+          className={s.resetBtn}
+          onClick={onReset}
+          disabled={resetLoading}
+          title="Clear all data and return to the empty state"
+        >
+          <RotateCcw className={`${s.resetIcon}${resetLoading ? ` ${s.spinning}` : ''}`} />
+          {resetLoading ? 'Clearing…' : 'Reset Data'}
+        </button>
+      )}
     </div>
   );
 }

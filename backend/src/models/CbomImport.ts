@@ -9,7 +9,7 @@ import sequelize from '../config/database';
 
 export interface CbomImportAttributes {
   id: string;
-  integrationId: string;
+  integrationId: string | null;
   fileName: string;
   format: string;
   specVersion: string;
@@ -28,7 +28,7 @@ export interface CbomImportAttributes {
 }
 
 export interface CbomImportCreationAttributes
-  extends Optional<CbomImportAttributes, 'id' | 'applicationName' | 'cbomFile' | 'cbomFileType' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<CbomImportAttributes, 'id' | 'integrationId' | 'applicationName' | 'cbomFile' | 'cbomFileType' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -37,7 +37,7 @@ class CbomImport
   implements CbomImportAttributes
 {
   declare id: string;
-  declare integrationId: string;
+  declare integrationId: string | null;
   declare fileName: string;
   declare format: string;
   declare specVersion: string;
@@ -64,10 +64,8 @@ CbomImport.init(
     },
     integrationId: {
       type: DataTypes.STRING(36),
-      allowNull: false,
+      allowNull: true,
       field: 'integration_id',
-      references: { model: 'integrations', key: 'id' },
-      onDelete: 'CASCADE',
     },
     fileName: {
       type: DataTypes.STRING(255),

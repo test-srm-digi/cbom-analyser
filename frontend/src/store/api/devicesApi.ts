@@ -22,7 +22,7 @@ interface ApiResponse<T> {
 }
 
 /* ── Request types ─────────────────────────────────────────── */
-export type CreateDeviceRequest = Omit<DiscoveryDevice, 'id'> & { integrationId: string };
+export type CreateDeviceRequest = Omit<DiscoveryDevice, 'id'> & { integrationId?: string };
 export type UpdateDeviceRequest = { id: string } & Partial<Omit<DiscoveryDevice, 'id'>>;
 
 /* ── API definition ────────────────────────────────────────── */
@@ -62,11 +62,11 @@ export const devicesApi = createApi({
       invalidatesTags: [{ type: 'Device', id: 'LIST' }],
     }),
 
-    bulkCreateDevices: builder.mutation<DiscoveryDevice[], { integrationId: string; items: Omit<DiscoveryDevice, 'id'>[] }>({
-      query: ({ items, integrationId }) => ({
+    bulkCreateDevices: builder.mutation<DiscoveryDevice[], { items: Omit<DiscoveryDevice, 'id'>[] }>({
+      query: ({ items }) => ({
         url: '/devices/bulk',
         method: 'POST',
-        body: { items: items.map((i) => ({ ...i, integrationId })) },
+        body: { items },
       }),
       transformResponse: (r: ApiResponse<DiscoveryDevice[]>) => r.data,
       invalidatesTags: [{ type: 'Device', id: 'LIST' }],
@@ -87,6 +87,11 @@ export const devicesApi = createApi({
       query: (integId) => ({ url: `/devices/integration/${integId}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Device', id: 'LIST' }],
     }),
+
+    deleteAllDevices: builder.mutation<void, void>({
+      query: () => ({ url: '/devices/all', method: 'DELETE' }),
+      invalidatesTags: [{ type: 'Device', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -99,4 +104,5 @@ export const {
   useUpdateDeviceMutation,
   useDeleteDeviceMutation,
   useDeleteDevicesByIntegrationMutation,
+  useDeleteAllDevicesMutation,
 } = devicesApi;

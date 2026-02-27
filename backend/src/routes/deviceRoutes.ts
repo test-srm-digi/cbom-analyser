@@ -92,6 +92,17 @@ router.put('/devices/:id', async (req: Request, res: Response) => {
   }
 });
 
+/* ── DELETE /api/devices/all ───────────────────────────────── */
+router.delete('/devices/all', async (_req: Request, res: Response) => {
+  try {
+    const count = await Device.destroy({ where: {}, truncate: true });
+    res.json({ success: true, message: `Deleted ${count} devices` });
+  } catch (error) {
+    console.error('Error deleting all devices:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete all devices' });
+  }
+});
+
 /* ── DELETE /api/devices/:id ──────────────────────────────── */
 router.delete('/devices/:id', async (req: Request, res: Response) => {
   try {

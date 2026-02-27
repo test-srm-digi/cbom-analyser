@@ -22,7 +22,7 @@ interface ApiResponse<T> {
 }
 
 /* ── Request types ─────────────────────────────────────────── */
-export type CreateSoftwareRequest = Omit<DiscoverySoftware, 'id'> & { integrationId: string };
+export type CreateSoftwareRequest = Omit<DiscoverySoftware, 'id'> & { integrationId?: string };
 export type UpdateSoftwareRequest = { id: string } & Partial<Omit<DiscoverySoftware, 'id'>>;
 
 /* ── API definition ────────────────────────────────────────── */
@@ -62,11 +62,11 @@ export const softwareApi = createApi({
       invalidatesTags: [{ type: 'Software', id: 'LIST' }],
     }),
 
-    bulkCreateSoftware: builder.mutation<DiscoverySoftware[], { integrationId: string; items: Omit<DiscoverySoftware, 'id'>[] }>({
-      query: ({ items, integrationId }) => ({
+    bulkCreateSoftware: builder.mutation<DiscoverySoftware[], { items: Omit<DiscoverySoftware, 'id'>[] }>({
+      query: ({ items }) => ({
         url: '/software/bulk',
         method: 'POST',
-        body: { items: items.map((i) => ({ ...i, integrationId })) },
+        body: { items },
       }),
       transformResponse: (r: ApiResponse<DiscoverySoftware[]>) => r.data,
       invalidatesTags: [{ type: 'Software', id: 'LIST' }],
@@ -87,6 +87,11 @@ export const softwareApi = createApi({
       query: (integId) => ({ url: `/software/integration/${integId}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Software', id: 'LIST' }],
     }),
+
+    deleteAllSoftware: builder.mutation<void, void>({
+      query: () => ({ url: '/software/all', method: 'DELETE' }),
+      invalidatesTags: [{ type: 'Software', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -99,4 +104,5 @@ export const {
   useUpdateSoftwareMutation,
   useDeleteSoftwareMutation,
   useDeleteSoftwareByIntegrationMutation,
+  useDeleteAllSoftwareMutation,
 } = softwareApi;

@@ -13,6 +13,7 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { CbomImport } from '../models';
+import { generateWorkflowYaml } from '../services/githubCbomConnector';
 
 const router = Router();
 
@@ -82,8 +83,9 @@ router.post('/cbom-imports/bulk', async (req: Request, res: Response) => {
     const rows = await CbomImport.bulkCreate(items);
     res.status(201).json({ success: true, data: rows, message: `Created ${rows.length} CBOM imports` });
   } catch (error) {
-    console.error('Error bulk creating CBOM imports:', error);
-    res.status(500).json({ success: false, message: 'Failed to bulk create CBOM imports' });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('Error bulk creating CBOM imports:', msg, error);
+    res.status(500).json({ success: false, message: 'Failed to bulk create CBOM imports', error: msg });
   }
 });
 
@@ -97,6 +99,17 @@ router.put('/cbom-imports/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error updating CBOM import:', error);
     res.status(500).json({ success: false, message: 'Failed to update CBOM import' });
+  }
+});
+
+/* ── DELETE /api/cbom-imports/all ──────────────────────────── */
+router.delete('/cbom-imports/all', async (_req: Request, res: Response) => {
+  try {
+    const count = await CbomImport.destroy({ where: {}, truncate: true });
+    res.json({ success: true, message: `Deleted ${count} CBOM imports` });
+  } catch (error) {
+    console.error('Error deleting all CBOM imports:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete all CBOM imports' });
   }
 });
 
@@ -121,6 +134,53 @@ router.delete('/cbom-imports/integration/:integId', async (req: Request, res: Re
   } catch (error) {
     console.error('Error deleting CBOM imports by integration:', error);
     res.status(500).json({ success: false, message: 'Failed to delete CBOM imports' });
+  }
+});
+
+/* ── POST /api/cbom-imports/generate-workflow ─────────────── */
+router.post('/cbom-imports/generate-workflow', (req: Request, res: Response) => {
+  try {
+    const {
+      language = 'java',
+      branch = 'main',
+      branches,
+      triggers,
+      artifactName = 'cbom-report',
+      schedule,
+      selfHostedRunner,
+      runnerLabel,
+      sonarEnabled,
+      sonarProjectKey,
+      pqcThresholdEnabled,
+      pqcThreshold,
+      excludePaths,
+      retentionDays,
+      failOnError,
+      uploadToRelease,
+    } = req.body;
+
+    const yaml = generateWorkflowYaml({
+      language,
+      branch,
+      branches,
+      triggers,
+      artifactName,
+      schedule,
+      selfHostedRunner,
+      runnerLabel,
+      sonarEnabled,
+      sonarProjectKey,
+      pqcThresholdEnabled,
+      pqcThreshold,
+      excludePaths,
+      retentionDays,
+      failOnError,
+      uploadToRelease,
+    });
+    res.json({ success: true, data: { yaml, fileName: `.github/workflows/cbom.yml` } });
+  } catch (error) {
+    console.error('Error generating workflow YAML:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate workflow' });
   }
 });
 

@@ -3,7 +3,7 @@ import { Eye, ExternalLink } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, CbomStatusBadge, ProgressBar, EmptyState } from '../components';
 import type { IntegrationStep } from '../components';
 import { CBOM_IMPORTS } from '../data';
-import { useGetCbomImportsQuery, useBulkCreateCbomImportsMutation } from '../../../store/api';
+import { useGetCbomImportsQuery, useBulkCreateCbomImportsMutation, useDeleteAllCbomImportsMutation } from '../../../store/api';
 import type { DiscoveryCbomImport, StatCardConfig } from '../types';
 import s from '../components/shared.module.scss';
 
@@ -23,6 +23,7 @@ const STEPS: IntegrationStep[] = [
 export default function CbomImportsTab({ search, setSearch, onViewCbom }: Props) {
   const { data: apiData = [], isLoading } = useGetCbomImportsQuery();
   const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateCbomImportsMutation();
+  const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllCbomImportsMutation();
   const data = apiData;
   const loaded = data.length > 0;
 
@@ -89,7 +90,7 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom }: Props)
         integrationDescription="Import Cryptography Bill of Materials (CBOM) files in CycloneDX or SPDX format. Parse, validate, and analyze cryptographic component inventories to assess PQC readiness across your applications."
         steps={STEPS}
         loading={isSampleLoading}
-        onLoadSample={() => bulkCreate({ integrationId: 'sample', items: CBOM_IMPORTS.map(({ id, ...rest }) => rest) })}
+        onLoadSample={() => bulkCreate({ items: CBOM_IMPORTS.map(({ id, ...rest }) => rest) })}
       />
     );
   }
@@ -109,6 +110,8 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom }: Props)
         search={search}
         setSearch={setSearch}
         placeholder="Search by application name, file name, format, or spec version..."
+        onReset={() => deleteAll()}
+        resetLoading={isResetLoading}
       />
 
       <DataTable

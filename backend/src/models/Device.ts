@@ -9,7 +9,7 @@ import sequelize from '../config/database';
 
 export interface DeviceAttributes {
   id: string;
-  integrationId: string;
+  integrationId: string | null;
   deviceName: string;
   deviceType: string;
   manufacturer: string;
@@ -26,7 +26,7 @@ export interface DeviceAttributes {
 }
 
 export interface DeviceCreationAttributes
-  extends Optional<DeviceAttributes, 'id' | 'deviceGroup' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<DeviceAttributes, 'id' | 'integrationId' | 'deviceGroup' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -35,7 +35,7 @@ class Device
   implements DeviceAttributes
 {
   declare id: string;
-  declare integrationId: string;
+  declare integrationId: string | null;
   declare deviceName: string;
   declare deviceType: string;
   declare manufacturer: string;
@@ -60,10 +60,8 @@ Device.init(
     },
     integrationId: {
       type: DataTypes.STRING(36),
-      allowNull: false,
+      allowNull: true,
       field: 'integration_id',
-      references: { model: 'integrations', key: 'id' },
-      onDelete: 'CASCADE',
     },
     deviceName: {
       type: DataTypes.STRING(255),
