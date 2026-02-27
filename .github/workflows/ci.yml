@@ -133,7 +133,11 @@ jobs:
         run: docker build -t cbom-analyser-backend:${{ github.sha }} ./backend
 
       - name: Build Frontend Docker Image
-        run: docker build -t cbom-analyser-frontend:${{ github.sha }} ./frontend
+        run: |
+          docker build \
+            --build-arg FONTAWESOME_TOKEN=${{ secrets.FONTAWESOME_TOKEN }} \
+            --build-arg GH_NPM_TOKEN=${{ secrets.GH_NPM_TOKEN }} \
+            -t cbom-analyser-frontend:${{ github.sha }} ./frontend
 
       - name: Build Action Docker Image
         run: docker build -t cbom-analyser-action:${{ github.sha }} -f Dockerfile.action .

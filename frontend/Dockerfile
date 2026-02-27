@@ -2,7 +2,11 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-COPY package*.json ./
+# Accept build args for private registries
+ARG FONTAWESOME_TOKEN
+ARG GH_NPM_TOKEN
+
+COPY .npmrc package*.json ./
 RUN npm install --ignore-scripts
 
 COPY . .
