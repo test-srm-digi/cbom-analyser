@@ -6,6 +6,7 @@ import {
   Loader2,
   AlertTriangle,
   Trash2,
+  ExternalLink,
 } from 'lucide-react';
 import type { Integration, IntegrationTemplate } from '../types';
 import { INTEGRATION_CATALOG, SCHEDULE_OPTIONS } from '../constants';
@@ -50,25 +51,58 @@ export default function IntegrationCard({
 
       {/* Body — field rows */}
       <div className={s.cardBody}>
+        {intg.config?.githubRepo && (() => {
+          const repoSlug = intg.config.githubRepo.replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/, '');
+          const repoUrl = `https://github.com/${repoSlug}`;
+          const branches = intg.config.branches
+            ? intg.config.branches.split(',').map((b: string) => b.trim()).filter(Boolean)
+            : [];
+          return (
+            <>
+              <div className={s.fieldRow}>
+                <span className={s.fieldLabel}>Repository</span>
+                <a href={repoUrl} target="_blank" rel="noopener noreferrer" className={s.repoLink} title={repoSlug}>
+                  <span className={s.repoText}>{repoSlug}</span>
+                  <ExternalLink size={11} className={s.repoExtIcon} />
+                </a>
+              </div>
+              {branches.length > 0 && (
+                <div className={s.fieldRow}>
+                  <span className={s.fieldLabel}>Branches</span>
+                  <div className={s.branchList}>
+                    {branches.map((b: string) => (
+                      <span key={b} className={s.branchTag}>{b}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
         <div className={s.fieldRow}>
           <span className={s.fieldLabel}>Sync Schedule</span>
           <span className={s.fieldValue}>
             {SCHEDULE_OPTIONS.find((o) => o.value === intg.syncSchedule)?.label || intg.syncSchedule}
           </span>
         </div>
-        <div className={s.fieldRow}>
-          <span className={s.fieldLabel}>Import Scope</span>
-          <span className={s.fieldValue}>
-            {intg.importScope
-              .map((sc) => resolveScopeLabel(sc, template?.scopeOptions))
-              .join(', ')}
-          </span>
-        </div>
+        {intg.importScope.length > 0 && (
+          <div className={s.fieldRow}>
+            <span className={s.fieldLabel}>Import Scope</span>
+            <span className={s.fieldValue}>
+              {intg.importScope
+                .map((sc) => resolveScopeLabel(sc, template?.scopeOptions))
+                .join(', ')}
+            </span>
+          </div>
+        )}
         {intg.lastSync && (
           <div className={s.fieldRow}>
             <span className={s.fieldLabel}>Last Sync</span>
             <span className={s.fieldValue}>
-              {intg.lastSync}
+              {new Date(intg.lastSync).toLocaleString(undefined, {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              })}
               {intg.lastSyncItems != null && (
                 <span className={s.syncBadge}>{intg.lastSyncItems} items</span>
               )}

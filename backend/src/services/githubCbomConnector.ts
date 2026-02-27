@@ -272,19 +272,22 @@ export async function fetchCbomImportsFromGitHub(
     // Determine the earliest date to fetch runs from.
     // Priority: lastSync (if records exist) > integrationCreatedAt
     // This ensures we never pull CBOMs created before the integration was established.
-    let sinceDate: string | undefined;
+    let sinceFilter = '';
     if (lastSync) {
       const existingCount = await CbomImport.count({ where: { integrationId } });
       if (existingCount > 0) {
-        sinceDate = lastSync;
+        // Incremental: strict greater-than using exact timestamp
+        sinceFilter = `&created=>${lastSync}`;
       }
     }
-    // Fall back to integration creation time — never pull older runs
-    if (!sinceDate && integrationCreatedAt) {
-      sinceDate = integrationCreatedAt;
+    // First sync: use >= with date only (YYYY-MM-DD) so runs from the
+    // same day the integration was created are included.
+    if (!sinceFilter && integrationCreatedAt) {
+      const createdDate = integrationCreatedAt.slice(0, 10); // "YYYY-MM-DD"
+      sinceFilter = `&created=>=${createdDate}`;
     }
-    if (sinceDate) {
-      runsUrl += `&created=>${sinceDate}`;
+    if (sinceFilter) {
+      runsUrl += sinceFilter;
     }
 
     const runsResponse = await githubFetch<WorkflowRunsResponse>(runsUrl, githubToken);

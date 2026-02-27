@@ -1,5 +1,5 @@
-import { useState, useEffect, ReactNode } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useState, useEffect, ReactNode } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faGauge,
   faDiagramProject,
@@ -18,43 +18,43 @@ import {
   faBullseyeArrow,
   faMagnifyingGlass,
   faFlask,
-} from '@fortawesome/pro-light-svg-icons';
+} from "@fortawesome/pro-light-svg-icons";
 import {
   faChevronDown,
   faChevronRight,
-} from '@fortawesome/pro-solid-svg-icons';
+} from "@fortawesome/pro-solid-svg-icons";
 import {
   faShieldCheck as faShieldCheckLight,
   faWifi,
   faBox,
   faMicrochip,
   faFileCode,
-} from '@fortawesome/pro-light-svg-icons';
+} from "@fortawesome/pro-light-svg-icons";
 
 /* ─── Types ─────────────────────────────────────────────────── */
 
 export type NavPage =
-  | 'cbom-analyzer'
-  | 'dashboard'
-  | 'inventory'
-  | 'visualize'
-  | 'violations'
-  | 'tracking'
-  | 'policies'
-  | 'integrations'
-  | 'discovery'
-  | 'discovery-certificates'
-  | 'discovery-endpoints'
-  | 'discovery-software'
-  | 'discovery-devices'
-  | 'discovery-cbom-imports'
-  | 'cbom-detail'
-  | 'network'
-  | 'settings'
+  | "tools"
+  | "dashboard"
+  | "inventory"
+  | "visualize"
+  | "violations"
+  | "tracking"
+  | "policies"
+  | "integrations"
+  | "discovery"
+  | "discovery-certificates"
+  | "discovery-endpoints"
+  | "discovery-software"
+  | "discovery-devices"
+  | "discovery-cbom-imports"
+  | "cbom-detail"
+  | "network"
+  | "settings"
   /* Other products */
-  | 'private-ca'
-  | 'device-trust'
-  | 'document-trust';
+  | "private-ca"
+  | "device-trust"
+  | "document-trust";
 
 interface Props {
   activePage: NavPage;
@@ -73,29 +73,35 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [
   {
-    id: 'cbom-analyzer', label: 'CBOM Analyzer', icon: faFlask,
+    id: "tools",
+    label: "Tools",
+    icon: faFlask,
     children: [
-      { id: 'dashboard',  label: 'Dashboard',  icon: faGrid2 },
-      { id: 'inventory',  label: 'Inventory',  icon: faTableCells },
-      { id: 'visualize',  label: 'Visualize',  icon: faDiagramProject },
+      { id: "dashboard", label: "CBOM Analyzer", icon: faGrid2 },
+      { id: "network", label: "Network Scanner", icon: faBullseyeArrow },
     ],
   },
   // { id: 'violations', label: 'Violations', icon: faTriangleExclamation },
-  { id: 'integrations', label: 'Integrations', icon: faPlug },
   {
-    id: 'discovery', label: 'Discovery', icon: faMagnifyingGlass,
+    id: "discovery",
+    label: "Discovery",
+    icon: faMagnifyingGlass,
     children: [
-      { id: 'discovery-certificates',   label: 'Certificates',  icon: faShieldCheckLight },
-      { id: 'discovery-endpoints',       label: 'Endpoints',     icon: faWifi },
-      { id: 'discovery-software',        label: 'Software',      icon: faBox },
-      { id: 'discovery-devices',         label: 'Devices',       icon: faMicrochip },
-      { id: 'discovery-cbom-imports',    label: 'CBOM Imports',  icon: faFileCode },
+      {
+        id: "discovery-certificates",
+        label: "Certificates",
+        icon: faShieldCheckLight,
+      },
+      { id: "discovery-endpoints", label: "Endpoints", icon: faWifi },
+      { id: "discovery-software", label: "Software", icon: faBox },
+      { id: "discovery-devices", label: "Devices", icon: faMicrochip },
+      { id: "discovery-cbom-imports", label: "CBOM Imports", icon: faFileCode },
     ],
   },
-  { id: 'network', label: 'Network Scanner', icon: faBullseyeArrow },
-  { id: 'tracking', label: 'Tracking', icon: faListCheck },
-  { id: 'policies', label: 'Policies', icon: faShieldHalved },
-  { id: 'settings', label: 'Settings', icon: faGear },
+  { id: "integrations", label: "Integrations", icon: faPlug },
+  { id: "tracking", label: "Tracking", icon: faListCheck },
+  { id: "policies", label: "Policies", icon: faShieldHalved },
+  { id: "settings", label: "Settings", icon: faGear },
 ];
 
 interface SidebarSection {
@@ -107,18 +113,50 @@ interface SidebarSection {
 }
 
 const sidebarSections: SidebarSection[] = [
-  { label: 'Private CA',      icon: faShieldCheck,        navPage: 'private-ca',    description: 'Assess private CA certificates for quantum vulnerability, migrate issuing CAs to PQC-ready algorithms, and enforce post-quantum policies across internal PKI.' },
-  { label: 'Trust Lifecycle', icon: faArrowsRotate,       comingSoon: true,         description: 'Track every cryptographic asset from discovery through remediation — automate PQC migration workflows, schedule algorithm upgrades, and maintain a continuous crypto inventory across your organisation.' },
-  { label: 'Software Trust',  icon: faLock,               comingSoon: true,         description: 'Scan software dependencies for weak or non-quantum-safe cryptographic primitives, generate CBOM reports for each release, and enforce PQC-readiness gates in your CI/CD pipeline.' },
-  { label: 'Device Trust',    icon: faTabletScreenButton, navPage: 'device-trust',  description: 'Inventory cryptographic algorithms embedded in IoT firmware, identify harvest-now-decrypt-later risks, and plan quantum-safe certificate rollouts for device fleets.' },
-  { label: 'Document Trust',  icon: faFileSignature,      navPage: 'document-trust',description: 'Evaluate document-signing certificates for quantum vulnerability, migrate to ML-DSA / SLH-DSA signatures, and verify long-term document integrity against future quantum threats.' },
+  {
+    label: "Private CA",
+    icon: faShieldCheck,
+    navPage: "private-ca",
+    description:
+      "Assess private CA certificates for quantum vulnerability, migrate issuing CAs to PQC-ready algorithms, and enforce post-quantum policies across internal PKI.",
+  },
+  {
+    label: "Trust Lifecycle",
+    icon: faArrowsRotate,
+    comingSoon: true,
+    description:
+      "Track every cryptographic asset from discovery through remediation — automate PQC migration workflows, schedule algorithm upgrades, and maintain a continuous crypto inventory across your organisation.",
+  },
+  {
+    label: "Software Trust",
+    icon: faLock,
+    comingSoon: true,
+    description:
+      "Scan software dependencies for weak or non-quantum-safe cryptographic primitives, generate CBOM reports for each release, and enforce PQC-readiness gates in your CI/CD pipeline.",
+  },
+  {
+    label: "Device Trust",
+    icon: faTabletScreenButton,
+    navPage: "device-trust",
+    description:
+      "Inventory cryptographic algorithms embedded in IoT firmware, identify harvest-now-decrypt-later risks, and plan quantum-safe certificate rollouts for device fleets.",
+  },
+  {
+    label: "Document Trust",
+    icon: faFileSignature,
+    navPage: "document-trust",
+    description:
+      "Evaluate document-signing certificates for quantum vulnerability, migrate to ML-DSA / SLH-DSA signatures, and verify long-term document integrity against future quantum threats.",
+  },
 ];
 
 /* ─── Component ─────────────────────────────────────────────── */
 
 export default function AppShell({ activePage, onNavigate, children }: Props) {
   const [qraExpanded, setQraExpanded] = useState(true);
-  const [comingSoonModal, setComingSoonModal] = useState<SidebarSection | null>(null);
+  const [comingSoonModal, setComingSoonModal] = useState<SidebarSection | null>(
+    null,
+  );
   const [expandedParents, setExpandedParents] = useState<Set<NavPage>>(() => {
     const set = new Set<NavPage>();
     for (const item of mainNavItems) {
@@ -153,7 +191,8 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
 
   /** Is this parent's section active (itself or any child)? */
   const isParentActive = (item: NavItem) =>
-    activePage === item.id || (item.children?.some((c) => activePage === c.id) ?? false);
+    activePage === item.id ||
+    (item.children?.some((c) => activePage === c.id) ?? false);
 
   return (
     <div className="dc1-shell">
@@ -175,11 +214,24 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
             >
               <span className="dc1-nav-section-icon">
                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                  <circle cx="9" cy="9" r="7" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="M9 5v4l3 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle
+                    cx="9"
+                    cy="9"
+                    r="7"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <path
+                    d="M9 5v4l3 1.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </span>
-              <span className="dc1-nav-section-label">Quantum Readiness Advisor</span>
+              <span className="dc1-nav-section-label">
+                Quantum Readiness Advisor
+              </span>
               <FontAwesomeIcon
                 icon={qraExpanded ? faChevronDown : faChevronRight}
                 className="dc1-nav-chevron"
@@ -196,12 +248,15 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
                   return (
                     <li key={item.id}>
                       <button
-                        className={`dc1-nav-item ${parentActive ? 'dc1-nav-active' : ''}`}
+                        className={`dc1-nav-item ${parentActive ? "dc1-nav-active" : ""}`}
                         onClick={() => {
                           if (hasChildren) {
                             toggleParent(item.id);
                             // Navigate to first child if not already on a child
-                            if (!activePage.startsWith(item.id + '-') && item.children) {
+                            if (
+                              !activePage.startsWith(item.id + "-") &&
+                              item.children
+                            ) {
                               onNavigate(item.children[0].id);
                             }
                           } else {
@@ -209,12 +264,19 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
                           }
                         }}
                       >
-                        <FontAwesomeIcon icon={item.icon} className="dc1-nav-icon" />
+                        <FontAwesomeIcon
+                          icon={item.icon}
+                          className="dc1-nav-icon"
+                        />
                         <span>{item.label}</span>
                         {hasChildren && (
                           <FontAwesomeIcon
                             icon={expanded ? faChevronDown : faChevronRight}
-                            style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5 }}
+                            style={{
+                              marginLeft: "auto",
+                              fontSize: 10,
+                              opacity: 0.5,
+                            }}
                           />
                         )}
                       </button>
@@ -225,10 +287,13 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
                           {item.children!.map((child) => (
                             <li key={child.id}>
                               <button
-                                className={`dc1-subnav-item ${activePage === child.id ? 'dc1-subnav-active' : ''}`}
+                                className={`dc1-subnav-item ${activePage === child.id ? "dc1-subnav-active" : ""}`}
                                 onClick={() => onNavigate(child.id)}
                               >
-                                <FontAwesomeIcon icon={child.icon} className="dc1-subnav-icon" />
+                                <FontAwesomeIcon
+                                  icon={child.icon}
+                                  className="dc1-subnav-icon"
+                                />
                                 <span>{child.label}</span>
                               </button>
                             </li>
@@ -244,11 +309,16 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
 
           {/* Other sidebar sections */}
           {sidebarSections.map((section) => {
-            const isActive = section.navPage ? activePage === section.navPage : false;
+            const isActive = section.navPage
+              ? activePage === section.navPage
+              : false;
             return (
-              <div key={section.label} className="dc1-nav-section dc1-nav-section-other">
+              <div
+                key={section.label}
+                className="dc1-nav-section dc1-nav-section-other"
+              >
                 <button
-                  className={`dc1-nav-section-header dc1-nav-section-header-other ${isActive ? 'dc1-nav-section-header-active' : ''}`}
+                  className={`dc1-nav-section-header dc1-nav-section-header-other ${isActive ? "dc1-nav-section-header-active" : ""}`}
                   onClick={() => {
                     if (section.comingSoon) {
                       setComingSoonModal(section);
@@ -260,7 +330,9 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
                   <span className="dc1-nav-section-icon-other">
                     <FontAwesomeIcon icon={section.icon} />
                   </span>
-                  <span className="dc1-nav-section-label-other">{section.label}</span>
+                  <span className="dc1-nav-section-label-other">
+                    {section.label}
+                  </span>
                   {section.comingSoon && (
                     <span className="dc1-coming-soon-pill">Soon</span>
                   )}
@@ -280,16 +352,22 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
         </header>
 
         {/* Page content */}
-        <div className="dc1-content">
-          {children}
-        </div>
+        <div className="dc1-content">{children}</div>
       </div>
 
       {/* ── Coming Soon modal ──────────────────────── */}
       {comingSoonModal && (
-        <div className="dc1-cs-overlay" onClick={() => setComingSoonModal(null)}>
+        <div
+          className="dc1-cs-overlay"
+          onClick={() => setComingSoonModal(null)}
+        >
           <div className="dc1-cs-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="dc1-cs-close" onClick={() => setComingSoonModal(null)}>×</button>
+            <button
+              className="dc1-cs-close"
+              onClick={() => setComingSoonModal(null)}
+            >
+              ×
+            </button>
             <div className="dc1-cs-icon">
               <FontAwesomeIcon icon={comingSoonModal.icon} />
             </div>
@@ -298,9 +376,15 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
             <p className="dc1-cs-desc">{comingSoonModal.description}</p>
             <div className="dc1-cs-divider" />
             <p className="dc1-cs-note">
-              This module is under active development as part of the Quantum Readiness Advisor and will be available in a future release.
+              This module is under active development as part of the Quantum
+              Readiness Advisor and will be available in a future release.
             </p>
-            <button className="dc1-cs-btn" onClick={() => setComingSoonModal(null)}>Got it</button>
+            <button
+              className="dc1-cs-btn"
+              onClick={() => setComingSoonModal(null)}
+            >
+              Got it
+            </button>
           </div>
         </div>
       )}

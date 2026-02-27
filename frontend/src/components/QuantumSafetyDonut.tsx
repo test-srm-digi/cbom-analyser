@@ -67,10 +67,10 @@ export default function QuantumSafetyDonut({ assets }: QuantumSafetyDonutProps) 
         </div>
       </div>
       <div className={styles.legend}>
-        {Object.entries(COLORS).map(([label, color]) => (
-          <div key={label} className={styles.legendItem}>
+        {data.map(({ name, value, color }) => (
+          <div key={name} className={styles.legendItem}>
             <span className={styles.legendSquare} style={{ backgroundColor: color }} />
-            {label}
+            {name}: <strong>{value}</strong> ({total > 0 ? ((value / total) * 100).toFixed(0) : 0}%)
           </div>
         ))}
       </div>

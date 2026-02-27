@@ -9,3 +9,5 @@ export { default as CBOMUploader } from './CBOMUploader';
 export { default as NetworkScanner } from './NetworkScanner';
 export { default as CBOMHeader } from './CBOMHeader';
 export { default as ThirdPartyLibrariesView } from './ThirdPartyLibrariesView';
+export { default as CbomStatsRow } from './CbomStatsRow';
+export { default as AssetBreakdown } from './AssetBreakdown';

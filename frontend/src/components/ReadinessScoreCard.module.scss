@@ -4,7 +4,7 @@
   background: $dc1-card;
   border: 1px solid $dc1-border;
   border-radius: $dc1-radius;
-  padding: 16px;
+  padding: 20px;
   animation: fadeIn 0.4s ease forwards;
 }
 
@@ -12,20 +12,21 @@
   font-size: 14px;
   font-weight: 500;
   color: $dc1-text-secondary;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .body {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
 }
 
 // ── Circular gauge ───────────────────────────────────────
 .gauge {
   position: relative;
-  width: 112px;
-  height: 112px;
+  width: 170px;
+  height: 170px;
   flex-shrink: 0;
 }
 
@@ -45,52 +46,69 @@
 }
 
 .gaugeScore {
-  font-size: 24px;
+  font-size: 32px;
   font-weight: 700;
 }
 
 .gaugeLabel {
-  font-size: 10px;
+  font-size: 12px;
+  color: $dc1-text-secondary;
+  margin-top: 2px;
+}
+
+.description {
+  font-size: 13px;
+  color: $dc1-text-secondary;
+  text-align: center;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 340px;
+}
+
+// ── Stacked bar ──────────────────────────────────────────
+.barSection {
+  width: 100%;
+}
+
+.barTrack {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: $neutral-200;
+}
+
+.barSegment {
+  height: 100%;
+  transition: width 0.6s ease;
+}
+
+.barLegend {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.barLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
   color: $dc1-text-secondary;
 }
 
-// ── Stat rows ────────────────────────────────────────────
-.stats {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 14px;
-}
-
-.statRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dot {
-  width: 12px;
-  height: 12px;
+.barDot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.dotGreen  { background: $dc1-success; }
-.dotRed    { background: $dc1-danger; }
-.dotCyan   { background: $chart-cyan; }
-.dotGray   { background: $neutral-300; }
-
-.statLabel {
-  color: $dc1-text-secondary;
-}
-
-.statValue {
-  color: $dc1-text;
-  font-weight: 600;
-}
-
-.total {
+.hint {
   font-size: 12px;
   color: $dc1-text-secondary;
-  margin-top: 4px;
+  margin: 0;
+  font-weight: 500;
 }

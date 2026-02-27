@@ -1,52 +1,46 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import AppShell, { type NavPage } from './layouts/AppShell';
-import DashboardPage from './pages/DashboardPage';
-import InventoryPage from './pages/InventoryPage';
-import VisualizePage from './pages/VisualizePage';
-import ViolationsPage from './pages/ViolationsPage';
-import NetworkPage from './pages/NetworkPage';
-import IntegrationsPage from './pages/integrations';
-import DiscoveryPage from './pages/discovery';
-import CbomDetailPage from './pages/discovery/CbomDetailPage';
-import type { DiscoveryTab } from './pages/discovery/types';
-import PlaceholderPage from './pages/PlaceholderPage';
-import {
-  ShieldHalf,
-  Tablet,
-  FileSignature,
-} from 'lucide-react';
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import AppShell, { type NavPage } from "./layouts/AppShell";
+import DashboardPage from "./pages/DashboardPage";
+import ViolationsPage from "./pages/ViolationsPage";
+import NetworkPage from "./pages/NetworkPage";
+import IntegrationsPage from "./pages/integrations";
+import DiscoveryPage from "./pages/discovery";
+import type { DiscoveryTab } from "./pages/discovery/types";
+import PlaceholderPage from "./pages/PlaceholderPage";
+import { ShieldHalf, Tablet, FileSignature } from "lucide-react";
 import {
   CBOMDocument,
   QuantumReadinessScore,
   ComplianceSummary,
   UploadResponse,
-} from './types';
-import { SAMPLE_CBOM } from './sampleData';
+} from "./types";
+import { SAMPLE_CBOM } from "./sampleData";
+import { parseCbomJson } from "./utils/cbomParser";
 
 /* ── NavPage ↔ URL path mapping ──────────────────────────── */
 
 const PAGE_TO_PATH: Record<NavPage, string> = {
-  'cbom-analyzer':           '/cbom-analyzer',
-  dashboard:                 '/dashboard',
-  inventory:                 '/inventory',
-  visualize:                 '/visualize',
-  violations:                '/violations',
-  tracking:                  '/tracking',
-  policies:                  '/policies',
-  integrations:              '/integrations',
-  discovery:                 '/discovery',
-  'discovery-certificates':  '/discovery/certificates',
-  'discovery-endpoints':     '/discovery/endpoints',
-  'discovery-software':      '/discovery/software',
-  'discovery-devices':       '/discovery/devices',
-  'discovery-cbom-imports':  '/discovery/cbom-imports',
-  'cbom-detail':             '/discovery/cbom-imports/detail',
-  network:                   '/network',
-  settings:                  '/settings',
-  'private-ca':              '/private-ca',
-  'device-trust':            '/device-trust',
-  'document-trust':          '/document-trust',
+  tools: "/tools",
+  dashboard: "/dashboard",
+  inventory: "/inventory",
+  visualize: "/visualize",
+  violations: "/violations",
+  tracking: "/tracking",
+  policies: "/policies",
+  integrations: "/integrations",
+  discovery: "/discovery",
+  "discovery-certificates": "/discovery/certificates",
+  "discovery-endpoints": "/discovery/endpoints",
+  "discovery-software": "/discovery/software",
+  "discovery-devices": "/discovery/devices",
+  "discovery-cbom-imports": "/discovery/cbom-imports",
+  "cbom-detail": "/discovery/cbom-imports/detail",
+  network: "/network",
+  settings: "/settings",
+  "private-ca": "/private-ca",
+  "device-trust": "/device-trust",
+  "document-trust": "/document-trust",
 };
 
 const PATH_TO_PAGE: Record<string, NavPage> = Object.fromEntries(
@@ -57,20 +51,24 @@ function pathToPage(pathname: string): NavPage {
   // exact match first
   if (PATH_TO_PAGE[pathname]) return PATH_TO_PAGE[pathname];
   // cbom-detail with id suffix
-  if (pathname.startsWith('/discovery/cbom-imports/detail')) return 'cbom-detail';
+  if (pathname.startsWith("/discovery/cbom-imports/detail"))
+    return "cbom-detail";
   // fallback
-  return 'dashboard';
+  return "dashboard";
 }
 
 export default function App() {
   const location = useLocation();
   const nav = useNavigate();
-  const activePage = useMemo(() => pathToPage(location.pathname), [location.pathname]);
+  const activePage = useMemo(
+    () => pathToPage(location.pathname),
+    [location.pathname],
+  );
 
   // Redirect bare root to /dashboard
   useEffect(() => {
-    if (location.pathname === '/') {
-      nav('/dashboard', { replace: true });
+    if (location.pathname === "/") {
+      nav("/dashboard", { replace: true });
     }
   }, [location.pathname, nav]);
 
@@ -80,7 +78,8 @@ export default function App() {
   );
 
   const [cbom, setCbom] = useState<CBOMDocument | null>(null);
-  const [readinessScore, setReadinessScore] = useState<QuantumReadinessScore | null>(null);
+  const [readinessScore, setReadinessScore] =
+    useState<QuantumReadinessScore | null>(null);
   const [compliance, setCompliance] = useState<ComplianceSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCbomId, setSelectedCbomId] = useState<string | null>(null);
@@ -92,8 +91,11 @@ export default function App() {
     setIsLoading(true);
     try {
       const formData = new FormData();
-      formData.append('cbom', file);
-      const resp = await fetch('/api/upload', { method: 'POST', body: formData });
+      formData.append("cbom", file);
+      const resp = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
       const data: UploadResponse = await resp.json();
       if (data.success && data.cbom) {
         setCbom(data.cbom);
@@ -124,84 +126,17 @@ export default function App() {
     if (file) handleUpload(file);
   }
 
-  /* ── Local parse ─────────────────────────────────────── */
+  /* ── Local parse (delegates to shared parser) ────────── */
 
   function handleLocalParse(jsonText: string) {
-    let data = JSON.parse(jsonText);
-
-    if (data.success !== undefined && data.cbom) {
-      const wrappedScore = data.readinessScore;
-      const wrappedCompliance = data.compliance;
-      data = data.cbom;
-      if (wrappedScore && wrappedCompliance) {
-        const doc = buildDoc(data);
-        setCbom(doc);
-        setReadinessScore(wrappedScore);
-        setCompliance(wrappedCompliance);
-        return;
-      }
-    }
-
-    const doc = buildDoc(data);
-
-    if (doc.cryptoAssets.length === 0 && doc.components.length > 0) {
-      for (const comp of doc.components as any[]) {
-        const cp = comp.cryptoProperties || comp['crypto-properties'];
-        if (cp) {
-          doc.cryptoAssets.push({
-            id: comp['bom-ref'] || crypto.randomUUID(),
-            name: comp.name,
-            type: comp.type || 'crypto-asset',
-            cryptoProperties: {
-              assetType: cp.assetType || cp['asset-type'] || 'algorithm',
-              algorithmProperties: cp.algorithmProperties,
-            },
-            location: comp.evidence?.occurrences?.[0]
-              ? { fileName: comp.evidence.occurrences[0].location || '', lineNumber: comp.evidence.occurrences[0].line }
-              : undefined,
-            quantumSafety: 'unknown' as any,
-          });
-        }
-      }
-    }
-
-    const safe = doc.cryptoAssets.filter((a) => a.quantumSafety === 'quantum-safe').length;
-    const notSafe = doc.cryptoAssets.filter((a) => a.quantumSafety === 'not-quantum-safe').length;
-    const unknown = doc.cryptoAssets.filter((a) => a.quantumSafety === 'unknown').length;
-    const total = doc.cryptoAssets.length;
-
+    const {
+      doc,
+      readinessScore: score,
+      compliance: comp,
+    } = parseCbomJson(jsonText, "Basic Local Compliance Service");
     setCbom(doc);
-    setReadinessScore({
-      score: total > 0 ? Math.round(((safe + unknown * 0.5) / total) * 100) : 100,
-      totalAssets: total,
-      quantumSafe: safe,
-      notQuantumSafe: notSafe,
-      conditional: 0,
-      unknown,
-    });
-    setCompliance({
-      isCompliant: notSafe === 0,
-      policy: 'NIST Post-Quantum Cryptography',
-      source: 'Basic Local Compliance Service',
-      totalAssets: total,
-      compliantAssets: safe,
-      nonCompliantAssets: notSafe,
-      unknownAssets: unknown,
-    });
-  }
-
-  function buildDoc(data: any): CBOMDocument {
-    return {
-      bomFormat: data.bomFormat || 'CycloneDX',
-      specVersion: data.specVersion || '1.7',
-      serialNumber: data.serialNumber,
-      version: data.version || 1,
-      metadata: data.metadata || { timestamp: new Date().toISOString() },
-      components: data.components || [],
-      cryptoAssets: data.cryptoAssets || [],
-      dependencies: data.dependencies,
-      thirdPartyLibraries: data.thirdPartyLibraries,
-    };
+    setReadinessScore(score);
+    setCompliance(comp);
   }
 
   /* ── Load sample data on demand ──────────────────────── */
@@ -214,11 +149,11 @@ export default function App() {
 
   function renderPage() {
     switch (activePage) {
-      case 'cbom-analyzer':
+      case "tools":
         // bare parent → redirect to first child
-        nav('/dashboard', { replace: true });
+        nav("/dashboard", { replace: true });
         return null;
-      case 'dashboard':
+      case "dashboard":
         return (
           <DashboardPage
             cbom={cbom}
@@ -229,70 +164,86 @@ export default function App() {
             onLoadSample={loadSampleData}
           />
         );
-      case 'inventory':
-        return <InventoryPage cbom={cbom} readinessScore={readinessScore} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
-      case 'visualize':
-        return <VisualizePage cbom={cbom} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
-            case 'network':
+      case "network":
         return <NetworkPage />;
       // case 'violations':
       //   return <ViolationsPage cbom={cbom} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
-      case 'integrations':
+      case "integrations":
         return <IntegrationsPage />;
-      case 'discovery':
+      case "discovery":
         // bare discovery → redirect to first child
-        nav('/discovery/certificates', { replace: true });
+        nav("/discovery/certificates", { replace: true });
         return null;
-      case 'discovery-certificates':
-      case 'discovery-endpoints':
-      case 'discovery-software':
-      case 'discovery-devices':
-      case 'discovery-cbom-imports':
+      case "discovery-certificates":
+      case "discovery-endpoints":
+      case "discovery-software":
+      case "discovery-devices":
+      case "discovery-cbom-imports":
         return (
           <DiscoveryPage
-            tab={activePage.replace('discovery-', '') as DiscoveryTab}
-            onViewCbom={(id) => { setSelectedCbomId(id); setActivePage('cbom-detail'); }}
-            onGoToIntegrations={() => setActivePage('integrations')}
+            tab={activePage.replace("discovery-", "") as DiscoveryTab}
+            onViewCbom={(id) => {
+              setSelectedCbomId(id);
+              setActivePage("cbom-detail");
+            }}
+            onGoToIntegrations={() => setActivePage("integrations")}
           />
         );
-      case 'cbom-detail':
+      case "cbom-detail":
         return selectedCbomId ? (
-          <CbomDetailPage
+          <DashboardPage
             cbomImportId={selectedCbomId}
-            onBack={() => { setSelectedCbomId(null); setActivePage('discovery-cbom-imports'); }}
+            onBack={() => {
+              setSelectedCbomId(null);
+              setActivePage("discovery-cbom-imports");
+            }}
           />
         ) : null;
-  
 
       /* ── Other product placeholders ──────────────── */
-      case 'private-ca':
+      case "private-ca":
         return (
           <PlaceholderPage
             section="Quantum Readiness Advisor"
             title="Private CA"
             icon={ShieldHalf}
             description="Assess private CA certificates for quantum vulnerability, migrate issuing CAs to PQC-ready algorithms, and enforce post-quantum policies across internal PKI."
-            features={['CA algorithm audit', 'PQC migration planner', 'Quantum-safe policy enforcement', 'CBOM generation for CA chains']}
+            features={[
+              "CA algorithm audit",
+              "PQC migration planner",
+              "Quantum-safe policy enforcement",
+              "CBOM generation for CA chains",
+            ]}
           />
         );
-      case 'device-trust':
+      case "device-trust":
         return (
           <PlaceholderPage
             section="Quantum Readiness Advisor"
             title="Device Trust"
             icon={Tablet}
             description="Inventory cryptographic algorithms embedded in IoT firmware, identify harvest-now-decrypt-later risks, and plan quantum-safe certificate rollouts for device fleets."
-            features={['Firmware crypto scanning', 'HNDL risk assessment', 'Fleet PQC migration plan', 'Device CBOM inventory']}
+            features={[
+              "Firmware crypto scanning",
+              "HNDL risk assessment",
+              "Fleet PQC migration plan",
+              "Device CBOM inventory",
+            ]}
           />
         );
-      case 'document-trust':
+      case "document-trust":
         return (
           <PlaceholderPage
             section="Quantum Readiness Advisor"
             title="Document Trust"
             icon={FileSignature}
             description="Evaluate document-signing certificates for quantum vulnerability, migrate to ML-DSA / SLH-DSA signatures, and verify long-term document integrity against future quantum threats."
-            features={['Signature algorithm audit', 'ML-DSA migration path', 'Long-term integrity check', 'Quantum-safe timestamping']}
+            features={[
+              "Signature algorithm audit",
+              "ML-DSA migration path",
+              "Long-term integrity check",
+              "Quantum-safe timestamping",
+            ]}
           />
         );
 
@@ -312,7 +263,7 @@ export default function App() {
         ref={fileInputRef}
         type="file"
         accept=".json,.cdx,.xml"
-        style={{ display: 'none' }}
+        style={{ display: "none" }}
         onChange={onFileSelected}
       />
       <AppShell activePage={activePage} onNavigate={setActivePage}>

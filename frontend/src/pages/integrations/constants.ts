@@ -190,7 +190,6 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
       { key: 'failOnError', label: 'Fail workflow on scan errors', type: 'checkbox', required: false, defaultValue: 'true', helpText: 'If the scanner encounters errors, fail the workflow run' },
     ],
     hideScope: true,
-    hideSchedule: true,
   },
 ];
 

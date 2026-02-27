@@ -635,7 +635,7 @@ curl -X POST http://localhost:3001/api/scan-code \
 |------|------|
 | Zero setup — works out of the box | Pattern-based, may miss uncommon crypto APIs |
 | Fast — scans 500 files in seconds | Doesn't analyze dependencies/transitive crypto |
-| Covers Java, Python, Node.js/TypeScript | No bytecode analysis |
+| Covers 7 language ecosystems (Java, Python, JS/TS, C/C++, C#/.NET, Go, PHP) | No bytecode analysis |
 
 ### Approach 2: IBM sonar-cryptography (Most Accurate for Java)
 
@@ -748,7 +748,7 @@ curl -X POST http://localhost:3001/api/scan-network/merge/urn:uuid:YOUR-CBOM-ID 
 
 | Approach | Setup | Speed | Accuracy | Languages | Deps | PQC Verdicts | Runtime Crypto |
 |----------|-------|-------|----------|-----------|------|-------------|----------------|
-| **Regex Scanner** | None | Fast | Medium | Java, Python, JS/TS | No | No | No |
+| **Regex Scanner** | None | Fast | Medium | Java, Python, JS/TS, C/C++, C#/.NET, Go, PHP | No | No | No |
 | **sonar-cryptography** | High | Slow | Very High | Java, Python, Go | No | No | No |
 | **Network TLS Scanner** | None | Fast | High (TLS) | N/A | No | No | Yes |
 | **Full Pipeline** | Low–High | Medium | Highest | All | Yes | Yes | Yes |
@@ -1708,6 +1708,42 @@ function IntegrationsPage() {
 
 The regex scanner includes two advanced analysis capabilities that go beyond simple pattern matching.
 
+### Supported Languages & Libraries
+
+The built-in regex scanner ships with **~700 patterns** covering 7 language ecosystems:
+
+| Language | File Extensions | Libraries / APIs Covered |
+|----------|----------------|-------------------------|
+| **Java** | `.java` | JCE (`MessageDigest`, `Cipher`, `Signature`, `KeyPairGenerator`, `Mac`, `KeyAgreement`, `SecretKeyFactory`), `SSLContext`, `X509Certificate`, `SecureRandom`, BouncyCastle provider |
+| **Python** | `.py` | `hashlib`, PyCrypto/PyCryptodome, `cryptography.hazmat` (ciphers, hashes, KDF, RSA, EC, Ed25519/Ed448, X25519/X448, DH, X.509, Fernet), PyNaCl, `ssl`, `secrets`, `bcrypt`, `argon2`, `scrypt` |
+| **JavaScript / TypeScript** | `.js`, `.ts`, `.jsx`, `.tsx` | Node.js `crypto` (createHash, createCipher, createSign, ECDH, HKDF, scrypt, pbkdf2, generateKeyPair), WebCrypto (`crypto.subtle`), TLS (`createSecureContext`, `https`), npm packages (`bcrypt`, `jsonwebtoken`, `jose`, `tweetnacl`, `libsodium-wrappers`, `argon2`) |
+| **C / C++** | `.c`, `.cpp`, `.cxx`, `.cc`, `.h`, `.hpp`, `.hxx` | OpenSSL EVP + legacy APIs, libsodium, Botan (including PQC: Dilithium, Kyber, SPHINCS+), Crypto++, Windows CNG/BCrypt, wolfSSL, mbedTLS, GnuTLS |
+| **C# / .NET** | `.cs` | `System.Security.Cryptography` (Create, Managed, CNG, CSP variants), HMAC, `Rfc2898DeriveBytes`, HKDF, `X509Certificate2`, `SslStream`, DPAPI, ASP.NET Core Data Protection, BouncyCastle .NET |
+| **Go** | `.go` | `crypto/*` stdlib (`sha256`, `aes`, `rsa`, `ecdsa`, `ecdh`, `ed25519`, `hmac`, `tls`, `x509`, `rand`, `elliptic`, `cipher`), `golang.org/x/crypto` (`chacha20poly1305`, `argon2`, `bcrypt`, `scrypt`, `nacl`, `hkdf`, `pbkdf2`, `sha3`, `blake2b/s`, `ssh`, `curve25519`) |
+| **PHP** | `.php` | `openssl_*` (encrypt, sign, pkey, x509, pkcs), `hash`/`hash_hmac`/`hash_pbkdf2`, `password_hash` (bcrypt, argon2), `sodium_crypto_*` (secretbox, box, sign, aead, pwhash, kdf, kx), `mcrypt` (deprecated), phpseclib, Defuse PHP-Encryption |
+
+### Scanner Module Architecture
+
+The scanner is organized into a modular structure under `backend/src/services/scanner/`:
+
+```
+scanner/
+├── scannerTypes.ts          # CryptoPattern interface, file extension constants, skip patterns
+├── scannerUtils.ts          # globToRegex, shouldExcludeFile, normaliseAlgorithmName, resolveVariableToAlgorithm
+├── contextScanners.ts       # scanWebCryptoContext, scanX509Context, scanNearbyContext
+└── patterns/
+    ├── index.ts             # Re-exports all patterns + combined allCryptoPatterns array
+    ├── javaPatterns.ts      # ~43 Java/JCE patterns
+    ├── pythonPatterns.ts    # ~60 Python patterns
+    ├── jsPatterns.ts        # ~40 JavaScript/TypeScript patterns
+    ├── cppPatterns.ts       # ~170 C/C++ patterns
+    ├── csharpPatterns.ts    # ~100 C#/.NET patterns
+    ├── goPatterns.ts        # ~130 Go patterns
+    └── phpPatterns.ts       # ~130 PHP patterns
+```
+
+Each pattern file exports a `CryptoPattern[]` array. The `allCryptoPatterns` combined array is used by `scannerAggregator.ts` to drive the scan loop.
+
 ### Variable-Argument Resolution
 
 When the scanner encounters crypto API calls that use a **variable** instead of a string literal (e.g., `KeyPairGenerator.getInstance(algorithm)` instead of `getInstance("RSA")`), it attempts to **resolve the variable to an actual algorithm name**.
@@ -1723,7 +1759,7 @@ When the scanner encounters crypto API calls that use a **variable** instead of 
 4. If resolved → the asset is named with the **actual algorithm** (e.g., `RSA`) and enriched with PQC data
 5. If unresolved → the asset keeps a generic name with a description like *"Algorithm determined at runtime via variable `algo`"*
 
-**Supported variable patterns:**
+**Supported variable patterns (Java):**
 - `KeyPairGenerator.getInstance(variable)`
 - `Cipher.getInstance(variable)`
 - `MessageDigest.getInstance(variable)`
@@ -1731,6 +1767,10 @@ When the scanner encounters crypto API calls that use a **variable** instead of 
 - `SecretKeyFactory.getInstance(variable)`
 - `KeyAgreement.getInstance(variable)`
 - `Mac.getInstance(variable)`
+
+**Additional variable resolution:**
+- **Go:** Traces function parameters and `var`/`:=` assignments to resolve algorithm names passed to `crypto/*` calls
+- **Algorithm normalisation:** Handles OpenSSL cipher strings (e.g., `aes-256-gcm` → `AES`), Go import paths (e.g., `crypto/sha256` → `SHA-256`), and framework-specific naming conventions
 
 ### Context Scanning
 

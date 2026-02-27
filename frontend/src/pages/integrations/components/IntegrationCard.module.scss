@@ -129,6 +129,50 @@
 .fieldLabel { color: $dc1-text-muted; }
 .fieldValue { color: $dc1-text; font-weight: 500; }
 
+/* ── Repo row ─────────────────────────────────────────────── */
+.repoLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: $dc1-blue;
+  font-weight: 500;
+  font-size: 13px;
+  text-decoration: none;
+  min-width: 0;
+  overflow: hidden;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.repoText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repoExtIcon {
+  flex-shrink: 0;
+}
+
+.branchList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.branchTag {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: $neutral-200;
+  color: $neutral-700;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .syncBadge {
   margin-left: 6px;
   padding: 1px 7px;

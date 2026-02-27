@@ -1,5 +1,5 @@
 import { QuantumReadinessScore } from '../types';
-import { DC1_SUCCESS, DC1_WARNING, DC1_DANGER, NEUTRAL_200 } from '../styles/dsTokens';
+import { DC1_SUCCESS, DC1_WARNING, DC1_DANGER, DIGICERT_CYAN, CHART_GRAY, NEUTRAL_200 } from '../styles/dsTokens';
 import styles from './ReadinessScoreCard.module.scss';
 
 interface ReadinessScoreCardProps {
@@ -18,13 +18,29 @@ function getScoreLabel(score: number): string {
   return 'At Risk';
 }
 
+function getScoreDescription(score: number): string {
+  if (score >= 80) return 'Your cryptographic inventory is well-prepared for post-quantum migration.';
+  if (score >= 50) return 'Some cryptographic assets need attention to improve quantum readiness.';
+  return 'Significant portion of cryptographic assets are not quantum-safe and need migration.';
+}
+
 export default function ReadinessScoreCard({ score }: ReadinessScoreCardProps) {
   if (!score) return null;
 
+  const { quantumSafe, notQuantumSafe, conditional, unknown, totalAssets } = score;
   const color = getScoreColor(score.score);
   const label = getScoreLabel(score.score);
   const circumference = 2 * Math.PI * 45;
   const offset = circumference - (score.score / 100) * circumference;
+
+  const segments = [
+    { value: quantumSafe, color: DC1_SUCCESS, label: 'Safe' },
+    { value: conditional, color: DIGICERT_CYAN, label: 'Conditional' },
+    { value: unknown, color: CHART_GRAY, label: 'Unknown' },
+    { value: notQuantumSafe, color: DC1_DANGER, label: 'Not Safe' },
+  ];
+
+  let cumPercent = 0;
 
   return (
     <div className={styles.card}>
@@ -50,31 +66,38 @@ export default function ReadinessScoreCard({ score }: ReadinessScoreCardProps) {
           </div>
         </div>
 
-        <div className={styles.stats}>
-          <div className={styles.statRow}>
-            <span className={`${styles.dot} ${styles.dotGreen}`} />
-            <span className={styles.statLabel}>Quantum Safe:</span>
-            <span className={styles.statValue}>{score.quantumSafe}</span>
+        <p className={styles.description}>{getScoreDescription(score.score)}</p>
+
+        {/* Stacked horizontal bar */}
+        <div className={styles.barSection}>
+          <div className={styles.barTrack}>
+            {segments.map((seg) => {
+              const pct = totalAssets > 0 ? (seg.value / totalAssets) * 100 : 0;
+              const el = pct > 0 ? (
+                <div
+                  key={seg.label}
+                  className={styles.barSegment}
+                  style={{ width: `${pct}%`, backgroundColor: seg.color }}
+                  title={`${seg.label}: ${seg.value}`}
+                />
+              ) : null;
+              cumPercent += pct;
+              return el;
+            })}
           </div>
-          <div className={styles.statRow}>
-            <span className={`${styles.dot} ${styles.dotRed}`} />
-            <span className={styles.statLabel}>Not Safe:</span>
-            <span className={styles.statValue}>{score.notQuantumSafe}</span>
-          </div>
-          <div className={styles.statRow}>
-            <span className={`${styles.dot} ${styles.dotCyan}`} />
-            <span className={styles.statLabel}>Conditional:</span>
-            <span className={styles.statValue}>{score.conditional}</span>
-          </div>
-          <div className={styles.statRow}>
-            <span className={`${styles.dot} ${styles.dotGray}`} />
-            <span className={styles.statLabel}>Unknown:</span>
-            <span className={styles.statValue}>{score.unknown}</span>
-          </div>
-          <div className={styles.total}>
-            Total: {score.totalAssets} assets
+          <div className={styles.barLegend}>
+            {segments.filter(s => s.value > 0).map((seg) => (
+              <span key={seg.label} className={styles.barLegendItem}>
+                <span className={styles.barDot} style={{ backgroundColor: seg.color }} />
+                {seg.label}
+              </span>
+            ))}
           </div>
         </div>
+
+        <p className={styles.hint}>
+          {quantumSafe} of {totalAssets} assets are quantum-safe
+        </p>
       </div>
     </div>
   );
