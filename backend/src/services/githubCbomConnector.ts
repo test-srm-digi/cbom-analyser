@@ -14,6 +14,7 @@
  */
 import { v4 as uuidv4 } from 'uuid';
 import type { ConnectorConfig, ConnectorResult } from './connectors';
+import { CbomImport } from '../models';
 
 /* ── GitHub API types (subset) ──────────────────────────────── */
 
@@ -68,58 +69,106 @@ async function githubFetch<T>(url: string, token: string): Promise<T> {
 }
 
 async function downloadArtifactZip(url: string, token: string): Promise<Buffer> {
-  const res = await fetch(url, {
+  // Step 1: Request the artifact download — GitHub returns a 302 redirect
+  // to a temporary Azure Blob URL. We must NOT send the GitHub auth header
+  // to the redirect target, so we handle the redirect manually.
+  const redirectRes = await fetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28',
     },
+    redirect: 'manual',
   });
 
-  if (!res.ok) {
-    throw new Error(`Artifact download failed: ${res.status} ${res.statusText}`);
+  // Follow the redirect without the Authorization header
+  if (redirectRes.status === 302 || redirectRes.status === 301) {
+    const location = redirectRes.headers.get('location');
+    if (!location) {
+      throw new Error('Artifact download redirect had no Location header');
+    }
+    const dataRes = await fetch(location);
+    if (!dataRes.ok) {
+      throw new Error(`Artifact download failed after redirect: ${dataRes.status} ${dataRes.statusText}`);
+    }
+    const arrayBuffer = await dataRes.arrayBuffer();
+    return Buffer.from(arrayBuffer);
   }
 
-  const arrayBuffer = await res.arrayBuffer();
+  // If no redirect (shouldn't happen), read directly
+  if (!redirectRes.ok) {
+    const body = await redirectRes.text().catch(() => '');
+    throw new Error(`Artifact download failed: ${redirectRes.status} ${redirectRes.statusText} – ${body.slice(0, 200)}`);
+  }
+
+  const arrayBuffer = await redirectRes.arrayBuffer();
   return Buffer.from(arrayBuffer);
 }
 
 /**
  * Extract a JSON file from a ZIP buffer.
  * GitHub Actions artifacts are always served as ZIP archives.
- * Uses a lightweight approach: find the local-file-header in the ZIP
- * and decompress the first JSON entry.
+ *
+ * Uses the Central Directory (at end of ZIP) for reliable size info,
+ * since GitHub's artifacts use data descriptors (flag bit 3) which
+ * set local-header sizes to 0.
  */
 async function extractJsonFromZip(zipBuffer: Buffer): Promise<string | null> {
-  // Use Node's built-in zlib for deflated entries
   const { inflateRawSync } = await import('zlib');
 
-  let offset = 0;
-  while (offset < zipBuffer.length - 4) {
-    // Local file header signature = 0x04034b50
-    if (zipBuffer.readUInt32LE(offset) !== 0x04034b50) break;
-
-    const compressionMethod = zipBuffer.readUInt16LE(offset + 8);
-    const compressedSize = zipBuffer.readUInt32LE(offset + 18);
-    const uncompressedSize = zipBuffer.readUInt32LE(offset + 22);
-    const fileNameLen = zipBuffer.readUInt16LE(offset + 26);
-    const extraLen = zipBuffer.readUInt16LE(offset + 28);
-    const fileName = zipBuffer.toString('utf-8', offset + 30, offset + 30 + fileNameLen);
-    const dataStart = offset + 30 + fileNameLen + extraLen;
-
-    if (fileName.endsWith('.json') || fileName.endsWith('.xml')) {
-      const rawData = zipBuffer.subarray(dataStart, dataStart + compressedSize);
-      if (compressionMethod === 0) {
-        // Stored (no compression)
-        return rawData.toString('utf-8');
-      } else if (compressionMethod === 8) {
-        // Deflated
-        const inflated = inflateRawSync(rawData);
-        return inflated.toString('utf-8');
-      }
+  // ── Locate End-of-Central-Directory record ──
+  // Signature: 0x06054b50, appears in the last 65557 bytes
+  let eocdOffset = -1;
+  const searchStart = Math.max(0, zipBuffer.length - 65557);
+  for (let i = zipBuffer.length - 22; i >= searchStart; i--) {
+    if (zipBuffer.readUInt32LE(i) === 0x06054b50) {
+      eocdOffset = i;
+      break;
     }
+  }
 
-    offset = dataStart + compressedSize;
+  if (eocdOffset === -1) {
+    // Fallback: no EOCD found — shouldn't happen for valid ZIPs
+    return null;
+  }
+
+  const cdOffset = zipBuffer.readUInt32LE(eocdOffset + 16);  // offset of central directory
+  const cdEntries = zipBuffer.readUInt16LE(eocdOffset + 10);  // total entries
+
+  // ── Walk Central Directory entries ──
+  let pos = cdOffset;
+  for (let i = 0; i < cdEntries && pos < zipBuffer.length - 4; i++) {
+    if (zipBuffer.readUInt32LE(pos) !== 0x02014b50) break; // central dir signature
+
+    const method = zipBuffer.readUInt16LE(pos + 10);
+    const compSize = zipBuffer.readUInt32LE(pos + 20);
+    const uncompSize = zipBuffer.readUInt32LE(pos + 24);
+    const nameLen = zipBuffer.readUInt16LE(pos + 28);
+    const extraLen = zipBuffer.readUInt16LE(pos + 30);
+    const commentLen = zipBuffer.readUInt16LE(pos + 32);
+    const localHeaderOffset = zipBuffer.readUInt32LE(pos + 42);
+    const fileName = zipBuffer.toString('utf-8', pos + 46, pos + 46 + nameLen);
+
+    // Move to next central directory entry
+    pos += 46 + nameLen + extraLen + commentLen;
+
+    if (!fileName.endsWith('.json') && !fileName.endsWith('.xml')) continue;
+
+    // ── Read from local file header to get data offset ──
+    const localNameLen = zipBuffer.readUInt16LE(localHeaderOffset + 26);
+    const localExtraLen = zipBuffer.readUInt16LE(localHeaderOffset + 28);
+    const dataStart = localHeaderOffset + 30 + localNameLen + localExtraLen;
+
+    const rawData = zipBuffer.subarray(dataStart, dataStart + compSize);
+
+    if (method === 0) {
+      // Stored (no compression)
+      return rawData.toString('utf-8');
+    } else if (method === 8) {
+      // Deflated
+      const inflated = inflateRawSync(rawData);
+      return inflated.toString('utf-8');
+    }
   }
 
   return null;
@@ -192,7 +241,7 @@ export async function fetchCbomImportsFromGitHub(
   config: ConnectorConfig,
   integrationId: string,
 ): Promise<ConnectorResult<Record<string, unknown>>> {
-  const { githubRepo: rawRepo, githubToken, artifactName, workflowFile, lastSync } = config;
+  const { githubRepo: rawRepo, githubToken, artifactName, workflowFile, lastSync, integrationCreatedAt } = config;
   // Support both 'branch' and 'branches' config keys
   const branch = config.branch || config.branches;
 
@@ -219,9 +268,23 @@ export async function fetchCbomImportsFromGitHub(
     if (branch) {
       runsUrl += `&branch=${encodeURIComponent(branch)}`;
     }
-    // Incremental: only fetch runs created after last sync
+
+    // Determine the earliest date to fetch runs from.
+    // Priority: lastSync (if records exist) > integrationCreatedAt
+    // This ensures we never pull CBOMs created before the integration was established.
+    let sinceDate: string | undefined;
     if (lastSync) {
-      runsUrl += `&created=>${lastSync}`;
+      const existingCount = await CbomImport.count({ where: { integrationId } });
+      if (existingCount > 0) {
+        sinceDate = lastSync;
+      }
+    }
+    // Fall back to integration creation time — never pull older runs
+    if (!sinceDate && integrationCreatedAt) {
+      sinceDate = integrationCreatedAt;
+    }
+    if (sinceDate) {
+      runsUrl += `&created=>${sinceDate}`;
     }
 
     const runsResponse = await githubFetch<WorkflowRunsResponse>(runsUrl, githubToken);

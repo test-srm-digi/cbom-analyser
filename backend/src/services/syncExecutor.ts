@@ -113,8 +113,13 @@ export async function executeSyncForIntegration(
     await integration.update({ status: 'testing' });
 
     const config = (integration.config || {}) as ConnectorConfig;
-    // Pass lastSync into config so connectors can do incremental fetches
-    const configWithSync = { ...config, lastSync: integration.lastSync || undefined };
+    // Pass lastSync and integrationCreatedAt into config so connectors can do incremental fetches
+    // integrationCreatedAt ensures we never pull CBOMs from before the connection was created
+    const configWithSync = {
+      ...config,
+      lastSync: integration.lastSync || undefined,
+      integrationCreatedAt: integration.createdAt?.toISOString(),
+    };
     const result = await connector.fetch(configWithSync, integrationId);
 
     if (!result.success) {
