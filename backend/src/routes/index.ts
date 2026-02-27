@@ -1,3 +1,11 @@
 export { default as cbomRoutes } from './cbomRoutes';
 export { default as networkRoutes } from './networkRoutes';
 export { default as scanRoutes } from './scanRoutes';
+export { default as integrationRoutes } from './integrationRoutes';
+export { default as certificateRoutes } from './certificateRoutes';
+export { default as endpointRoutes } from './endpointRoutes';
+export { default as softwareRoutes } from './softwareRoutes';
+export { default as deviceRoutes } from './deviceRoutes';
+export { default as cbomImportRoutes } from './cbomImportRoutes';
+export { default as syncLogRoutes } from './syncLogRoutes';
+export { default as schedulerRoutes } from './schedulerRoutes';

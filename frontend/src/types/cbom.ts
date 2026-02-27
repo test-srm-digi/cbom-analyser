@@ -258,3 +258,105 @@ export interface PrimitiveDistribution {
   count: number;
   percentage: number;
 }
+
+// ─── Integrations & Discovery types ──────────────────────────────────────────
+
+export type IntegrationStatus = 'not_configured' | 'configuring' | 'testing' | 'connected' | 'error' | 'disabled';
+
+export type IntegrationCategory = 'digicert' | 'scanner' | 'import' | 'repository';
+
+export type SyncSchedule = 'manual' | '1h' | '6h' | '12h' | '24h';
+
+export type ImportScope =
+  // TLM — certificate lifecycle discovery
+  | 'certificates' | 'endpoints' | 'keys' | 'ca-hierarchies'
+  // STM — code signing & software supply chain
+  | 'signing-certificates' | 'keypairs' | 'releases' | 'threats'
+  // DTM — device fleet & IoT identity
+  | 'device-certificates' | 'devices' | 'firmware' | 'device-groups'
+  // Network scanner
+  | 'cipher-suites' | 'key-exchange'
+  // CBOM import
+  | 'crypto-components' | 'dependencies'
+  // GitHub scanner
+  | 'crypto-api-calls' | 'key-cert-files' | 'configurations';
+
+/** Scope option displayed in the configuration UI */
+export interface ScopeOption {
+  value: ImportScope;
+  label: string;
+  description: string;
+}
+
+/** Catalog entry — what integrations are available */
+export interface IntegrationTemplate {
+  type: string;
+  name: string;
+  vendor: string;
+  category: IntegrationCategory;
+  description: string;
+  docsUrl: string;
+  capabilities: string[];
+  fields: IntegrationField[];
+  scopeOptions?: ScopeOption[];
+  defaultScope?: ImportScope[];
+  /** Hide the Import Scope section in the config drawer */
+  hideScope?: boolean;
+  /** Hide the Sync Schedule section in the config drawer */
+  hideSchedule?: boolean;
+}
+
+export interface IntegrationField {
+  key: string;
+  label: string;
+  type:
+    | 'text' | 'password' | 'url' | 'textarea' | 'select' | 'cidr' | 'port-range' | 'file'
+    | 'yaml-code'
+    | 'checkbox'       // toggle switch
+    | 'multi-select'   // select with multiple values (chips)
+    | 'tags'           // freeform tag/chip input
+    | 'number'         // numeric input with optional min/max
+    | 'info-panel'     // read-only informational block
+    | 'section-header' // collapsible section divider
+    | 'generate-btn';  // button that triggers YAML generation
+  placeholder?: string;
+  required: boolean;
+  helpText?: string;
+  options?: { value: string; label: string }[];
+  /** Conditional visibility — show this field only when another field has one of the specified values */
+  visibleWhen?: { field: string; values: string[] };
+  /** Accepted file types for type='file' (e.g. '.json,.xml') */
+  accept?: string;
+  /** Default value (used for tags, checkboxes, etc.) */
+  defaultValue?: string;
+  /** Min/max for number fields */
+  min?: number;
+  max?: number;
+  /** Suffix label for number fields (e.g., '%') */
+  suffix?: string;
+  /** Whether this section starts collapsed (for section-header) */
+  collapsed?: boolean;
+  /** Info panel variant */
+  variant?: 'info' | 'warning' | 'tip';
+  /** Markdown-like content for info-panel */
+  content?: string;
+}
+
+/** A user-configured integration instance */
+export interface Integration {
+  id: string;
+  templateType: string;
+  name: string;
+  description: string;
+  status: IntegrationStatus;
+  enabled: boolean;
+  config: Record<string, string>;
+  importScope: ImportScope[];
+  syncSchedule: SyncSchedule;
+  lastSync?: string;
+  lastSyncItems?: number;
+  lastSyncErrors?: number;
+  nextSync?: string;
+  createdAt: string;
+  errorMessage?: string;
+}

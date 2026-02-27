@@ -11,15 +11,25 @@
 3. [Docker Deployment](#docker-deployment)
 4. [API Reference](#api-reference)
 5. [Scanning Approaches](#scanning-approaches)
-6. [Variable Resolution & Context Scanning](#variable-resolution--context-scanning)
-7. [Third-Party Dependency Scanning](#third-party-dependency-scanning)
-8. [PQC Readiness Verdicts](#pqc-readiness-verdicts)
-9. [Quantum Safety Dashboard](#quantum-safety-dashboard)
-10. [Project Insight Panel](#project-insight-panel)
-11. [AI-Powered Suggested Fixes](#ai-powered-suggested-fixes)
-12. [Sample Data & Demo Code](#sample-data--demo-code)
-13. [Configuration](#configuration)
-14. [CycloneDX 1.7 Standard](#cyclonedx-17-standard)
+6. [UI Navigation & Application Layout](#ui-navigation--application-layout)
+7. [Integrations Hub](#integrations-hub)
+8. [Discovery Pages](#discovery-pages)
+9. [Database Setup (MariaDB)](#database-setup-mariadb)
+10. [Integrations REST API](#integrations-rest-api)
+11. [Discovery Data REST API](#discovery-data-rest-api)
+12. [Sync Scheduler](#sync-scheduler)
+13. [Sync Logs REST API](#sync-logs-rest-api)
+14. [Scheduler REST API](#scheduler-rest-api)
+15. [Frontend State Management (RTK Query)](#frontend-state-management-rtk-query)
+16. [Variable Resolution & Context Scanning](#variable-resolution--context-scanning)
+17. [Third-Party Dependency Scanning](#third-party-dependency-scanning)
+18. [PQC Readiness Verdicts](#pqc-readiness-verdicts)
+19. [Quantum Safety Dashboard](#quantum-safety-dashboard)
+20. [Project Insight Panel](#project-insight-panel)
+21. [AI-Powered Suggested Fixes](#ai-powered-suggested-fixes)
+22. [Sample Data & Demo Code](#sample-data--demo-code)
+23. [Configuration](#configuration)
+24. [CycloneDX 1.7 Standard](#cyclonedx-17-standard)
 
 ---
 
@@ -745,6 +755,955 @@ curl -X POST http://localhost:3001/api/scan-network/merge/urn:uuid:YOUR-CBOM-ID 
 
 ---
 
+## UI Navigation & Application Layout
+
+The frontend is organized as a single-page application with a persistent sidebar and a main content area. All pages are accessible from the **Quantum Readiness Advisor** section in the sidebar.
+
+### Sidebar Structure
+
+```
+digicert ONE
+└─ Quantum Readiness Advisor
+   ├─ Dashboard              — PQC readiness overview & risk score
+   ├─ Inventory              — Full crypto-asset table with filters
+   ├─ Visualize              — Dependency & algorithm graphs
+   ├─ Violations             — Policy violations & compliance gaps
+   ├─ Integrations           — Configure data sources (see below)
+   ├─ Discovery              — Expandable parent with 5 child pages:
+   │  ├─ Certificates        — TLS / PKI certificates (from DigiCert TLM)
+   │  ├─ Endpoints           — Network TLS endpoints (from Network Scanner)
+   │  ├─ Software            — Signing artifacts (from DigiCert STM)
+   │  ├─ Devices             — IoT / OT devices (from DigiCert DTM)
+   │  └─ CBOM Imports        — CycloneDX CBOM files (from CI/CD)
+   ├─ Network Scanner        — Live TLS endpoint scanner
+   ├─ Tracking               — Migration task tracking
+   ├─ Policies               — Crypto policy management
+   └─ Settings               — Application configuration
+```
+
+Additional sidebar sections (below the main nav):
+- **Private CA** — Private CA certificate quantum assessment
+- **Trust Lifecycle** — (Coming Soon) End-to-end PQC migration workflows
+- **Software Trust** — (Coming Soon) Software supply-chain crypto scanning
+- **Device Trust** — IoT firmware crypto inventory
+- **Document Trust** — Document-signing PQC migration
+
+The Discovery parent item is **auto-expandable** — clicking it reveals 6 child navigation items and navigates to the first child. When any child page is active, the parent stays highlighted and expanded.
+
+---
+
+## Integrations Hub
+
+The **Integrations** page is the central configuration point for connecting external data sources to the crypto inventory. It provides a catalog-driven workflow for adding, configuring, and managing integrations.
+
+All integration configurations are **persisted in MariaDB** via Sequelize ORM and accessed through the [Integrations REST API](#integrations-rest-api). The frontend uses **RTK Query** for automatic data fetching, caching, and cache invalidation — see [Frontend State Management](#frontend-state-management-rtk-query).
+
+### Integration Catalog
+
+Six pre-built integration templates are available:
+
+| Integration | Vendor | Category | Description |
+|-------------|--------|----------|-------------|
+| **DigiCert Trust Lifecycle Manager** | DigiCert | `digicert` | Import certificates, keys, and endpoint data from TLM. Enables discovery of TLS certificates, CA hierarchies, and cryptographic posture across managed PKI. |
+| **DigiCert Software Trust Manager** | DigiCert | `digicert` | Import code signing certificates, software hashes, and SBOM-linked crypto assets. Analyze signing algorithms across your software supply chain. |
+| **DigiCert Device Trust Manager** | DigiCert | `digicert` | Import IoT device certificates and embedded crypto configurations. Track quantum readiness of device fleets and firmware crypto. |
+| **Network TLS Scanner** | Built-in | `scanner` | Scan your network to discover TLS endpoints, cipher suites, certificate chains, and key exchange algorithms. |
+| **CBOM File Import** | CycloneDX | `import` | Upload or link CycloneDX CBOM files from CI/CD pipelines, SBOM tools, or manual audits. |
+
+### Configuration Workflow
+
+Each integration follows a 4-step configuration flow inside a slide-out drawer:
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Step 1 — INTEGRATION NAME                                   │
+│  User-friendly name for this integration instance            │
+│  e.g., "Production TLM — US East"                            │
+├──────────────────────────────────────────────────────────────┤
+│  Step 2 — CONNECTION DETAILS                                 │
+│  Type-specific fields (API URL, API Key, tokens, etc.)       │
+│  Each template defines its own required/optional fields      │
+├──────────────────────────────────────────────────────────────┤
+│  Step 3 — IMPORT SCOPE (multi-select)                        │
+│  Choose which data categories to pull from this source       │
+│  Each integration has unique scope options (see below)       │
+├──────────────────────────────────────────────────────────────┤
+│  Step 4 — SYNC SCHEDULE                                      │
+│  Manual only │ Every hour │ 6h │ 12h │ 24h                  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+The drawer also includes a **Test Connection** button that validates credentials before saving.
+
+### Per-Integration Import Scopes
+
+Each integration type has unique import scope options that reflect the actual data categories available from that source:
+
+**DigiCert Trust Lifecycle Manager (TLM):**
+
+| Scope | Description |
+|-------|-------------|
+| Certificates | TLS, CA, and private certificates from managed PKI |
+| Endpoints | Hosts and IPs discovered via network & cloud scans |
+| Keys | Key algorithms, strength, and lifecycle data |
+| CA Hierarchies | Intermediate & root CA chain mappings |
+
+**DigiCert Software Trust Manager (STM):**
+
+| Scope | Description |
+|-------|-------------|
+| Signing Certificates | Code signing & timestamping certificates |
+| Keypairs | Signing key pairs and algorithm metadata |
+| Releases | Software release windows and signing audit trails |
+| Threat Detection | Vulnerability and threat scan results |
+
+**DigiCert Device Trust Manager (DTM):**
+
+| Scope | Description |
+|-------|-------------|
+| Device Certificates | IoT/OT device identity certificates |
+| Devices | Device records, enrollment status, and profiles |
+| Firmware | Firmware versions and signing verification data |
+| Device Groups | Logical groupings and enrollment profiles |
+
+**Network TLS Scanner:**
+
+| Scope | Description |
+|-------|-------------|
+| Endpoints | TLS-enabled hosts, IPs, and port configurations |
+| Certificates | Certificate chains extracted from TLS handshakes |
+| Cipher Suites | Supported cipher suites per endpoint |
+| Key Exchange | KEX algorithms (ECDHE, X25519, ML-KEM, etc.) |
+
+**CBOM File Import:**
+
+| Scope | Description |
+|-------|-------------|
+| Crypto Components | Algorithms, protocols, and crypto primitives from CBOM |
+| Certificates | Certificates referenced in the CBOM |
+| Keys | Key material and parameters in the CBOM |
+| Dependencies | Crypto library dependencies and versions |
+
+### Integration Card States
+
+Once configured, each integration appears as a card on the Integrations page showing:
+- **Status badge** — Connected / Disconnected / Error / Syncing
+- **Enabled toggle** — Enable or disable the integration without deleting it
+- **Last sync timestamp** — When data was last pulled
+- **Quick actions** — Edit, Sync Now, Delete
+
+### Stats Row
+
+The page header displays aggregate statistics:
+- Total integrations configured
+- Active (connected & enabled) count
+- Errored integrations
+- Last sync time across all integrations
+
+---
+
+## Discovery Pages
+
+The **Discovery** section contains 6 specialized pages, each showing cryptographic assets discovered from a specific integration source. Every page follows the same pattern: an **empty state** with guided setup steps when no data is loaded, and a rich data table once assets are available.
+
+### Page Architecture
+
+Each discovery page provides:
+
+| Component | Description |
+|-----------|-------------|
+| **Header** | Breadcrumb (`Discovery`) + page title + contextual subtitle |
+| **Stat Cards** | Quick metrics — total count, quantum-safe %, key algorithm breakdown |
+| **Toolbar** | Search bar, export options, filter controls |
+| **Data Table** | Sortable, filterable table with type-specific columns |
+| **AI Banner** | Contextual AI insight banner (when data is loaded) |
+| **Empty State** | Integration setup guide with step-by-step instructions |
+
+### Empty State → Integration Flow
+
+When no data has been imported, each discovery page shows an **EmptyState** component with:
+
+1. An illustration and message explaining the data source
+2. **Step-by-step integration instructions** specific to that page:
+   - Navigate to Integrations page
+   - Locate the relevant catalog template
+   - Configure connection credentials
+   - Select import scope
+   - Run initial sync
+3. A **"Load Sample Data"** button to populate the page with demo data for exploration
+
+### Discovery Tabs
+
+| Page | Source Integration | Key Columns | Description |
+|------|-------------------|-------------|-------------|
+| **Certificates** | DigiCert TLM | Common Name, CA Vendor, Status, Key Algorithm, Key Length, Quantum Safe | TLS / PKI certificates — algorithm inventory, expiry tracking, PQC-readiness |
+| **Endpoints** | Network Scanner | Hostname, IP, Port, TLS Version, Cipher Suite, Key Agreement, Quantum Safe | Network endpoints — TLS config, cipher suites, key-agreement protocols |
+| **Software** | DigiCert STM | Name, Version, Vendor, Signing Algorithm, Key Length, Hash, Quantum Safe | Software releases — signing algorithm and PQC migration status |
+| **Devices** | DigiCert DTM | Device Name, Type, Manufacturer, Firmware, Cert Algorithm, Key Length, Enrollment | IoT devices — firmware crypto, certificate enrollment, key-strength audit |
+| **CBOM Imports** | CBOM File Import | Component Name, Type, Algorithm, Version, Quantum Safe, Spec Version | CycloneDX CBOM contents — crypto component inventory and PQC breakdown |
+
+### Integration → Discovery Data Flow
+
+```
+┌─────────────────────┐     ┌─────────────────────┐     ┌──────────────────────┐
+│   Integrations Hub  │────▶│   Sync / Import     │────▶│   Discovery Pages    │
+│                     │     │                     │     │                      │
+│  Configure sources  │     │  Pull data from     │     │  View, search, and   │
+│  Set import scopes  │     │  external APIs or   │     │  analyze discovered  │
+│  Schedule syncs     │     │  file imports       │     │  crypto assets       │
+└─────────────────────┘     └─────────────────────┘     └──────────────────────┘
+```
+
+Each integration type feeds into its corresponding Discovery page:
+- **DigiCert TLM** → Certificates page
+- **Network TLS Scanner** → Endpoints page
+- **DigiCert STM** → Software page
+- **DigiCert DTM** → Devices page
+- **CBOM File Import** → CBOM Imports page
+
+---
+
+## Database Setup (MariaDB)
+
+Integration configurations and discovered assets are persisted in a **MariaDB** database using **Sequelize ORM**. The database is named `dcone-quantum-gaurd`.
+
+### Prerequisites
+
+1. Install MariaDB (or MySQL — Sequelize supports both):
+
+```bash
+# macOS
+brew install mariadb && brew services start mariadb
+
+# Ubuntu / Debian
+sudo apt install mariadb-server && sudo systemctl start mariadb
+```
+
+2. Create the database:
+
+```sql
+CREATE DATABASE `dcone-quantum-gaurd`;
+```
+
+3. Set credentials in `.env`:
+
+```bash
+DB_DATABASE=dcone-quantum-gaurd
+DB_USERNAME=root
+DB_PASSWORD=your-password
+DB_HOST=localhost
+DB_PORT=3306
+DB_DIALECT=mariadb
+```
+
+### Schema Auto-Sync
+
+On startup, the backend calls `sequelize.sync({ alter: true })` in development mode, which automatically creates or updates tables to match the Sequelize model definitions. No manual migration step is needed for development.
+
+### Sequelize Configuration
+
+The database config lives in two places:
+
+| File | Purpose |
+|------|---------|
+| `backend/src/config/database.ts` | Runtime Sequelize instance — reads from `process.env` |
+| `backend/sequelize.config.cjs` | Sequelize CLI config — for manual migrations if needed |
+
+Both follow the same pattern as the reference config in `git-interface-app/server/sequelize.config.cjs`.
+
+### Connection Pooling
+
+```typescript
+pool: {
+  max: 10,      // max concurrent connections
+  min: 0,       // min idle connections
+  acquire: 30000, // ms to wait for connection before error
+  idle: 10000,    // ms before idle connection is released
+}
+```
+
+### Models
+
+| Model | Table | Description |
+|-------|-------|-------------|
+| `Integration` | `integrations` | User-configured integration instances — stores template type, connection config (JSON), import scope (JSON), sync schedule, status, and sync history |
+| `Certificate` | `certificates` | TLS/SSL certificates discovered via DigiCert Trust Lifecycle Manager |
+| `Endpoint` | `endpoints` | TLS endpoints discovered via Network Scanner |
+| `Software` | `software` | Software signing data from DigiCert Software Trust Manager |
+| `Device` | `devices` | IoT/industrial devices from DigiCert Device Trust Manager |
+| `CbomImport` | `cbom_imports` | CycloneDX CBOM file import records |
+| `SyncLog` | `sync_logs` | Audit trail of every sync run (scheduled or manual) |
+
+> All five discovery tables and `sync_logs` have an `integration_id` foreign key referencing `integrations.id` with `ON DELETE CASCADE` — deleting an integration removes all its discovered data and sync history.
+
+#### Integration Table Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `template_type` | `VARCHAR(50)` | References the catalog type (`digicert-tlm`, `network-scanner`, etc.) |
+| `name` | `VARCHAR(255)` | User-given name for this instance |
+| `description` | `TEXT` | Integration description |
+| `status` | `ENUM` | `not_configured`, `configuring`, `testing`, `connected`, `error`, `disabled` |
+| `enabled` | `BOOLEAN` | Whether the integration is active |
+| `config` | `JSON` | Connection fields (API URL, API key, tokens, etc.) |
+| `import_scope` | `JSON` | Array of selected import scope values |
+| `sync_schedule` | `ENUM` | `manual`, `1h`, `6h`, `12h`, `24h` |
+| `last_sync` | `VARCHAR(100)` | Timestamp of last successful sync |
+| `last_sync_items` | `INTEGER` | Number of items imported in the last sync |
+| `last_sync_errors` | `INTEGER` | Number of errors in the last sync |
+| `next_sync` | `VARCHAR(100)` | Scheduled time for next sync |
+| `error_message` | `TEXT` | Last error message (if status is `error`) |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
+
+#### Certificates Table Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `integration_id` | `VARCHAR(36)` FK | References `integrations.id` (CASCADE) |
+| `common_name` | `VARCHAR(255)` | Certificate common name (CN) |
+| `ca_vendor` | `VARCHAR(100)` | Certificate Authority vendor |
+| `status` | `ENUM` | `Issued`, `Expired`, `Revoked`, `Pending` |
+| `key_algorithm` | `VARCHAR(50)` | Key algorithm (RSA, ECDSA, ML-DSA, etc.) |
+| `key_length` | `VARCHAR(50)` | Key length / parameter set |
+| `quantum_safe` | `BOOLEAN` | Whether the key algorithm is PQC-safe |
+| `source` | `VARCHAR(100)` | Data source identifier |
+| `expiry_date` | `VARCHAR(100)` | Certificate expiration date (nullable) |
+| `serial_number` | `VARCHAR(255)` | Certificate serial number (nullable) |
+| `signature_algorithm` | `VARCHAR(100)` | Signature algorithm (nullable) |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
+
+#### Endpoints Table Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `integration_id` | `VARCHAR(36)` FK | References `integrations.id` (CASCADE) |
+| `hostname` | `VARCHAR(255)` | Server hostname |
+| `ip_address` | `VARCHAR(45)` | IPv4 or IPv6 address |
+| `port` | `INTEGER` | TCP port number |
+| `tls_version` | `VARCHAR(20)` | TLS protocol version (e.g. `TLS 1.3`) |
+| `cipher_suite` | `VARCHAR(100)` | Negotiated cipher suite |
+| `key_agreement` | `VARCHAR(100)` | Key agreement algorithm (ECDHE, X25519, etc.) |
+| `quantum_safe` | `BOOLEAN` | Whether the cipher suite is PQC-safe |
+| `source` | `VARCHAR(100)` | Data source identifier |
+| `last_scanned` | `VARCHAR(100)` | Timestamp of last scan (nullable) |
+| `cert_common_name` | `VARCHAR(255)` | CN of the certificate served (nullable) |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
+
+#### Software Table Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `integration_id` | `VARCHAR(36)` FK | References `integrations.id` (CASCADE) |
+| `name` | `VARCHAR(255)` | Software package name |
+| `version` | `VARCHAR(50)` | Version string |
+| `vendor` | `VARCHAR(100)` | Software vendor |
+| `signing_algorithm` | `VARCHAR(50)` | Code signing algorithm |
+| `signing_key_length` | `VARCHAR(50)` | Signing key length |
+| `hash_algorithm` | `VARCHAR(50)` | Hash algorithm used for signing |
+| `crypto_libraries` | `JSON` | Array of crypto library names used |
+| `quantum_safe` | `BOOLEAN` | Whether the signing is PQC-safe |
+| `source` | `VARCHAR(100)` | Data source identifier |
+| `release_date` | `VARCHAR(100)` | Software release date (nullable) |
+| `sbom_linked` | `BOOLEAN` | Whether an SBOM is linked (default `false`) |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
+
+#### Devices Table Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `integration_id` | `VARCHAR(36)` FK | References `integrations.id` (CASCADE) |
+| `device_name` | `VARCHAR(255)` | Device name / identifier |
+| `device_type` | `VARCHAR(100)` | Device type (Gateway, Sensor, Controller, etc.) |
+| `manufacturer` | `VARCHAR(100)` | Device manufacturer |
+| `firmware_version` | `VARCHAR(50)` | Current firmware version |
+| `cert_algorithm` | `VARCHAR(50)` | Certificate algorithm used on device |
+| `key_length` | `VARCHAR(50)` | Key length |
+| `quantum_safe` | `BOOLEAN` | Whether the device crypto is PQC-safe |
+| `enrollment_status` | `ENUM` | `Enrolled`, `Pending`, `Revoked`, `Expired` |
+| `last_checkin` | `VARCHAR(100)` | Timestamp of last device check-in |
+| `source` | `VARCHAR(100)` | Data source identifier |
+| `device_group` | `VARCHAR(100)` | Logical device group (nullable) |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
+
+#### CBOM Imports Table Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `integration_id` | `VARCHAR(36)` FK | References `integrations.id` (CASCADE) |
+| `file_name` | `VARCHAR(255)` | Imported CBOM file name |
+| `format` | `VARCHAR(50)` | CBOM format (e.g. `CycloneDX`) |
+| `spec_version` | `VARCHAR(20)` | Spec version (e.g. `1.7`) |
+| `total_components` | `INTEGER` | Total components in CBOM |
+| `crypto_components` | `INTEGER` | Number of crypto components |
+| `quantum_safe_components` | `INTEGER` | Number of PQC-safe components |
+| `non_quantum_safe_components` | `INTEGER` | Number of non-PQC-safe components |
+| `import_date` | `VARCHAR(100)` | Import timestamp |
+| `status` | `ENUM` | `Processed`, `Processing`, `Failed`, `Partial` |
+| `source` | `VARCHAR(100)` | Data source identifier |
+| `application_name` | `VARCHAR(255)` | Application name (nullable) |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
+
+#### Sync Logs Table Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `integration_id` | `VARCHAR(36)` FK | References `integrations.id` (CASCADE) |
+| `trigger` | `ENUM` | `scheduled`, `manual` |
+| `status` | `ENUM` | `running`, `success`, `partial`, `failed` |
+| `started_at` | `VARCHAR(100)` | ISO timestamp when the sync started |
+| `completed_at` | `VARCHAR(100)` | ISO timestamp when the sync finished (nullable) |
+| `duration_ms` | `INTEGER` | Duration of the sync run in milliseconds (nullable) |
+| `items_fetched` | `INTEGER` | Number of items fetched from the connector (default 0) |
+| `items_created` | `INTEGER` | Number of items bulk-inserted into the discovery table (default 0) |
+| `items_updated` | `INTEGER` | Number of items updated (default 0, reserved for future delta sync) |
+| `items_deleted` | `INTEGER` | Number of old items deleted in full-refresh (default 0) |
+| `errors` | `INTEGER` | Total error count (default 0) |
+| `error_details` | `JSON` | Array of error message strings (nullable) |
+| `sync_schedule` | `VARCHAR(10)` | The schedule that triggered this sync (e.g. `6h`, `manual`) |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
+
+---
+
+## Integrations REST API
+
+The backend exposes a full CRUD REST API for managing integrations, mounted at `/api/integrations`.
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/integrations` | List all integrations (ordered by creation date, newest first) |
+| `GET` | `/api/integrations/:id` | Get a single integration by ID |
+| `POST` | `/api/integrations` | Create a new integration |
+| `PUT` | `/api/integrations/:id` | Update an existing integration |
+| `DELETE` | `/api/integrations/:id` | Delete an integration |
+| `PATCH` | `/api/integrations/:id/toggle` | Toggle enabled/disabled state |
+| `POST` | `/api/integrations/:id/sync` | Trigger a manual sync |
+| `POST` | `/api/integrations/:id/test` | Test the connection |
+
+### Response Format
+
+All endpoints return a consistent JSON envelope:
+
+```json
+{
+  "success": true,
+  "data": { /* integration object or array */ },
+  "message": "optional message"
+}
+```
+
+### Create Integration — Request Body
+
+```json
+{
+  "templateType": "digicert-tlm",
+  "name": "Production TLM — US East",
+  "description": "Import certificates from...",
+  "config": {
+    "apiBaseUrl": "https://one.digicert.com",
+    "apiKey": "your-api-key",
+    "accountId": "12345"
+  },
+  "importScope": ["certificates", "endpoints", "keys"],
+  "syncSchedule": "24h",
+  "status": "connected"
+}
+```
+
+### Update Integration — Request Body
+
+All fields are optional — only provided fields are updated:
+
+```json
+{
+  "name": "Updated Name",
+  "config": { "apiKey": "new-key" },
+  "importScope": ["certificates", "keys"],
+  "syncSchedule": "6h"
+}
+```
+
+### Example Requests
+
+```bash
+# List all integrations
+curl http://localhost:3001/api/integrations
+
+# Create a new TLM integration
+curl -X POST http://localhost:3001/api/integrations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "templateType": "digicert-tlm",
+    "name": "Production TLM",
+    "description": "DigiCert TLM for prod certs",
+    "config": { "apiBaseUrl": "https://one.digicert.com", "apiKey": "xxx" },
+    "importScope": ["certificates", "endpoints"],
+    "syncSchedule": "24h"
+  }'
+
+# Toggle enabled/disabled
+curl -X PATCH http://localhost:3001/api/integrations/<id>/toggle
+
+# Trigger manual sync
+curl -X POST http://localhost:3001/api/integrations/<id>/sync
+
+# Test connection
+curl -X POST http://localhost:3001/api/integrations/<id>/test
+
+# Delete
+curl -X DELETE http://localhost:3001/api/integrations/<id>
+```
+
+---
+
+## Discovery Data REST API
+
+Each discovery tab has a dedicated CRUD REST API. All five resources follow the same 8-endpoint pattern with a `{ success, data, message }` response envelope.
+
+### Shared Endpoint Pattern
+
+Every discovery resource (`certificates`, `endpoints`, `software`, `devices`, `cbom-imports`) exposes:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/{resource}` | List all records (newest first) |
+| `GET` | `/api/{resource}/integration/:integrationId` | List records for a specific integration |
+| `GET` | `/api/{resource}/:id` | Get a single record by ID |
+| `POST` | `/api/{resource}` | Create a single record (UUID auto-assigned) |
+| `POST` | `/api/{resource}/bulk` | Bulk create — accepts `{ "items": [...] }` |
+| `PUT` | `/api/{resource}/:id` | Update a record |
+| `DELETE` | `/api/{resource}/:id` | Delete a single record |
+| `DELETE` | `/api/{resource}/integration/:integrationId` | Delete all records for an integration |
+
+### Resource Base Paths
+
+| Resource | Base Path | Model | Discovery Tab |
+|----------|-----------|-------|---------------|
+| Certificates | `/api/certificates` | `Certificate` | Certificates (TLM) |
+| Endpoints | `/api/endpoints` | `Endpoint` | Endpoints (Network Scanner) |
+| Software | `/api/software` | `Software` | Software (STM) |
+| Devices | `/api/devices` | `Device` | Devices (DTM) |
+| CBOM Imports | `/api/cbom-imports` | `CbomImport` | CBOM Imports |
+
+### Response Format
+
+All endpoints return the same JSON envelope used by the Integrations API:
+
+```json
+{
+  "success": true,
+  "data": { /* record object or array */ },
+  "message": "optional message"
+}
+```
+
+### Bulk Create — Request Body
+
+```json
+{
+  "items": [
+    { "integrationId": "uuid-1", "commonName": "*.example.com", "..." : "..." },
+    { "integrationId": "uuid-1", "commonName": "api.example.com", "..." : "..." }
+  ]
+}
+```
+
+Each item in the array gets a UUID auto-assigned. All items are created in a single database call via `Model.bulkCreate()`.
+
+### Example cURL Commands (Certificates)
+
+```bash
+# List all certificates
+curl http://localhost:3001/api/certificates
+
+# List certificates for a specific integration
+curl http://localhost:3001/api/certificates/integration/<integrationId>
+
+# Get a single certificate
+curl http://localhost:3001/api/certificates/<id>
+
+# Create a certificate
+curl -X POST http://localhost:3001/api/certificates \
+  -H "Content-Type: application/json" \
+  -d '{
+    "integrationId": "uuid",
+    "commonName": "*.example.com",
+    "caVendor": "DigiCert",
+    "status": "Issued",
+    "keyAlgorithm": "RSA",
+    "keyLength": "2048",
+    "quantumSafe": false,
+    "source": "DigiCert TLM"
+  }'
+
+# Bulk create
+curl -X POST http://localhost:3001/api/certificates/bulk \
+  -H "Content-Type: application/json" \
+  -d '{ "items": [ { "integrationId": "uuid", "commonName": "a.com", "..." : "..." } ] }'
+
+# Update
+curl -X PUT http://localhost:3001/api/certificates/<id> \
+  -H "Content-Type: application/json" \
+  -d '{ "status": "Expired" }'
+
+# Delete one
+curl -X DELETE http://localhost:3001/api/certificates/<id>
+
+# Delete all for an integration
+curl -X DELETE http://localhost:3001/api/certificates/integration/<integrationId>
+```
+
+> The same cURL pattern applies to all six resources — just swap the base path.
+
+---
+
+## Sync Scheduler
+
+The backend includes a cron-based sync scheduler that automatically pulls data from external integrations on a configurable schedule. It uses **`node-cron`** for in-process cron job scheduling — no external daemon or message queue required.
+
+### Architecture Overview
+
+```
+┌──────────────────────┐
+│  Integration CRUD    │  ← user creates/updates/deletes integrations
+│  (REST routes)       │
+└──────┬───────────────┘
+       │  lifecycle events (scheduleJob / onScheduleChanged / onIntegrationDeleted / onIntegrationToggled)
+       ▼
+┌──────────────────────┐
+│  SyncScheduler       │  ← singleton, manages Map<integrationId, ScheduledJob>
+│  (node-cron)         │  ← starts/stops/restarts cron tasks per integration
+└──────┬───────────────┘
+       │  on cron tick (or manual trigger)
+       ▼
+┌──────────────────────┐
+│  SyncExecutor        │  ← 7-step sync lifecycle per integration
+│                      │  ← creates SyncLog → calls connector → bulk inserts → finalises log
+└──────┬───────────────┘
+       │
+       ▼
+┌──────────────────────┐
+│  Connectors          │  ← per-type data fetcher (e.g. fetchCertificates, fetchEndpoints)
+│  (CONNECTOR_REGISTRY)│  ← maps templateType → { fetch, model, label }
+└──────┬───────────────┘
+       │
+       ▼
+┌──────────────────────┐
+│  Discovery Tables    │  ← full-refresh: delete old → bulk insert new
+│  + SyncLog Table     │  ← audit trail with metrics
+└──────────────────────┘
+```
+
+### Schedule-to-Cron Mapping
+
+| Sync Schedule | Cron Expression | Description |
+|---------------|-----------------|-------------|
+| `manual` | *(no cron job)* | Only syncs when user clicks "Sync Now" |
+| `1h` | `0 * * * *` | Every hour at minute 0 |
+| `6h` | `0 */6 * * *` | Every 6 hours (00:00, 06:00, 12:00, 18:00) |
+| `12h` | `0 */12 * * *` | Every 12 hours (00:00, 12:00) |
+| `24h` | `0 2 * * *` | Daily at 02:00 |
+
+### Connector Registry
+
+Each integration `templateType` maps to a connector in the `CONNECTOR_REGISTRY`:
+
+| Template Type | Connector Function | Discovery Table | Label |
+|---------------|-------------------|-----------------|-------|
+| `digicert-tlm` | `fetchCertificates()` | `certificates` | DigiCert TLM (Certificates) |
+| `network-scanner` | `fetchEndpoints()` | `endpoints` | Network Scanner (Endpoints) |
+| `digicert-stm` | `fetchSoftware()` | `software` | DigiCert STM (Software) |
+| `digicert-dtm` | `fetchDevices()` | `devices` | DigiCert DTM (Devices) |
+| `cbom-import` | `fetchCbomImports()` | `cbom_imports` | CBOM Import (CBOM Files) |
+
+> **Simulated data**: Connectors currently return realistic simulated data so the full pipeline can be exercised end-to-end without real external API credentials. Replace the `fetch*` functions with real API calls when ready.
+
+### Sync Execution Lifecycle (7 Steps)
+
+When a sync runs (either from a cron tick or a manual trigger), the `SyncExecutor` performs:
+
+1. **Create SyncLog** — inserts a `running` record with `startedAt` timestamp
+2. **Load Integration** — fetches the integration from DB and validates it exists + is enabled
+3. **Lookup Connector** — resolves the `templateType` → connector via `CONNECTOR_REGISTRY`
+4. **Fetch Data** — calls the connector's `fetch()` function, passing integration config
+5. **Full Refresh** — deletes all existing records for this integration, then bulk-inserts the new data
+6. **Update Integration** — sets `lastSync`, `lastSyncItems`, `lastSyncErrors`, and calculates `nextSync`
+7. **Finalise SyncLog** — updates the log with `completedAt`, `durationMs`, item counts, and final status
+
+### Scheduler Lifecycle
+
+| Event | Handler | Behaviour |
+|-------|---------|----------|
+| Server startup | `initScheduler()` | Loads all enabled, non-manual integrations from DB and schedules cron jobs |
+| Integration created | `scheduleJob()` | Starts a cron job if schedule is not `manual` |
+| Schedule changed | `onScheduleChanged()` | Removes old job, starts new job with updated cron |
+| Integration deleted | `onIntegrationDeleted()` | Removes the cron job |
+| Integration toggled off | `onIntegrationToggled(false)` | Removes the cron job |
+| Integration toggled on | `onIntegrationToggled(true)` | Schedules a new cron job |
+| Server shutdown (SIGTERM/SIGINT) | `stopAllJobs()` | Stops all active cron tasks gracefully |
+
+### Backend Service Files
+
+```
+backend/src/services/
+├── connectors.ts      — 6 connector functions + CONNECTOR_REGISTRY
+├── syncExecutor.ts    — executeSyncForIntegration() — 7-step lifecycle
+├── syncScheduler.ts   — cron job management (node-cron)
+└── index.ts           — barrel re-exports
+```
+
+---
+
+## Sync Logs REST API
+
+The sync logs API provides read-only access to the audit trail of all sync runs, plus cleanup endpoints.
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/sync-logs` | List all sync logs (newest first, default limit 100, max 500) |
+| `GET` | `/api/sync-logs/integration/:integrationId` | List sync logs for a specific integration |
+| `GET` | `/api/sync-logs/:id` | Get a single sync log by ID |
+| `DELETE` | `/api/sync-logs/integration/:integrationId` | Delete all sync logs for an integration |
+
+### Query Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `limit` | `100` | Max records to return (capped at 500) |
+
+### Example Requests
+
+```bash
+# List recent sync logs (default limit 100)
+curl http://localhost:3001/api/sync-logs
+
+# List with custom limit
+curl http://localhost:3001/api/sync-logs?limit=20
+
+# Logs for a specific integration
+curl http://localhost:3001/api/sync-logs/integration/<integrationId>
+
+# Get a single log entry
+curl http://localhost:3001/api/sync-logs/<id>
+
+# Delete all logs for an integration
+curl -X DELETE http://localhost:3001/api/sync-logs/integration/<integrationId>
+```
+
+### Response Example
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "abc-123",
+      "integrationId": "int-456",
+      "trigger": "scheduled",
+      "status": "success",
+      "startedAt": "2025-01-15T02:00:00.000Z",
+      "completedAt": "2025-01-15T02:00:03.542Z",
+      "durationMs": 3542,
+      "itemsFetched": 25,
+      "itemsCreated": 25,
+      "itemsUpdated": 0,
+      "itemsDeleted": 18,
+      "errors": 0,
+      "errorDetails": null,
+      "syncSchedule": "24h"
+    }
+  ]
+}
+```
+
+---
+
+## Scheduler REST API
+
+The scheduler API provides operational control over the cron job scheduler.
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/scheduler/status` | Get scheduler status — active jobs, uptime, server time |
+| `POST` | `/api/scheduler/stop` | Stop all scheduled cron jobs |
+| `POST` | `/api/scheduler/restart` | Stop all jobs, then reload from DB and reschedule |
+
+### Status Response Example
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalJobs": 3,
+    "jobs": [
+      {
+        "integrationId": "int-456",
+        "integrationName": "Production TLM",
+        "schedule": "24h",
+        "cronExpression": "0 2 * * *",
+        "createdAt": "2025-01-15T00:00:00.000Z",
+        "lastRunAt": "2025-01-15T02:00:00.000Z",
+        "runCount": 5
+      }
+    ],
+    "uptime": 86400,
+    "serverTime": "2025-01-16T02:00:00.000Z"
+  }
+}
+```
+
+### Example Requests
+
+```bash
+# Check scheduler status
+curl http://localhost:3001/api/scheduler/status
+
+# Stop all scheduled jobs
+curl -X POST http://localhost:3001/api/scheduler/stop
+
+# Restart scheduler (reload from DB)
+curl -X POST http://localhost:3001/api/scheduler/restart
+```
+
+---
+
+## Frontend State Management (RTK Query)
+
+The frontend uses **Redux Toolkit** with **RTK Query** for server state management. RTK Query provides automatic caching, cache invalidation, and optimistic updates for all API slices.
+
+### Store Setup
+
+The Redux store is configured in `frontend/src/store/store.ts` and wrapped around the app via `<Provider>` in `main.tsx`.
+
+```
+frontend/src/store/
+├── store.ts                 — configureStore with 9 API reducers + middleware
+├── index.ts                 — barrel exports
+└── api/
+    ├── integrationsApi.ts   — Integrations CRUD (8 hooks)
+    ├── certificatesApi.ts   — Certificates CRUD (8 hooks)
+    ├── endpointsApi.ts      — Endpoints CRUD (8 hooks)
+    ├── softwareApi.ts       — Software CRUD (8 hooks)
+    ├── devicesApi.ts        — Devices CRUD (8 hooks)
+    ├── cbomImportsApi.ts    — CBOM Imports CRUD (8 hooks)
+    ├── syncLogsApi.ts       — Sync Logs (4 hooks)
+    ├── schedulerApi.ts      — Scheduler status & control (3 hooks)
+    └── index.ts             — re-exports all hooks + types
+```
+
+### Integrations API Hooks
+
+The `integrationsApi` slice generates the following hooks, ready to use in any component:
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useGetIntegrationsQuery()` | Query | Fetch all integrations (cached, auto-refetch on invalidation) |
+| `useGetIntegrationQuery(id)` | Query | Fetch a single integration by ID |
+| `useCreateIntegrationMutation()` | Mutation | Create a new integration |
+| `useUpdateIntegrationMutation()` | Mutation | Update an existing integration |
+| `useDeleteIntegrationMutation()` | Mutation | Delete an integration |
+| `useToggleIntegrationMutation()` | Mutation | Toggle enabled/disabled |
+| `useSyncIntegrationMutation()` | Mutation | Trigger a manual sync |
+| `useTestIntegrationMutation()` | Mutation | Test connection credentials |
+
+### Discovery API Hooks
+
+Each of the five discovery API slices generates 8 hooks following the same pattern. The table below shows the hook names for each resource:
+
+| Resource | List All | List by Integration | Get One | Create | Bulk Create | Update | Delete | Delete by Integration |
+|----------|----------|-------------------|---------|--------|-------------|--------|--------|----------------------|
+| **Certificates** | `useGetCertificatesQuery()` | `useGetCertificatesByIntegrationQuery(id)` | `useGetCertificateQuery(id)` | `useCreateCertificateMutation()` | `useBulkCreateCertificatesMutation()` | `useUpdateCertificateMutation()` | `useDeleteCertificateMutation()` | `useDeleteCertificatesByIntegrationMutation()` |
+| **Endpoints** | `useGetEndpointsQuery()` | `useGetEndpointsByIntegrationQuery(id)` | `useGetEndpointQuery(id)` | `useCreateEndpointMutation()` | `useBulkCreateEndpointsMutation()` | `useUpdateEndpointMutation()` | `useDeleteEndpointMutation()` | `useDeleteEndpointsByIntegrationMutation()` |
+| **Software** | `useGetSoftwareListQuery()` | `useGetSoftwareByIntegrationQuery(id)` | `useGetSoftwareQuery(id)` | `useCreateSoftwareMutation()` | `useBulkCreateSoftwareMutation()` | `useUpdateSoftwareMutation()` | `useDeleteSoftwareMutation()` | `useDeleteSoftwareByIntegrationMutation()` |
+| **Devices** | `useGetDevicesQuery()` | `useGetDevicesByIntegrationQuery(id)` | `useGetDeviceQuery(id)` | `useCreateDeviceMutation()` | `useBulkCreateDevicesMutation()` | `useUpdateDeviceMutation()` | `useDeleteDeviceMutation()` | `useDeleteDevicesByIntegrationMutation()` |
+| **CBOM Imports** | `useGetCbomImportsQuery()` | `useGetCbomImportsByIntegrationQuery(id)` | `useGetCbomImportQuery(id)` | `useCreateCbomImportMutation()` | `useBulkCreateCbomImportsMutation()` | `useUpdateCbomImportMutation()` | `useDeleteCbomImportMutation()` | `useDeleteCbomImportsByIntegrationMutation()` |
+
+### Sync Logs API Hooks
+
+The `syncLogsApi` slice provides hooks for accessing the sync audit trail:
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useGetSyncLogsQuery(limit?)` | Query | Fetch all sync logs (optional limit, default 100) |
+| `useGetSyncLogsByIntegrationQuery(id)` | Query | Fetch sync logs for a specific integration |
+| `useGetSyncLogQuery(id)` | Query | Fetch a single sync log by ID |
+| `useDeleteSyncLogsByIntegrationMutation()` | Mutation | Delete all sync logs for an integration |
+
+### Scheduler API Hooks
+
+The `schedulerApi` slice provides hooks for monitoring and controlling the cron scheduler:
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useGetSchedulerStatusQuery()` | Query | Fetch scheduler status (active jobs, uptime, server time) |
+| `useStopSchedulerMutation()` | Mutation | Stop all cron jobs |
+| `useRestartSchedulerMutation()` | Mutation | Restart scheduler — stops all, reloads from DB |
+
+> All 55 hooks (48 discovery + 8 integrations + 4 sync logs + 3 scheduler — some shared with integrations) are re-exported from `frontend/src/store/api/index.ts` and can be imported from `../../store`.
+
+### Cache Invalidation Strategy
+
+RTK Query uses **tags** for automatic cache invalidation across all 9 API slices:
+
+- Each record is tagged with `{ type: '<Tag>', id }` (e.g., `{ type: 'Certificate', id: 'abc-123' }`)
+- The full list is tagged with `{ type: '<Tag>', id: 'LIST' }`
+- Mutations (create, bulk create, update, delete) **invalidate** both the specific tag and the list tag
+- This means any list query auto-refetches after any mutation — no manual refetch needed
+
+**Tag types:** `Integration`, `Certificate`, `Endpoint`, `Software`, `Device`, `CbomImport`, `SyncLog`, `Scheduler`
+
+### Usage in Components
+
+```tsx
+import {
+  useGetIntegrationsQuery,
+  useCreateIntegrationMutation,
+  useDeleteIntegrationMutation,
+} from '../../store';
+
+function IntegrationsPage() {
+  // Queries — auto-fetch on mount, re-fetch on cache invalidation
+  const { data: integrations = [], isLoading } = useGetIntegrationsQuery();
+
+  // Mutations — returns [triggerFn, { isLoading, error }]
+  const [createIntegration] = useCreateIntegrationMutation();
+  const [deleteIntegration] = useDeleteIntegrationMutation();
+
+  const handleSave = async () => {
+    await createIntegration({
+      templateType: 'digicert-tlm',
+      name: 'My TLM',
+      description: '...',
+      config: { apiBaseUrl: '...', apiKey: '...' },
+      importScope: ['certificates', 'endpoints'],
+      syncSchedule: '24h',
+    });
+    // No manual refetch needed — cache is auto-invalidated
+  };
+}
+```
+
+---
+
 ## Variable Resolution & Context Scanning
 
 The regex scanner includes two advanced analysis capabilities that go beyond simple pattern matching.
@@ -1185,6 +2144,12 @@ curl -X POST http://localhost:3001/api/scan-code \
 | `VITE_ACCESS_KEY_ID` | — | AWS access key ID (alternative auth) |
 | `VITE_SECRET_ACCESS_KEY` | — | AWS secret access key (alternative auth) |
 | `VITE_SESSION_TOKEN` | — | AWS session token (alternative auth) |
+| `DB_DATABASE` | `dcone-quantum-gaurd` | MariaDB database name |
+| `DB_USERNAME` | `root` | MariaDB username |
+| `DB_PASSWORD` | `asdasd` | MariaDB password |
+| `DB_HOST` | `localhost` | MariaDB host |
+| `DB_PORT` | `3306` | MariaDB port |
+| `DB_DIALECT` | `mariadb` | Sequelize dialect (`mariadb` or `mysql`) |
 
 ### Vite Proxy Configuration
 

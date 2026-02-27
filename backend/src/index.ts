@@ -9,7 +9,21 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 import express from 'express';
 import cors from 'cors';
-import { cbomRoutes, networkRoutes, scanRoutes } from './routes';
+import {
+  cbomRoutes,
+  networkRoutes,
+  scanRoutes,
+  integrationRoutes,
+  certificateRoutes,
+  endpointRoutes,
+  softwareRoutes,
+  deviceRoutes,
+  cbomImportRoutes,
+  syncLogRoutes,
+  schedulerRoutes,
+} from './routes';
+import { initDatabase } from './config/database';
+import { initScheduler, stopAllJobs } from './services/syncScheduler';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -26,6 +40,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api', cbomRoutes);
 app.use('/api', networkRoutes);
 app.use('/api', scanRoutes);
+app.use('/api', integrationRoutes);
+app.use('/api', certificateRoutes);
+app.use('/api', endpointRoutes);
+app.use('/api', softwareRoutes);
+app.use('/api', deviceRoutes);
+app.use('/api', cbomImportRoutes);
+app.use('/api', syncLogRoutes);
+app.use('/api', schedulerRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -43,13 +65,34 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`
+// Initialize database BEFORE accepting requests (avoids FK / table-not-found race)
+(async () => {
+  await initDatabase();
+
+  app.listen(PORT, async () => {
+    console.log(`
   ╔═══════════════════════════════════════════════╗
   ║   QuantumGuard CBOM Hub – Backend             ║
   ║   Running on http://localhost:${PORT}            ║
   ╚═══════════════════════════════════════════════╝
-  `);
+    `);
+
+    // Initialize sync scheduler (reads DB for active schedules)
+    await initScheduler();
+  });
+})();
+
+// Graceful shutdown — stop cron jobs before exit
+process.on('SIGTERM', () => {
+  console.log('[Server] SIGTERM received — stopping scheduler…');
+  stopAllJobs();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('[Server] SIGINT received — stopping scheduler…');
+  stopAllJobs();
+  process.exit(0);
 });
 
 export default app;

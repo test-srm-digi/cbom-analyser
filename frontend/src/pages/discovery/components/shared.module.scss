@@ -1,0 +1,776 @@
+@use '../../../styles/variables' as *;
+
+/* ═══════════════════════════════════════════════════════════════
+   Discovery — Shared Component Styles
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Stat cards ───────────────────────────────────────────── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.statCard {
+  background: $dc1-card;
+  border-radius: $dc1-radius;
+  border: 1px solid $dc1-border;
+  padding: 20px 24px;
+  border-left: 4px solid $dc1-blue;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statCardSuccess { @extend .statCard; border-left-color: $dc1-success; }
+.statCardDanger  { @extend .statCard; border-left-color: $dc1-danger; }
+
+.statHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.statTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: $dc1-text;
+}
+
+.statIcon {
+  width: 18px;
+  height: 18px;
+  color: $dc1-text-muted;
+}
+
+.statIconSuccess { @extend .statIcon; color: $dc1-success; }
+.statIconDanger  { @extend .statIcon; color: $dc1-danger; }
+
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: $dc1-blue;
+  line-height: 1.2;
+}
+
+.statValueSuccess { @extend .statValue; color: $dc1-success; }
+.statValueDanger  { @extend .statValue; color: $dc1-danger; }
+
+.statSub {
+  font-size: 12px;
+  color: $dc1-text-muted;
+}
+
+/* ── AI recommendation banner ─────────────────────────────── */
+.aiBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(90deg, #FFFBEB 0%, #FEF3C7 100%);
+  border: 1px solid #F5D98C;
+  border-radius: $dc1-radius;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+}
+
+.aiBannerIcon {
+  width: 22px;
+  height: 22px;
+  color: #D97706;
+  flex-shrink: 0;
+}
+
+.aiBannerText {
+  flex: 1;
+  font-size: 13px;
+  color: $dc1-text;
+  line-height: 1.5;
+
+  strong { font-weight: 700; }
+}
+
+.aiBannerBtn {
+  padding: 7px 18px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  color: $dc1-text;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background $transition-fast;
+
+  &:hover { background: $neutral-50; }
+}
+
+/* ── Toolbar ──────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.searchBar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  padding: 8px 14px;
+  background: $dc1-card;
+}
+
+.searchIcon {
+  width: 16px;
+  height: 16px;
+  color: $dc1-text-muted;
+  flex-shrink: 0;
+}
+
+.searchInput {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: $dc1-text;
+  flex: 1;
+  font-family: $dc1-font;
+
+  &::placeholder { color: $dc1-text-muted; }
+}
+
+.exportBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  background: $dc1-card;
+  color: $dc1-text;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover { background: $neutral-50; }
+}
+
+.exportIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.filterToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  background: $dc1-card;
+  color: $dc1-text-secondary;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover { background: $neutral-50; }
+}
+
+.filterIcon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Reset / Clear data button ────────────────────────────── */
+.resetBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid $dc1-danger;
+  border-radius: $dc1-radius-sm;
+  background: $dc1-card;
+  color: $dc1-danger;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background $transition-fast, color $transition-fast;
+  white-space: nowrap;
+
+  &:hover {
+    background: $dc1-danger;
+    color: #fff;
+
+    .resetIcon { color: #fff; }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    &:hover { background: $dc1-card; color: $dc1-danger; }
+  }
+}
+
+.resetIcon {
+  width: 14px;
+  height: 14px;
+  color: $dc1-danger;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* ── Table card ───────────────────────────────────────────── */
+.tableCard {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 20px 24px;
+  overflow-x: auto;
+}
+
+.tableTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0 0 16px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: $dc1-text-secondary;
+  border-bottom: 1px solid $dc1-border;
+  white-space: nowrap;
+}
+
+.sortIcon {
+  width: 12px;
+  height: 12px;
+  vertical-align: middle;
+  margin-left: 4px;
+  color: $dc1-text-muted;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid rgba($dc1-border, 0.5);
+  transition: background $transition-fast;
+
+  &:hover { background: rgba($dc1-bg, 0.5); }
+}
+
+.table tbody td {
+  padding: 12px 12px;
+  color: $dc1-text;
+  vertical-align: middle;
+}
+
+/* ── Badges ───────────────────────────────────────────────── */
+.badgeIssued {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: $dc1-success;
+  color: $dc1-card;
+}
+
+.badgeExpired  { @extend .badgeIssued; background: $dc1-danger; }
+.badgeRevoked  { @extend .badgeIssued; background: $neutral-600; }
+.badgePending  { @extend .badgeIssued; background: $dc1-warning; color: $dc1-text; }
+
+.badgeEnrolled   { @extend .badgeIssued; background: $dc1-success; }
+.badgeDevPending { @extend .badgeIssued; background: $dc1-warning; color: $dc1-text; }
+.badgeDevExpired { @extend .badgeIssued; background: $dc1-danger; }
+.badgeDevRevoked { @extend .badgeIssued; background: $neutral-600; }
+
+.badgeProcessed  { @extend .badgeIssued; background: $dc1-success; }
+.badgeProcessing { @extend .badgeIssued; background: $dc1-blue; }
+.badgeFailed     { @extend .badgeIssued; background: $dc1-danger; }
+.badgePartial    { @extend .badgeIssued; background: $dc1-warning; color: $dc1-text; }
+
+.qsYes {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: $dc1-success-bg;
+  color: $dc1-success;
+  border: 1px solid rgba($dc1-success, 0.3);
+}
+
+.qsNo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: $dc1-danger-bg;
+  color: $dc1-danger;
+  border: 1px solid rgba($dc1-danger, 0.3);
+}
+
+.qsDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ── Severity badges ──────────────────────────────────────── */
+.severityCritical {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: $dc1-danger;
+  color: $dc1-card;
+}
+
+.severityHigh {
+  @extend .severityCritical;
+  background: $error-50;
+  color: $dc1-danger;
+  border: 1px solid rgba($dc1-danger, 0.3);
+}
+
+.severityMedium {
+  @extend .severityCritical;
+  background: $warning-50;
+  color: $warning-200;
+  border: 1px solid rgba($dc1-warning, 0.3);
+}
+
+.severityLow {
+  @extend .severityCritical;
+  background: $blue-50;
+  color: $dc1-blue;
+  border: 1px solid rgba($dc1-blue, 0.2);
+}
+
+.severityInfo {
+  @extend .severityCritical;
+  background: $neutral-100;
+  color: $dc1-text-secondary;
+  border: 1px solid $dc1-border;
+}
+
+/* ── Source & action links ────────────────────────────────── */
+.sourceLink {
+  color: $dc1-blue;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+
+  &:hover { text-decoration: underline; }
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.upgradeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+  color: $dc1-card;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity $transition-fast;
+
+  &:hover { opacity: 0.9; }
+}
+
+.upgradeIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  color: $dc1-text-secondary;
+  cursor: pointer;
+  transition: background $transition-fast, color $transition-fast;
+
+  &:hover {
+    background: $neutral-50;
+    color: $dc1-text;
+  }
+}
+
+.actionIcon {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── TLS version pill ─────────────────────────────────────── */
+.tlsPill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  background: $neutral-100;
+  color: $dc1-text;
+  border: 1px solid $dc1-border;
+}
+
+/* ── Chip tags ────────────────────────────────────────────── */
+.libChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.libChip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: monospace;
+  background: $dc1-blue-light;
+  color: $dc1-blue-dark;
+  border: 1px solid rgba($dc1-blue, 0.15);
+}
+
+/* ── Mono text ────────────────────────────────────────────── */
+.mono {
+  font-family: monospace;
+  font-size: 12px;
+}
+
+/* ── Progress bar (for CBOM imports) ──────────────────────── */
+.progressBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 6px;
+  background: $neutral-100;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 3px;
+  background: $dc1-success;
+  transition: width 0.3s ease;
+}
+
+.progressLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: $dc1-text-secondary;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Empty State — No data / integration not connected
+   ═══════════════════════════════════════════════════════════════ */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Hero ─────────────────────────────────────────────────── */
+.emptyHero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 48px 40px 40px;
+}
+
+.emptyIconWrap {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: $blue-50;
+  margin-bottom: 20px;
+}
+
+.emptyIcon {
+  width: 28px;
+  height: 28px;
+  color: $dc1-blue;
+}
+
+.emptyTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: $dc1-text;
+  margin: 0 0 8px;
+}
+
+.emptyDesc {
+  font-size: 14px;
+  color: $dc1-text-secondary;
+  margin: 0 0 4px;
+  max-width: 560px;
+  line-height: 1.5;
+
+  strong { font-weight: 600; color: $dc1-text; }
+}
+
+.emptyDescSub {
+  font-size: 13px;
+  color: $dc1-text-muted;
+  margin: 0;
+  max-width: 560px;
+  line-height: 1.5;
+}
+
+/* ── Go to Integrations button ────────────────────────────── */
+.goToIntegrationsBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 10px 24px;
+  border-radius: $dc1-radius-sm;
+  border: none;
+  background: $dc1-blue;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background $transition-fast, box-shadow $transition-fast;
+
+  &:hover {
+    background: darken($dc1-blue, 8%);
+    box-shadow: 0 2px 8px rgba($dc1-blue, 0.25);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+/* ── Steps card ───────────────────────────────────────────── */
+.stepsCard {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  overflow: hidden;
+}
+
+.stepsHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 24px;
+  border-bottom: 1px solid $dc1-border;
+  background: $neutral-50;
+}
+
+.stepsHeaderIcon {
+  width: 18px;
+  height: 18px;
+  color: $dc1-blue;
+}
+
+.stepsTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0;
+}
+
+.stepsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.stepItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba($dc1-border, 0.5);
+
+  &:last-child { border-bottom: none; }
+}
+
+.stepNumber {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: $dc1-blue;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.stepContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stepTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: $dc1-text;
+}
+
+.stepDesc {
+  font-size: 13px;
+  color: $dc1-text-secondary;
+  line-height: 1.45;
+}
+
+.stepArrow {
+  width: 16px;
+  height: 16px;
+  color: $dc1-text-muted;
+  flex-shrink: 0;
+  margin-top: 6px;
+  display: none; /* hidden — keep for semantic */
+}
+
+.stepsFooter {
+  padding: 14px 24px;
+  background: rgba($dc1-success-bg, 0.5);
+  border-top: 1px solid rgba($dc1-success, 0.15);
+}
+
+.stepsNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: $dc1-success;
+  font-weight: 500;
+}
+
+.stepsNoteIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* ── Sample data card ─────────────────────────────────────── */
+.sampleCard {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(90deg, #FFFBEB 0%, #FEF3C7 100%);
+  border: 1px solid #F5D98C;
+  border-radius: $dc1-radius;
+  padding: 18px 24px;
+}
+
+.sampleLeft {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.sampleIcon {
+  width: 20px;
+  height: 20px;
+  color: #D97706;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.sampleTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0 0 2px;
+}
+
+.sampleDesc {
+  font-size: 13px;
+  color: $dc1-text-secondary;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.sampleBtn {
+  padding: 10px 22px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  color: $dc1-text;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background $transition-fast, box-shadow $transition-fast;
+
+  &:hover {
+    background: $neutral-50;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+

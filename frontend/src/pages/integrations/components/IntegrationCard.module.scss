@@ -1,0 +1,266 @@
+@use '../../../styles/variables' as *;
+
+/* ═══════════════════════════════════════════════════════════════
+   Integration Card
+   ═══════════════════════════════════════════════════════════════ */
+
+.card {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: box-shadow $transition-fast;
+
+  &:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+}
+
+.cardDisabled { opacity: 0.55; }
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cardIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid $dc1-border;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $dc1-blue;
+  flex-shrink: 0;
+}
+
+.cardMeta { flex: 1; min-width: 0; }
+
+.cardName {
+  font-size: 15px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardVendor {
+  font-size: 11px;
+  color: $dc1-text-muted;
+}
+
+/* ── Status badges ────────────────────────────────────────── */
+%statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.statusConnected {
+  @extend %statusBadge;
+  background: $dc1-success;
+  color: $dc1-card;
+}
+
+.statusError {
+  @extend %statusBadge;
+  background: $dc1-danger;
+  color: $dc1-card;
+}
+
+.statusTesting {
+  @extend %statusBadge;
+  background: $dc1-warning;
+  color: $black;
+}
+
+.statusDisabled {
+  @extend %statusBadge;
+  background: $neutral-300;
+  color: $neutral-700;
+}
+
+.statusDefault {
+  @extend %statusBadge;
+  background: $neutral-200;
+  color: $neutral-700;
+}
+
+/* ── Spin animation ───────────────────────────────────────── */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Card body — field rows ───────────────────────────────── */
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+}
+
+.fieldRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid $dc1-border;
+
+  &:last-child { border-bottom: none; }
+}
+
+.fieldLabel { color: $dc1-text-muted; }
+.fieldValue { color: $dc1-text; font-weight: 500; }
+
+.syncBadge {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: $dc1-blue-light;
+  color: $dc1-blue;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: $dc1-danger;
+  background: $error-50;
+  border-radius: 0 0 $dc1-radius-sm $dc1-radius-sm;
+}
+
+/* ── Card footer ──────────────────────────────────────────── */
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Toggle switch ────────────────────────────────────────── */
+.toggleWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: $neutral-300;
+  display: inline-block;
+  transition: background $transition-fast;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: $dc1-card;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    transition: transform $transition-fast;
+  }
+}
+
+.toggleOn {
+  @extend .toggle;
+  background: $dc1-blue;
+  &::after { transform: translateX(16px); }
+}
+
+.toggleLabel {
+  font-size: 12px;
+  color: $dc1-text;
+  font-weight: 500;
+}
+
+/* ── Icon buttons ─────────────────────────────────────────── */
+.iconBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  color: $dc1-text-secondary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background $transition-fast, color $transition-fast;
+
+  &:hover {
+    background: $neutral-50;
+    color: $dc1-text;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.iconBtnDanger {
+  &:hover {
+    background: $error-50;
+    color: $dc1-danger;
+    border-color: $dc1-danger;
+  }
+}
+
+/* ── Add card (placeholder) ───────────────────────────────── */
+.addCard {
+  background: $dc1-card;
+  border: 2px dashed $dc1-border;
+  border-radius: $dc1-radius;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 200px;
+  color: $dc1-text-muted;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color $transition-fast, color $transition-fast;
+
+  &:hover {
+    border-color: $dc1-blue;
+    color: $dc1-blue;
+  }
+}

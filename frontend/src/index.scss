@@ -232,18 +232,40 @@ body {
   background: none;
   border: none;
   color: rgba(255,255,255,0.85);
-  cursor: default;
+  cursor: pointer;
   font-size: 15px;
   font-weight: 400;
   text-align: left;
   border-radius: 8px;
   width: calc(100% - 16px);
+  transition: background 0.15s ease, color 0.15s ease;
+  font-family: inherit;
+
+  &:hover {
+    background: var(--dc1-sidebar-hover);
+    color: #fff;
+  }
+}
+.dc1-subnav-active {
+  background: var(--dc1-sidebar-active);
+  color: var(--dc1-sidebar-text-active);
+  font-weight: 500;
 }
 .dc1-subnav-icon {
   width: 18px;
   text-align: center;
   font-size: 15px;
   opacity: 0.75;
+}
+.dc1-subnav-active .dc1-subnav-icon {
+  opacity: 1;
+}
+
+/* Active section header highlight */
+.dc1-nav-section-header-active {
+  color: #fff !important;
+  .dc1-nav-section-icon-other { opacity: 1; }
+  .dc1-nav-section-label-other { color: #fff; }
 }
 
 /* ── Main area ─────────────────────────────────────────────── */
@@ -1031,6 +1053,148 @@ body {
 }
 
 .dc1-modal-grid-bottom { margin-top: 12px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   Coming Soon pill (sidebar)
+   ═══════════════════════════════════════════════════════════════ */
+.dc1-coming-soon-pill {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.7);
+  margin-left: auto;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Coming Soon Modal
+   ═══════════════════════════════════════════════════════════════ */
+.dc1-cs-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: dc1-fadeIn 0.15s ease;
+}
+
+@keyframes dc1-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.dc1-cs-modal {
+  background: var(--dc1-card);
+  border-radius: 16px;
+  padding: 40px 36px 32px;
+  width: 420px;
+  max-width: 90vw;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  animation: dc1-scaleIn 0.2s ease;
+}
+
+@keyframes dc1-scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.dc1-cs-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: var(--dc1-text-muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+
+  &:hover {
+    color: var(--dc1-text);
+    background: var(--dc1-bg);
+  }
+}
+
+.dc1-cs-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: $blue-50;
+  color: $digicert-blue;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  font-size: 22px;
+}
+
+.dc1-cs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 12px;
+  border-radius: 20px;
+  background: $warning-50;
+  color: $warning-200;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.dc1-cs-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--dc1-text);
+  margin: 0 0 8px;
+}
+
+.dc1-cs-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--dc1-text-secondary);
+  margin: 0 0 20px;
+}
+
+.dc1-cs-divider {
+  height: 1px;
+  background: var(--dc1-border);
+  margin: 0 0 16px;
+}
+
+.dc1-cs-note {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--dc1-text-muted);
+  margin: 0 0 24px;
+}
+
+.dc1-cs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 28px;
+  border-radius: 8px;
+  border: none;
+  background: var(--dc1-blue);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: var(--dc1-blue-dark); }
+}
 
 /* ═══════════════════════════════════════════════════════════════
    Placeholder page

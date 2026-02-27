@@ -1,0 +1,132 @@
+@use '../../../styles/variables' as *;
+
+/* ═══════════════════════════════════════════════════════════════
+   Catalog Overlay
+   ═══════════════════════════════════════════════════════════════ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel {
+  background: $dc1-card;
+  border-radius: $dc1-radius-lg;
+  width: 680px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+}
+
+.header {
+  position: relative;
+  padding: 24px 28px 16px;
+  border-bottom: 1px solid $dc1-border;
+
+  h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: $dc1-text;
+    margin: 0 0 4px;
+  }
+
+  p {
+    font-size: 13px;
+    color: $dc1-text-secondary;
+    margin: 0;
+  }
+}
+
+.closeBtn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: $neutral-100;
+  color: $dc1-text-secondary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover { background: $neutral-200; }
+}
+
+.grid {
+  padding: 16px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 18px;
+  border-radius: $dc1-radius;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color $transition-fast, box-shadow $transition-fast;
+
+  &:hover {
+    border-color: $dc1-blue;
+    box-shadow: 0 2px 8px rgba($dc1-blue, 0.08);
+  }
+}
+
+.cardIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: $dc1-blue-light;
+  color: $dc1-blue;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cardText {
+  flex: 1;
+  min-width: 0;
+
+  h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: $dc1-text;
+    margin: 0 0 2px;
+  }
+
+  p {
+    font-size: 12px;
+    color: $dc1-text-muted;
+    margin: 4px 0 0;
+    line-height: 1.4;
+  }
+}
+
+.vendor {
+  font-size: 11px;
+  color: $dc1-text-muted;
+  font-weight: 500;
+}
+
+.chevron {
+  color: $dc1-text-muted;
+  flex-shrink: 0;
+}
