@@ -19,14 +19,13 @@ interface ConfigFieldProps {
    Full workflow YAML generator — uses ALL config options
    ───────────────────────────────────────────────────────────────── */
 function generateFullWorkflowYaml(values: Record<string, string>): string {
-  const languages = (values.language || 'java').split(',').map((l) => l.trim()).filter(Boolean);
   const branches = (values.branches || 'main').split(',').map((b) => b.trim()).filter(Boolean);
   const triggers = (values.triggers || 'push,pull_request').split(',').map((t) => t.trim()).filter(Boolean);
   const artifactName = values.artifactName || 'cbom-report';
-  const selfHosted = values.selfHostedRunner === 'true';
-  const runnerLabel = values.runnerLabel || 'self-hosted, linux, x64';
   const sonarEnabled = values.sonarEnabled === 'true';
-  const sonarProjectKey = values.sonarProjectKey || '';
+  const selfHosted = sonarEnabled ? (values.selfHostedRunner !== 'false') : false;
+  const runnerLabel = values.runnerLabel || 'self-hosted, linux, x64';
+  const outputFormat = values.outputFormat || 'json';
   const pqcThresholdEnabled = values.pqcThresholdEnabled === 'true';
   const pqcThreshold = values.pqcThreshold || '80';
   const excludePaths = (values.excludePaths || '').split(',').map((p) => p.trim()).filter(Boolean);
@@ -34,6 +33,8 @@ function generateFullWorkflowYaml(values: Record<string, string>): string {
   const failOnError = values.failOnError !== 'false';
   const uploadToRelease = values.uploadToRelease === 'true';
   const cronSchedule = values.cronSchedule || '0 2 * * 1';
+  const languages = sonarEnabled ? (values.language || '').split(',').map((l) => l.trim()).filter(Boolean) : [];
+  const isSarif = outputFormat === 'sarif';
 
   const branchList = branches.map((b) => `${b}`).join(', ');
 
@@ -101,50 +102,36 @@ function generateFullWorkflowYaml(values: Record<string, string>): string {
   // Runner
   const runsOn = selfHosted ? `[${runnerLabel}]` : 'ubuntu-latest';
 
-  // Scanner steps — one per selected language
-  const scannerStep = languages.map((lang) => getScannerStep(lang)).join('\n');
+  // Permissions
+  let permLines = `permissions:\n  contents: ${uploadToRelease ? 'write' : 'read'}`;
+  if (isSarif) permLines += `\n  security-events: write`;
 
-  // Sonar step
-  const sonarStep = sonarEnabled ? `
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v3
-        env:
-          SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: \${{ secrets.SONAR_HOST_URL }}
+  // Build steps (only when sonar is enabled — compiled bytecode improves analysis)
+  let buildSteps = '';
+  if (sonarEnabled && languages.length > 0) {
+    const steps = languages.map((lang) => getBuildStep(lang)).filter(Boolean);
+    if (steps.length > 0) buildSteps = '\n\n' + steps.join('\n\n');
+  }
+
+  // Action inputs
+  const withLines: string[] = [];
+  withLines.push(`          scan-path: '.'`);
+  withLines.push(`          output-format: '${outputFormat}'`);
+  if (failOnError) withLines.push(`          fail-on-vulnerable: 'true'`);
+  if (pqcThresholdEnabled) withLines.push(`          quantum-safe-threshold: '${pqcThreshold}'`);
+  if (excludePaths.length > 0) withLines.push(`          exclude-patterns: '${excludePaths.join(',')}'`);
+  if (sonarEnabled) {
+    withLines.push(`          sonar-host-url: \${{ secrets.SONAR_HOST_URL }}`);
+    withLines.push(`          sonar-token: \${{ secrets.SONAR_TOKEN }}`);
+  }
+
+  // SARIF upload step
+  const sarifUpload = isSarif ? `
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
         with:
-          args: >
-            -Dsonar.projectKey=${sonarProjectKey || '${{ github.repository_owner }}_${{ github.event.repository.name }}'}
-            -Dsonar.sources=.
-` : '';
-
-  // PQC threshold check step
-  const pqcStep = pqcThresholdEnabled ? `
-      - name: Check PQC Readiness Threshold
-        run: |
-          if [ ! -f cbom-report.json ]; then
-            echo "::error::CBOM report not found"
-            exit 1
-          fi
-          # Parse CBOM and check quantum-safe percentage
-          PQC_PERCENT=$(python3 -c "
-          import json, sys
-          with open('cbom-report.json') as f:
-              cbom = json.load(f)
-          components = cbom.get('components', [])
-          crypto = [c for c in components if c.get('type') == 'crypto-asset']
-          if not crypto:
-              print(100)
-              sys.exit(0)
-          safe = sum(1 for c in crypto
-                     if c.get('cryptoProperties', {}).get('quantumSafe', False))
-          print(int(safe / len(crypto) * 100))
-          ")
-          echo "PQC readiness: \${PQC_PERCENT}%"
-          if [ "\${PQC_PERCENT}" -lt ${pqcThreshold} ]; then
-            echo "::error::PQC readiness \${PQC_PERCENT}% is below threshold of ${pqcThreshold}%"
-            exit 1
-          fi
-          echo "::notice::PQC readiness \${PQC_PERCENT}% meets threshold of ${pqcThreshold}%"
+          sarif_file: cbom.sarif
 ` : '';
 
   // Upload to release step
@@ -153,71 +140,58 @@ function generateFullWorkflowYaml(values: Record<string, string>): string {
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: cbom-report.json
+          files: cbom.json
         env:
           GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
 ` : '';
-
-  // Permissions
-  let permissions = `permissions:
-  contents: ${uploadToRelease ? 'write' : 'read'}
-  actions: write`;
 
   return `# ──────────────────────────────────────────────────────────
 # CBOM (Cryptographic Bill of Materials) Scanner
 # Generated by QuantumGuard CBOM Hub
 # ──────────────────────────────────────────────────────────
-name: CBOM Analysis
+name: ${sonarEnabled ? 'CBOM Security Scan' : 'CBOM Scan'}
 
 ${onBlock}
-${permissions}
+${permLines}
 
 jobs:
   cbom-scan:
-    name: Generate CBOM Report
     runs-on: ${runsOn}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+${buildSteps}
+      - name: Run QuantumGuard CBOM Scanner
+        id: cbom
+        uses: test-srm-digi/cbom-analyser@main
         with:
-          fetch-depth: 0
-${scannerStep}
-${sonarStep}${pqcStep}
-      - name: Upload CBOM Artifact
-        if: ${failOnError ? 'success()' : 'always()'}
+${withLines.join('\n')}
+
+      - name: Upload CBOM Report${failOnError ? '' : '\n        if: always()'}
         uses: actions/upload-artifact@v4
         with:
           name: ${artifactName}
-          path: cbom-report.json
+          path: cbom.json
           retention-days: ${retentionDays}
-          if-no-files-found: error
-${releaseStep}`;
+${sarifUpload}${releaseStep}`;
 }
 
-function getScannerStep(language: string): string {
+function getBuildStep(language: string): string {
   switch (language) {
     case 'java':
       return `
-      - name: Set up Java
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build project
+      - name: Build (compile only — no tests)
         run: |
-          if [ -f "mvnw" ]; then ./mvnw compile -q; elif [ -f "gradlew" ]; then ./gradlew compileJava -q; fi
-
-      - name: Run IBM Sonar Cryptography Scanner
-        run: |
-          SCANNER_VERSION="1.4.0"
-          wget -q "https://github.com/IBM/sonar-cryptography/releases/download/v\${SCANNER_VERSION}/sonar-cryptography-\${SCANNER_VERSION}-all.jar" \\
-            -O sonar-cryptography.jar
-          java -jar sonar-cryptography.jar \\
-            --project-dir . \\
-            --output cbom-report.json \\
-            --format cyclonedx-json`;
+          if [ -f "mvnw" ]; then ./mvnw compile -q -DskipTests
+          elif [ -f "gradlew" ]; then ./gradlew classes -q
+          elif [ -f "pom.xml" ]; then mvn compile -q -DskipTests
+          else echo "No Java build tool detected"; fi`;
     case 'python':
       return `
       - name: Set up Python
@@ -226,33 +200,7 @@ function getScannerStep(language: string): string {
           python-version: '3.12'
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt 2>/dev/null || true
-          pip install cryptography-finder cbom-generator
-
-      - name: Scan for cryptographic usage
-        run: |
-          python -m cryptography_finder \\
-            --project-dir . \\
-            --output cbom-report.json \\
-            --format cyclonedx-json`;
-    case 'javascript':
-    case 'typescript':
-      return `
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts 2>/dev/null || npm install --ignore-scripts
-
-      - name: Scan for cryptographic usage
-        run: |
-          npx @anthropic/cbom-scanner \\
-            --project-dir . \\
-            --output cbom-report.json \\
-            --format cyclonedx-json`;
+        run: pip install -r requirements.txt 2>/dev/null || true`;
     case 'go':
       return `
       - name: Set up Go
@@ -261,42 +209,9 @@ function getScannerStep(language: string): string {
           go-version: '1.22'
 
       - name: Build project
-        run: go build ./...
-
-      - name: Scan for cryptographic usage
-        run: |
-          go install github.com/ibm/cbom-scanner@latest
-          cbom-scanner \\
-            --project-dir . \\
-            --output cbom-report.json \\
-            --format cyclonedx-json`;
-    case 'dotnet':
-      return `
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0'
-
-      - name: Build project
-        run: dotnet build --no-incremental
-
-      - name: Scan for cryptographic usage
-        run: |
-          dotnet tool install -g CryptoScanner
-          crypto-scanner \\
-            --project-dir . \\
-            --output cbom-report.json \\
-            --format cyclonedx-json`;
+        run: go build ./...`;
     default:
-      return `
-      - name: Run generic crypto scanner
-        run: |
-          wget -q "https://github.com/IBM/sonar-cryptography/releases/latest/download/sonar-cryptography-all.jar" \\
-            -O sonar-cryptography.jar
-          java -jar sonar-cryptography.jar \\
-            --project-dir . \\
-            --output cbom-report.json \\
-            --format cyclonedx-json`;
+      return '';
   }
 }
 

@@ -153,39 +153,41 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
 
       { key: 'cronSchedule', label: 'Cron Schedule', type: 'text', placeholder: '0 2 * * 1', required: false, helpText: 'Cron expression for scheduled runs (e.g., "0 2 * * 1" = every Monday at 2 AM UTC)', visibleWhen: { field: 'triggers', values: ['schedule'] } },
 
-      { key: 'language', label: 'Project Languages', type: 'multi-select', required: true, helpText: 'Select all languages in your project — scanner steps will be generated for each', defaultValue: 'java', options: [
-        { value: 'java', label: 'Java' },
-        { value: 'python', label: 'Python' },
-        { value: 'javascript', label: 'JavaScript / TypeScript' },
-        { value: 'go', label: 'Go' },
-        { value: 'dotnet', label: 'C# / .NET' },
-        { value: 'other', label: 'Other' },
+      { key: 'outputFormat', label: 'Output Format', type: 'select', required: false, defaultValue: 'json', helpText: 'CBOM output format — SARIF enables GitHub Security tab integration', options: [
+        { value: 'json', label: 'JSON (CycloneDX)' },
+        { value: 'sarif', label: 'SARIF (GitHub Security)' },
+        { value: 'summary', label: 'Summary' },
       ] },
 
       { key: 'artifactName', label: 'Artifact Name', type: 'text', placeholder: 'cbom-report', required: false, helpText: 'Name of the uploaded artifact (default: cbom-report)' },
 
-      // ── Runner Configuration ──
-      { key: 'selfHostedRunner', label: 'Use self-hosted runner', type: 'checkbox', required: false, defaultValue: 'false', helpText: 'Run the workflow on your own infrastructure instead of GitHub-hosted runners' },
-      { key: 'runnerLabel', label: 'Runner Label', type: 'text', placeholder: 'self-hosted, linux, x64', required: false, helpText: 'Comma-separated labels for your self-hosted runner', visibleWhen: { field: 'selfHostedRunner', values: ['true'] } },
-
       // ── Sonar Integration ──
-      { key: 'sonarEnabled', label: 'Enable SonarQube / SonarCloud integration', type: 'checkbox', required: false, defaultValue: 'false', helpText: 'Add SonarQube or SonarCloud analysis step to the workflow' },
-      { key: '_sonarInfo', label: 'SonarQube Setup', type: 'info-panel', required: false, variant: 'tip', content: '**Setting up SonarQube for CBOM scanning:**\n\n1. Create a SonarQube/SonarCloud account and project\n2. Add `SONAR_TOKEN` to your repository secrets\n3. Add `SONAR_HOST_URL` secret (for SonarQube Server)\n4. The IBM Sonar Cryptography plugin detects crypto usage\n\n**Resources:**\n- [IBM Sonar Cryptography Plugin](https://github.com/IBM/sonar-cryptography)\n- [SonarCloud Setup Guide](https://docs.sonarcloud.io/getting-started/github/)\n- [SonarQube GitHub Actions](https://docs.sonarsource.com/sonarqube/latest/analyzing-source-code/ci-integration/github-actions/)', visibleWhen: { field: 'sonarEnabled', values: ['true'] } },
-      { key: 'sonarProjectKey', label: 'Sonar Project Key', type: 'text', placeholder: 'org_project-key', required: false, helpText: 'Your SonarQube/SonarCloud project key', visibleWhen: { field: 'sonarEnabled', values: ['true'] } },
+      { key: 'sonarEnabled', label: 'Enable IBM sonar-cryptography deep analysis', type: 'checkbox', required: false, defaultValue: 'false', helpText: 'Add SonarQube or SonarCloud analysis step to the workflow. Requires a SonarQube server reachable from the runner.' },
+      { key: '_sonarInfo', label: 'SonarQube Setup', type: 'info-panel', required: false, variant: 'tip', content: '**By default, the action uses a fast built-in regex scanner.** Enabling this adds IBM sonar-cryptography deep analysis via SonarQube.\n\n1. Add `SONAR_HOST_URL` and `SONAR_TOKEN` to your repository secrets\n2. Your SonarQube must be reachable from the runner (use self-hosted for internal servers)\n3. For Java projects, add a build step before scanning for bytecode-level insights\n\n**Resources:**\n- [IBM Sonar Cryptography Plugin](https://github.com/IBM/sonar-cryptography)\n- [SonarCloud Setup Guide](https://docs.sonarcloud.io/getting-started/github/)\n- [SonarQube GitHub Actions](https://docs.sonarsource.com/sonarqube/latest/analyzing-source-code/ci-integration/github-actions/)', visibleWhen: { field: 'sonarEnabled', values: ['true'] } },
+      { key: 'language', label: 'Project Languages', type: 'multi-select', required: false, helpText: 'IBM sonar-cryptography currently supports Java, Python, and Go for deep analysis', defaultValue: 'java', options: [
+        { value: 'java', label: 'Java' },
+        { value: 'python', label: 'Python' },
+        { value: 'go', label: 'Go' },
+      ], visibleWhen: { field: 'sonarEnabled', values: ['true'] } },
+
+      // ── Runner Configuration (under Sonar — SonarQube typically requires self-hosted) ──
+      { key: 'selfHostedRunner', label: 'Use self-hosted runner', type: 'checkbox', required: false, defaultValue: 'true', helpText: 'Internal SonarQube servers are not reachable from GitHub-hosted runners — use a self-hosted runner on the same network', visibleWhen: { field: 'sonarEnabled', values: ['true'] } },
+      { key: 'runnerLabel', label: 'Runner Label', type: 'text', placeholder: 'self-hosted, linux, x64', required: false, helpText: 'Comma-separated labels for your self-hosted runner', visibleWhen: { field: 'selfHostedRunner', values: ['true'] } },
 
       // ── PQC Threshold ──
       { key: 'pqcThresholdEnabled', label: 'Enforce PQC readiness threshold', type: 'checkbox', required: false, defaultValue: 'false', helpText: 'Fail the workflow if post-quantum cryptography readiness is below the threshold' },
       { key: 'pqcThreshold', label: 'Minimum PQC-safe percentage', type: 'number', required: false, defaultValue: '80', placeholder: '80', min: 0, max: 100, suffix: '%', helpText: 'Workflow will fail if the percentage of quantum-safe components is below this value', visibleWhen: { field: 'pqcThresholdEnabled', values: ['true'] } },
+
+      { key: 'uploadToRelease', label: 'Attach CBOM to GitHub Releases', type: 'checkbox', required: false, defaultValue: 'false', helpText: 'Automatically attach the CBOM report to GitHub releases' },
+
+      // ── Generate Workflow Button ──
+      { key: 'workflowYaml', label: 'Generate Workflow YAML', type: 'generate-btn', required: false, helpText: 'Generate a ready-to-use GitHub Actions workflow based on your configuration' },
 
       // ── Advanced Settings ──
       { key: '_advancedHeader', label: 'Advanced Settings', type: 'section-header', required: false, collapsed: true, helpText: 'Additional workflow customization options' },
       { key: 'excludePaths', label: 'Excluded Paths', type: 'tags', required: false, placeholder: 'e.g. vendor/**, test/**, docs/**', helpText: 'Glob patterns of files/directories to exclude from scanning' },
       { key: 'retentionDays', label: 'Artifact Retention (days)', type: 'number', required: false, defaultValue: '90', placeholder: '90', min: 1, max: 400, suffix: 'days', helpText: 'How long to keep the CBOM artifact in GitHub' },
       { key: 'failOnError', label: 'Fail workflow on scan errors', type: 'checkbox', required: false, defaultValue: 'true', helpText: 'If the scanner encounters errors, fail the workflow run' },
-      { key: 'uploadToRelease', label: 'Attach CBOM to GitHub Releases', type: 'checkbox', required: false, defaultValue: 'false', helpText: 'Automatically attach the CBOM report to GitHub releases' },
-
-      // ── Generate Workflow Button ──
-      { key: 'workflowYaml', label: 'Generate Workflow YAML', type: 'generate-btn', required: false, helpText: 'Generate a ready-to-use GitHub Actions workflow based on your configuration' },
     ],
     hideScope: true,
     hideSchedule: true,
