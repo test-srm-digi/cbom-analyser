@@ -25,6 +25,7 @@ export type CertificateStatus = 'Issued' | 'Expired' | 'Revoked' | 'Pending';
 
 export interface DiscoveryCertificate {
   id: string;
+  integrationId?: string | null;
   commonName: string;
   caVendor: string;
   status: CertificateStatus;
@@ -41,6 +42,7 @@ export interface DiscoveryCertificate {
 
 export interface DiscoveryEndpoint {
   id: string;
+  integrationId?: string | null;
   hostname: string;
   ipAddress: string;
   port: number;
@@ -63,6 +65,7 @@ export interface DiscoveryEndpoint {
 
 export interface DiscoverySoftware {
   id: string;
+  integrationId?: string | null;
   name: string;
   version: string;
   vendor: string;
@@ -82,6 +85,7 @@ export type DeviceEnrollmentStatus = 'Enrolled' | 'Pending' | 'Revoked' | 'Expir
 
 export interface DiscoveryDevice {
   id: string;
+  integrationId?: string | null;
   deviceName: string;
   deviceType: string;
   manufacturer: string;
@@ -109,6 +113,7 @@ export type CbomImportStatus = 'Processed' | 'Processing' | 'Failed' | 'Partial'
 
 export interface DiscoveryCbomImport {
   id: string;
+  integrationId?: string | null;
   fileName: string;
   format: string;
   specVersion: string;
@@ -116,6 +121,7 @@ export interface DiscoveryCbomImport {
   cryptoComponents: number;
   quantumSafeComponents: number;
   nonQuantumSafeComponents: number;
+  conditionalComponents: number;
   importDate: string;
   status: CbomImportStatus;
   source: string;

@@ -28,10 +28,11 @@ const TAB_META: Record<DiscoveryTab, { title: string; subtitle: string }> = {
 interface Props {
   tab: DiscoveryTab;
   onViewCbom?: (id: string) => void;
+  onViewRepo?: (name: string) => void;
   onGoToIntegrations?: () => void;
 }
 
-export default function DiscoveryPage({ tab, onViewCbom, onGoToIntegrations }: Props) {
+export default function DiscoveryPage({ tab, onViewCbom, onViewRepo, onGoToIntegrations }: Props) {
   const [search, setSearch] = useState('');
   const meta = TAB_META[tab];
 
@@ -41,7 +42,7 @@ export default function DiscoveryPage({ tab, onViewCbom, onGoToIntegrations }: P
       case 'endpoints':      return <EndpointsTab    search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
       case 'software':       return <SoftwareTab     search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
       case 'devices':        return <DevicesTab      search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
-      case 'cbom-imports':   return <CbomImportsTab  search={search} setSearch={setSearch} onViewCbom={onViewCbom} onGoToIntegrations={onGoToIntegrations} />;
+      case 'cbom-imports':   return <CbomImportsTab  search={search} setSearch={setSearch} onViewCbom={onViewCbom} onViewRepo={onViewRepo} onGoToIntegrations={onGoToIntegrations} />;
     }
   };
 

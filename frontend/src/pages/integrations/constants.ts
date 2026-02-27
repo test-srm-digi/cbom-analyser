@@ -25,6 +25,8 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
       { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'Enter your API key', required: true, helpText: 'Generate from DigiCert ONE → Admin → API Keys' },
       { key: 'divisionId', label: 'Division ID', type: 'text', placeholder: 'Optional — leave blank for all divisions', required: false, helpText: 'Restrict import to a specific division' },
       { key: 'accountId', label: 'Account ID', type: 'text', placeholder: 'Your DigiCert account ID', required: true, helpText: 'Found under Admin → Account Settings' },
+      { key: 'apiPath', label: 'API Path', type: 'text', placeholder: 'Auto-detect (default)', required: false, helpText: 'Override the certificate API path (e.g. mpki/api/v1/certificate). Leave blank to auto-detect.' },
+      { key: 'allowInsecureTls', label: 'Allow Insecure TLS', type: 'select', required: false, helpText: 'Enable for self-signed or internal CA certificates (e.g. on-prem deployments)', options: [{ value: 'false', label: 'No — verify TLS certificates (default)' }, { value: 'true', label: 'Yes — skip TLS verification (internal/dev)' }] },
     ],
     scopeOptions: [
       { value: 'certificates',   label: 'Certificates',   description: 'TLS, CA, and private certificates from managed PKI' },

@@ -182,6 +182,7 @@ function analyzeCbom(cbomJson: string, fileName: string): {
   cryptoComponents: number;
   quantumSafeComponents: number;
   nonQuantumSafeComponents: number;
+  conditionalComponents: number;
   format: string;
   specVersion: string;
   applicationName: string;
@@ -202,14 +203,15 @@ function analyzeCbom(cbomJson: string, fileName: string): {
 
     let quantumSafe = 0;
     let nonQuantumSafe = 0;
+    let conditional = 0;
     for (const asset of cryptoAssets) {
       const safety = asset.quantumSafety || asset.cryptoProperties?.quantumSafety;
       if (safety === 'quantum-safe') {
         quantumSafe++;
-      } else if (safety === 'not-quantum-safe' || safety === 'unknown') {
-        nonQuantumSafe++;
+      } else if (safety === 'conditional') {
+        conditional++;
       } else {
-        nonQuantumSafe++; // default to non-quantum-safe
+        nonQuantumSafe++; // not-quantum-safe, unknown, and any other value
       }
     }
 
@@ -218,6 +220,7 @@ function analyzeCbom(cbomJson: string, fileName: string): {
       cryptoComponents,
       quantumSafeComponents: quantumSafe,
       nonQuantumSafeComponents: nonQuantumSafe,
+      conditionalComponents: conditional,
       format,
       specVersion,
       applicationName,
@@ -228,6 +231,7 @@ function analyzeCbom(cbomJson: string, fileName: string): {
       cryptoComponents: 0,
       quantumSafeComponents: 0,
       nonQuantumSafeComponents: 0,
+      conditionalComponents: 0,
       format: 'Unknown',
       specVersion: '1.6',
       applicationName: fileName,
@@ -345,6 +349,7 @@ export async function fetchCbomImportsFromGitHub(
           cryptoComponents: analysis.cryptoComponents,
           quantumSafeComponents: analysis.quantumSafeComponents,
           nonQuantumSafeComponents: analysis.nonQuantumSafeComponents,
+          conditionalComponents: analysis.conditionalComponents,
           importDate: run.created_at,
           status: 'Processed',
           source: `GitHub Actions (${run.head_branch})`,

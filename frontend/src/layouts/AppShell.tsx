@@ -49,6 +49,7 @@ export type NavPage =
   | "discovery-devices"
   | "discovery-cbom-imports"
   | "cbom-detail"
+  | "repo-overview"
   | "network"
   | "settings"
   /* Other products */

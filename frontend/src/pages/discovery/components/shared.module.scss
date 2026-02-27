@@ -92,18 +92,42 @@
 }
 
 .aiBannerBtn {
-  padding: 7px 18px;
-  border-radius: $dc1-radius-sm;
-  border: 1px solid $dc1-border;
-  background: $dc1-card;
-  color: $dc1-text;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border-radius: 9999px;
+  border: none;
+  background: linear-gradient(135deg, #9333EA, #7C3AED, #6D28D9);
+  color: #fff;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: background $transition-fast;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 8px rgba(#9333EA, 0.3), inset 0 1px 0 rgba(#fff, 0.15);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
 
-  &:hover { background: $neutral-50; }
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(#9333EA, 0.4), inset 0 1px 0 rgba(#fff, 0.15);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(#9333EA, 0.25);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+.aiBannerBtnIcon {
+  width: 14px;
+  height: 14px;
 }
 
 /* ── Toolbar ──────────────────────────────────────────────── */
@@ -230,6 +254,61 @@
 
 .spinning {
   animation: spin 1s linear infinite;
+}
+
+/* ── Sub-tab switcher ─────────────────────────────────────── */
+.subTabBar {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid $dc1-border;
+  margin-bottom: 0;
+}
+
+.subTabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: $dc1-text-secondary;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: color $transition-fast, border-color $transition-fast;
+
+  &:hover {
+    color: $dc1-text;
+  }
+}
+
+.subTabBtnActive {
+  color: #7C3AED;
+  border-bottom-color: #7C3AED;
+  font-weight: 600;
+}
+
+.subTabIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.subTabCount {
+  font-size: 11px;
+  font-weight: 600;
+  background: $neutral-50;
+  color: $dc1-text-secondary;
+  padding: 1px 7px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+
+  .subTabBtnActive & {
+    background: rgba(#7C3AED, 0.1);
+    color: #7C3AED;
+  }
 }
 
 /* ── Table card ───────────────────────────────────────────── */
@@ -773,5 +852,446 @@
     opacity: 0.6;
     cursor: not-allowed;
   }
+}
+
+/* ── AI Fix Suggestion (Endpoints) ────────────────────────── */
+.aiFixBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+  color: $dc1-card;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity $transition-fast;
+
+  &:hover { opacity: 0.88; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.aiFixIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.aiSuggestionRow td {
+  padding: 0 !important;
+  border-top: none !important;
+}
+
+.aiSuggestionPanel {
+  background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%);
+  border: 1px solid #DDD6FE;
+  border-radius: $dc1-radius;
+  padding: 16px 20px;
+  margin: 0 12px 12px;
+}
+
+.aiSuggestionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    color: #7C3AED;
+  }
+}
+
+.aiSuggestionTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #5B21B6;
+}
+
+.aiConfidence {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+
+.confidenceHigh {
+  background: $dc1-success-bg;
+  color: $dc1-success;
+}
+
+.confidenceMedium {
+  background: $dc1-warning-bg;
+  color: #92400E;
+}
+
+.confidenceLow {
+  background: $neutral-100;
+  color: $dc1-text-secondary;
+}
+
+.aiSuggestionText {
+  font-size: 13px;
+  color: $dc1-text;
+  line-height: 1.6;
+  margin: 0 0 10px;
+}
+
+.aiCodeBlock {
+  background: $neutral-900;
+  color: #E2E8F0;
+  border-radius: $dc1-radius-sm;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  margin: 0;
+}
+
+.aiLoading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  font-size: 13px;
+  color: #7C3AED;
+
+  svg {
+    animation: spin 1s linear infinite;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── AiBanner button spinner ─────────────────────────────── */
+.aiBannerBtnSpin {
+  width: 14px;
+  height: 14px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+  animation: spin 1s linear infinite;
+}
+
+/* ── Not Safe / Safe count in tables ─────────────────────── */
+.notSafeCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: $dc1-danger;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.notSafeIcon {
+  width: 13px;
+  height: 13px;
+}
+
+.safeCount {
+  color: $dc1-success;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* ── CBOM AI Insight Panel ───────────────────────────────── */
+$_ai-purple: #9333EA;
+$_ai-blue: $blue-200;
+$_risk-high: $warning-100;
+
+.cbomInsightWrap {
+  margin-bottom: 20px;
+}
+
+.cbomInsightLoading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(to right, rgba($_ai-purple, 0.04), rgba($_ai-blue, 0.04));
+  border: 1px solid rgba($_ai-purple, 0.15);
+  border-radius: $dc1-radius;
+}
+
+.cbomInsightLoadIcon {
+  width: 20px;
+  height: 20px;
+  color: $_ai-purple;
+  animation: spin 1s linear infinite;
+  flex-shrink: 0;
+}
+
+.cbomInsightPulseBar { flex: 1; }
+
+.cbomInsightPulseBarBig {
+  height: 12px;
+  width: 66%;
+  border-radius: $dc1-radius-sm;
+  background: rgba($_ai-purple, 0.08);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.cbomInsightPulseBarSmall {
+  height: 8px;
+  width: 50%;
+  border-radius: $dc1-radius-sm;
+  background: rgba($_ai-purple, 0.08);
+  animation: pulse 2s ease-in-out infinite;
+  margin-top: 6px;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.cbomInsightError {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: rgba($dc1-danger, 0.04);
+  border: 1px solid rgba($dc1-danger, 0.15);
+  border-radius: $dc1-radius;
+}
+
+.cbomInsightErrorMsg {
+  font-size: 12px;
+  color: $dc1-danger;
+}
+
+.cbomDismissBtn {
+  color: $dc1-text-secondary;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+
+  &:hover { color: $dc1-text; }
+}
+
+.cbomDismissIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.cbomInsightPanel {
+  border-radius: $dc1-radius;
+  overflow: hidden;
+}
+
+.cbomInsightTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 8px;
+}
+
+.cbomInsightTopLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cbomInsightTopTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cbomInsightTopTitleIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.cbomInsightTopTitleText {
+  font-size: 12px;
+  font-weight: 600;
+  color: $dc1-text;
+}
+
+.cbomInsightRiskBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  box-shadow: inset 0 0 0 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cbomBadgeIcon {
+  width: 10px;
+  height: 10px;
+}
+
+.cbomInsightScoreBar {
+  padding: 0 16px 8px;
+}
+
+.cbomInsightScoreRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cbomInsightTrack {
+  flex: 1;
+  height: 6px;
+  background: rgba($neutral-300, 0.5);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.cbomInsightFill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.7s ease;
+}
+
+.cbomInsightScoreText {
+  font-size: 12px;
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.cbomInsightHeadline {
+  padding: 0 16px 8px;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.cbomInsightSummary {
+  padding: 0 16px 12px;
+  font-size: 11px;
+  color: $dc1-text-secondary;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.cbomInsightPriorities {
+  padding: 0 16px 12px;
+}
+
+.cbomInsightPrioritiesLabel {
+  font-size: 10px;
+  color: $dc1-text-secondary;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cbomInsightPrioritiesLabelIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.cbomInsightPriorityRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  & + & { margin-top: 6px; }
+}
+
+.cbomInsightImpactBadge {
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: $dc1-radius-sm;
+  box-shadow: inset 0 0 0 1px;
+}
+
+.cbomInsightPriorityAction {
+  font-size: 11px;
+  color: $dc1-text-secondary;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.cbomInsightPriorityEffort {
+  flex-shrink: 0;
+  font-size: 9px;
+  color: $dc1-text-secondary;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.cbomInsightClockIcon {
+  width: 10px;
+  height: 10px;
+}
+
+.cbomInsightMigration {
+  padding: 8px 16px 12px;
+  border-top: 1px solid rgba(#fff, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cbomInsightMigrationIcon {
+  width: 12px;
+  height: 12px;
+}
+
+.cbomInsightMigrationText {
+  font-size: 10px;
+  color: $dc1-text-secondary;
+}
+
+.cbomInsightMigrationLabel {
+  font-weight: 500;
+  color: $dc1-text;
+}
+
+// Risk / impact color helpers (CBOM)
+.cbomRiskBgCritical    { background: linear-gradient(to right, rgba($dc1-danger, 0.08), rgba($dc1-danger, 0.03)); border: 1px solid rgba($dc1-danger, 0.3); }
+.cbomRiskTextCritical  { color: $dc1-danger; }
+.cbomRiskBarCritical   { background: $dc1-danger; }
+.cbomRiskBadgeCritical { background: rgba($dc1-danger, 0.08); color: $dc1-danger; box-shadow: inset 0 0 0 1px rgba($dc1-danger, 0.3); }
+
+.cbomRiskBgHigh    { background: linear-gradient(to right, rgba($_risk-high, 0.08), rgba($_risk-high, 0.03)); border: 1px solid rgba($_risk-high, 0.3); }
+.cbomRiskTextHigh  { color: $_risk-high; }
+.cbomRiskBarHigh   { background: $_risk-high; }
+.cbomRiskBadgeHigh { background: rgba($_risk-high, 0.08); color: $_risk-high; box-shadow: inset 0 0 0 1px rgba($_risk-high, 0.3); }
+
+.cbomRiskBgModerate    { background: linear-gradient(to right, rgba($dc1-warning, 0.08), rgba($dc1-warning, 0.03)); border: 1px solid rgba($dc1-warning, 0.3); }
+.cbomRiskTextModerate  { color: $dc1-warning; }
+.cbomRiskBarModerate   { background: $dc1-warning; }
+.cbomRiskBadgeModerate { background: rgba($dc1-warning, 0.08); color: $dc1-warning; box-shadow: inset 0 0 0 1px rgba($dc1-warning, 0.3); }
+
+.cbomRiskBgLow    { background: linear-gradient(to right, rgba($dc1-success, 0.08), rgba($dc1-success, 0.03)); border: 1px solid rgba($dc1-success, 0.3); }
+.cbomRiskTextLow  { color: $dc1-success; }
+.cbomRiskBarLow   { background: $dc1-success; }
+.cbomRiskBadgeLow { background: rgba($dc1-success, 0.08); color: $dc1-success; box-shadow: inset 0 0 0 1px rgba($dc1-success, 0.3); }
+
+.cbomRiskBadgeMedium {
+  background: rgba($dc1-warning, 0.08);
+  color: $dc1-warning;
+  box-shadow: inset 0 0 0 1px rgba($dc1-warning, 0.3);
 }
 

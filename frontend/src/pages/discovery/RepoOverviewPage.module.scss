@@ -1,0 +1,331 @@
+@use '../../styles/variables' as *;
+
+/* ═══════════════════════════════════════════════════════════════
+   RepoOverviewPage — Repository CBOM Overview
+   ═══════════════════════════════════════════════════════════════ */
+
+.page {
+  padding: 0;
+}
+
+/* ── Back button ───────────────────────────────────────────── */
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: $dc1-text-secondary;
+  background: transparent;
+  border: 1px solid $dc1-border;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: $dc1-blue;
+    border-color: $dc1-blue;
+    background: rgba($dc1-blue, 0.04);
+  }
+}
+
+/* ── Empty state ───────────────────────────────────────────── */
+
+.emptyState {
+  text-align: center;
+  padding: 80px 24px;
+  color: $dc1-text-secondary;
+  h3 { margin: 16px 0 4px; color: $dc1-text; }
+  p  { margin: 0; }
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+
+.header {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.breadcrumb {
+  font-size: 12px;
+  color: $dc1-text-muted;
+  margin: 0 0 4px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: $dc1-text;
+  margin: 0 0 4px;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.titleIcon {
+  color: #7C3AED;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: $dc1-text-secondary;
+  margin: 0;
+}
+
+.headerBadge {
+  flex-shrink: 0;
+}
+
+.pqcBadge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pqcGood   { background: #E8FAF0; color: #16a34a; }
+.pqcWarn   { background: #FFFBEB; color: #d97706; }
+.pqcDanger { background: #FEF2F2; color: #dc2626; }
+
+/* ── Stats Grid ────────────────────────────────────────────── */
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.statCard {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 20px;
+  transition: box-shadow 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+}
+
+.statLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: $dc1-text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: $dc1-text;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.1;
+}
+
+.statSub {
+  font-size: 12px;
+  color: $dc1-text-muted;
+  margin-top: 4px;
+}
+
+.statSuccess .statValue { color: #16a34a; }
+.statDanger  .statValue { color: #dc2626; }
+
+/* ── Stat card trend elements ──────────────────────────────── */
+
+.statTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.statTrend {
+  display: flex;
+  align-items: center;
+}
+
+.statRow {
+  margin-bottom: 2px;
+}
+
+.statChange {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ── Charts Grid ───────────────────────────────────────────── */
+
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.chartCard {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.chartHeader {
+  margin-bottom: 12px;
+}
+
+.chartTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: $dc1-text;
+  display: block;
+}
+
+.chartSubtitle {
+  font-size: 12px;
+  color: $dc1-text-muted;
+  display: block;
+  margin-top: 2px;
+}
+
+.chartBody {
+  width: 100%;
+}
+
+.chartLegend {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  font-size: 11px;
+  color: $dc1-text-secondary;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legendDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* ── Section headings (used by AI & History) ───────────────── */
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionIcon {
+  color: #7C3AED;
+}
+
+.sectionSub {
+  font-size: 13px;
+  color: $dc1-text-secondary;
+  margin: 0 0 20px;
+}
+
+/* ── AI Section ────────────────────────────────────────────── */
+
+.aiSection {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.aiHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.aiIcon {
+  color: #7C3AED;
+}
+
+.aiBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #9333EA, #7C3AED, #6D28D9);
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(124, 58, 237, 0.35);
+  transition: all 0.15s ease;
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.5);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Timeline Section ──────────────────────────────────────── */
+
+.timelineSection {
+  margin-bottom: 20px;
+}

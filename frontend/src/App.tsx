@@ -6,6 +6,7 @@ import ViolationsPage from "./pages/ViolationsPage";
 import NetworkPage from "./pages/NetworkPage";
 import IntegrationsPage from "./pages/integrations";
 import DiscoveryPage from "./pages/discovery";
+import RepoOverviewPage from "./pages/discovery/RepoOverviewPage";
 import type { DiscoveryTab } from "./pages/discovery/types";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import { ShieldHalf, Tablet, FileSignature } from "lucide-react";
@@ -36,6 +37,7 @@ const PAGE_TO_PATH: Record<NavPage, string> = {
   "discovery-devices": "/discovery/devices",
   "discovery-cbom-imports": "/discovery/cbom-imports",
   "cbom-detail": "/discovery/cbom-imports/detail",
+  "repo-overview": "/discovery/cbom-imports/repo",
   network: "/network",
   settings: "/settings",
   "private-ca": "/private-ca",
@@ -53,6 +55,8 @@ function pathToPage(pathname: string): NavPage {
   // cbom-detail with id suffix
   if (pathname.startsWith("/discovery/cbom-imports/detail"))
     return "cbom-detail";
+  if (pathname.startsWith("/discovery/cbom-imports/repo"))
+    return "repo-overview";
   // fallback
   return "dashboard";
 }
@@ -83,6 +87,7 @@ export default function App() {
   const [compliance, setCompliance] = useState<ComplianceSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCbomId, setSelectedCbomId] = useState<string | null>(null);
+  const [selectedRepoName, setSelectedRepoName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* ── Upload ──────────────────────────────────────────── */
@@ -186,6 +191,10 @@ export default function App() {
               setSelectedCbomId(id);
               setActivePage("cbom-detail");
             }}
+            onViewRepo={(name) => {
+              setSelectedRepoName(name);
+              setActivePage("repo-overview");
+            }}
             onGoToIntegrations={() => setActivePage("integrations")}
           />
         );
@@ -196,6 +205,20 @@ export default function App() {
             onBack={() => {
               setSelectedCbomId(null);
               setActivePage("discovery-cbom-imports");
+            }}
+          />
+        ) : null;
+      case "repo-overview":
+        return selectedRepoName ? (
+          <RepoOverviewPage
+            repoName={selectedRepoName}
+            onBack={() => {
+              setSelectedRepoName(null);
+              setActivePage("discovery-cbom-imports");
+            }}
+            onViewCbom={(id) => {
+              setSelectedCbomId(id);
+              setActivePage("cbom-detail");
             }}
           />
         ) : null;

@@ -226,9 +226,27 @@ router.post('/integrations/:id/test', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Integration not found' });
     }
 
-    // Simulate connection test (replace with real logic later)
-    const configKeys = Object.keys(integration.config || {});
-    const hasValues = configKeys.length > 0 && configKeys.every((k) => integration.config[k]?.trim());
+    const config = (integration.config || {}) as Record<string, string>;
+    const templateType = integration.templateType;
+
+    // ── Real connection test for DigiCert TLM ──
+    if (templateType === 'digicert-tlm' && config.apiBaseUrl && config.apiKey) {
+      const { testDigiCertConnection } = await import('../services/digicertTlmConnector');
+      const result = await testDigiCertConnection(config as import('../services/connectors').ConnectorConfig);
+
+      if (result.success) {
+        await integration.update({ status: 'connected', errorMessage: null });
+        res.json({ success: true, data: { status: 'success', message: result.message } });
+      } else {
+        await integration.update({ status: 'error', errorMessage: result.message });
+        res.json({ success: false, data: { status: 'error', message: result.message } });
+      }
+      return;
+    }
+
+    // ── Fallback: basic config-presence check for other integrations ──
+    const configKeys = Object.keys(config);
+    const hasValues = configKeys.length > 0 && configKeys.every((k) => config[k]?.trim());
 
     if (hasValues) {
       await integration.update({ status: 'connected', errorMessage: null });

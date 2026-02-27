@@ -17,6 +17,7 @@ export interface CbomImportAttributes {
   cryptoComponents: number;
   quantumSafeComponents: number;
   nonQuantumSafeComponents: number;
+  conditionalComponents: number;
   importDate: string;
   status: 'Processed' | 'Processing' | 'Failed' | 'Partial';
   source: string;
@@ -45,6 +46,7 @@ class CbomImport
   declare cryptoComponents: number;
   declare quantumSafeComponents: number;
   declare nonQuantumSafeComponents: number;
+  declare conditionalComponents: number;
   declare importDate: string;
   declare status: CbomImportAttributes['status'];
   declare source: string;
@@ -104,6 +106,12 @@ CbomImport.init(
       allowNull: false,
       defaultValue: 0,
       field: 'non_quantum_safe_components',
+    },
+    conditionalComponents: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'conditional_components',
     },
     importDate: {
       type: DataTypes.STRING(100),

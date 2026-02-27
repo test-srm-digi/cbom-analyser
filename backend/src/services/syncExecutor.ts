@@ -177,14 +177,38 @@ export async function executeSyncForIntegration(
     ? new Date(now.getTime() + SCHEDULE_MS[integration.syncSchedule]).toISOString()
     : null;
 
+  // Build a combined message from hard errors + connector warnings (if any)
+  const warnings: string[] = Array.isArray(fetchMeta.warnings) ? fetchMeta.warnings as string[] : [];
+  const warningsSummary = warnings.length > 0
+    ? [`${warnings.length} probe(s) failed: ${[...new Set(warnings.map(w => w.split(' - ')[0]))].slice(0, 5).join(', ')}${warnings.length > 5 ? '…' : ''}`]
+    : [];
+  const allMessages = [...errors, ...warningsSummary];
+
   try {
+    // Determine integration status:
+    //   - createdCount > 0              → 'connected' (partial or full success)
+    //   - createdCount = 0, has errors  → 'error'
+    //   - createdCount = 0, no errors   → 'connected' (empty result is valid)
+    const integrationStatus = (createdCount > 0 || errors.length === 0) ? 'connected' : 'error';
+
+    // For lastSyncItems, show the TOTAL count of items belonging to this
+    // integration (not just the delta from this sync).  This way the UI
+    // always reflects how many items the integration has produced overall,
+    // rather than resetting to 0 on incremental syncs that find no new data.
+    let totalItems = createdCount;
+    if (TargetModel) {
+      try {
+        totalItems = await (TargetModel as any).count({ where: { integrationId } });
+      } catch { /* fall back to createdCount */ }
+    }
+
     await integration.update({
-      status: errors.length > 0 ? 'error' : 'connected',
+      status: integrationStatus,
       lastSync: now.toISOString(),
-      lastSyncItems: createdCount,
+      lastSyncItems: totalItems,
       lastSyncErrors: errors.length,
       nextSync: nextSyncDate,
-      errorMessage: errors.length > 0 ? errors.join('; ') : null,
+      errorMessage: allMessages.length > 0 ? allMessages.join('; ') : null,
     });
   } catch (err) {
     errors.push(`Failed to update integration metadata: ${(err as Error).message}`);

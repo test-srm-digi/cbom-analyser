@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Eye, ExternalLink } from 'lucide-react';
+import { useMemo, useState, useCallback } from 'react';
+import { Eye, ExternalLink, Sparkles, Loader2 } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, TlsPill, EmptyState } from '../components';
 import type { IntegrationStep } from '../components';
 import { ENDPOINTS } from '../data';
@@ -26,6 +26,49 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
   const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllEndpointsMutation();
   const data = apiData;
   const loaded = data.length > 0;
+
+  // Data from a real integration has integrationId set — hide reset for integration-sourced data
+  const isSampleData = loaded && data.every((e) => !e.integrationId);
+
+  /* ── AI suggestion state ────────────────────────────────── */
+  const [suggestions, setSuggestions] = useState<Record<string, {
+    loading?: boolean;
+    fix?: string;
+    codeSnippet?: string;
+    confidence?: 'high' | 'medium' | 'low';
+    error?: string;
+  }>>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const fetchSuggestion = useCallback(async (ep: DiscoveryEndpoint) => {
+    const key = ep.id;
+    setSuggestions(prev => ({ ...prev, [key]: { loading: true } }));
+    setExpandedId(key);
+    try {
+      const res = await fetch('/api/ai-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          algorithmName: ep.tlsVersion,
+          primitive: 'key-agreement',
+          quantumSafety: ep.quantumSafe ? 'quantum-safe' : 'not-quantum-safe',
+          assetType: 'protocol',
+          description: `TLS endpoint ${ep.hostname}:${ep.port} using ${ep.cipherSuite} with ${ep.keyAgreement} key exchange`,
+          recommendedPQC: ep.quantumSafe ? undefined : 'ML-KEM-768 (hybrid with X25519)',
+          mode: ep.cipherSuite,
+          curve: ep.keyAgreement,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setSuggestions(prev => ({ ...prev, [key]: { fix: json.suggestedFix, codeSnippet: json.codeSnippet, confidence: json.confidence, loading: false } }));
+      } else {
+        setSuggestions(prev => ({ ...prev, [key]: { loading: false, error: 'No suggestion available' } }));
+      }
+    } catch {
+      setSuggestions(prev => ({ ...prev, [key]: { loading: false, error: 'Failed to fetch suggestion' } }));
+    }
+  }, []);
 
   const total      = data.length;
   const qsSafe     = data.filter((e) => e.quantumSafe).length;
@@ -64,12 +107,28 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
       label: 'Actions',
       sortable: false,
       headerStyle: { textAlign: 'right' as const },
-      render: (_e: DiscoveryEndpoint) => (
-        <div className={s.actions}>
-          <button className={s.actionBtn}><Eye className={s.actionIcon} /></button>
-          <button className={s.actionBtn}><ExternalLink className={s.actionIcon} /></button>
-        </div>
-      ),
+      render: (e: DiscoveryEndpoint) => {
+        const sg = suggestions[e.id];
+        return (
+          <div className={s.actions}>
+            {!e.quantumSafe && (
+              <button
+                className={s.aiFixBtn}
+                title="Get AI-powered quantum-safe migration suggestion"
+                disabled={sg?.loading}
+                onClick={(ev) => { ev.stopPropagation(); fetchSuggestion(e); }}
+              >
+                {sg?.loading ? <Loader2 className={s.aiFixIcon} /> : <Sparkles className={s.aiFixIcon} />}
+                AI Fix
+              </button>
+            )}
+            <button className={s.actionBtn} onClick={() => setExpandedId(expandedId === e.id ? null : e.id)}>
+              <Eye className={s.actionIcon} />
+            </button>
+            <button className={s.actionBtn}><ExternalLink className={s.actionIcon} /></button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -103,17 +162,80 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
         search={search}
         setSearch={setSearch}
         placeholder="Search by hostname, IP address, cipher, or key agreement..."
-        onReset={() => deleteAll()}
-        resetLoading={isResetLoading}
+        onReset={isSampleData ? () => deleteAll() : undefined}
+        resetLoading={isSampleData ? isResetLoading : undefined}
       />
 
-      <DataTable
-        title="Endpoints"
-        count={filtered.length}
-        columns={columns}
-        data={filtered}
-        rowKey={(e) => e.id}
-      />
+      <div className={s.tableCard}>
+        <h3 className={s.tableTitle}>Endpoints ({filtered.length})</h3>
+        <table className={s.table}>
+          <thead>
+            <tr>
+              {columns.map((col) => (
+                <th key={col.key} style={col.headerStyle}>{col.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((ep) => {
+              const sg = suggestions[ep.id];
+              const isExpanded = expandedId === ep.id && sg && !sg.loading;
+              return (
+                <>{/* Fragment needed for adjacent rows */}
+                  <tr key={ep.id}>
+                    {columns.map((col) => (
+                      <td key={col.key} style={'cellStyle' in col ? (col as { cellStyle?: React.CSSProperties }).cellStyle : undefined}>{col.render(ep)}</td>
+                    ))}
+                  </tr>
+                  {/* AI suggestion expandable row */}
+                  {expandedId === ep.id && sg && (
+                    <tr key={`${ep.id}-ai`} className={s.aiSuggestionRow}>
+                      <td colSpan={columns.length}>
+                        {sg.loading ? (
+                          <div className={s.aiLoading}>
+                            <Loader2 size={16} /> Generating AI suggestion for {ep.hostname}:{ep.port}…
+                          </div>
+                        ) : sg.error ? (
+                          <div className={s.aiSuggestionPanel}>
+                            <div className={s.aiSuggestionHeader}>
+                              <Sparkles />
+                              <span className={s.aiSuggestionTitle}>AI Suggestion</span>
+                            </div>
+                            <p className={s.aiSuggestionText}>{sg.error}</p>
+                            <button className={s.aiFixBtn} onClick={() => fetchSuggestion(ep)}>
+                              <Sparkles className={s.aiFixIcon} /> Retry
+                            </button>
+                          </div>
+                        ) : sg.fix ? (
+                          <div className={s.aiSuggestionPanel}>
+                            <div className={s.aiSuggestionHeader}>
+                              <Sparkles />
+                              <span className={s.aiSuggestionTitle}>AI Migration Suggestion</span>
+                              {sg.confidence && (
+                                <span className={`${s.aiConfidence} ${
+                                  sg.confidence === 'high' ? s.confidenceHigh
+                                    : sg.confidence === 'medium' ? s.confidenceMedium
+                                    : s.confidenceLow
+                                }`}>
+                                  {sg.confidence} confidence
+                                </span>
+                              )}
+                            </div>
+                            <p className={s.aiSuggestionText}>{sg.fix}</p>
+                            {sg.codeSnippet && (
+                              <pre className={s.aiCodeBlock}>{sg.codeSnippet}</pre>
+                            )}
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }

@@ -187,11 +187,46 @@
 /* ── Section headings ─────────────────────────────────────── */
 .section { margin-bottom: 32px; }
 
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
 .sectionTitle {
   font-size: 18px;
   font-weight: 700;
   color: $dc1-text;
-  margin: 0 0 16px;
+  margin: 0;
+
+  /* retain bottom margin when used standalone (without .sectionHeader) */
+  .section > &:first-child { margin-bottom: 16px; }
+}
+
+.clearFilterBtn {
+  padding: 5px 14px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: $dc1-card;
+  color: $dc1-blue;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background $transition-fast, border-color $transition-fast;
+
+  &:hover {
+    background: $dc1-blue-light;
+    border-color: $dc1-blue;
+  }
+}
+
+.noFilterResults {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 32px 20px;
+  color: $dc1-text-muted;
+  font-size: 14px;
 }
 
 /* ── Active integrations grid ─────────────────────────────── */
@@ -231,6 +266,111 @@
 
 .howIcon {
   color: $dc1-blue;
+}
+
+/* ── Type breakdown grid ──────────────────────────────────── */
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.typeCard {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: border-color $transition-fast, box-shadow $transition-fast, background $transition-fast;
+  user-select: none;
+
+  &:hover {
+    border-color: $dc1-blue;
+    box-shadow: 0 2px 8px rgba($dc1-blue, 0.08);
+  }
+
+  &:focus-visible {
+    outline: 2px solid $dc1-blue;
+    outline-offset: 2px;
+  }
+}
+
+.typeCardSelected {
+  border-color: $dc1-blue;
+  background: $dc1-blue-light;
+  box-shadow: 0 2px 12px rgba($dc1-blue, 0.12);
+
+  .typeIcon {
+    background: $dc1-blue;
+    color: $dc1-card;
+  }
+}
+
+.typeCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.typeIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: $dc1-radius-sm;
+  background: $dc1-blue-light;
+  color: $dc1-blue;
+  flex-shrink: 0;
+}
+
+.typeInfo {
+  min-width: 0;
+}
+
+.typeName {
+  font-size: 13px;
+  font-weight: 600;
+  color: $dc1-text;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.typeVendor {
+  font-size: 11px;
+  color: $dc1-text-muted;
+  margin-top: 1px;
+}
+
+.typeMetrics {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid $dc1-border;
+}
+
+.typeMetric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.typeMetricValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: $dc1-text;
+}
+
+.typeMetricLabel {
+  font-size: 10px;
+  color: $dc1-text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
 }
 
 .howRequires {

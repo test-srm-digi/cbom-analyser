@@ -27,6 +27,9 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
   const data = apiData;
   const loaded = data.length > 0;
 
+  // Data from a real integration has integrationId set — hide reset for integration-sourced data
+  const isSampleData = loaded && data.every((d) => !d.integrationId);
+
   const total      = data.length;
   const qsSafe     = data.filter((d) => d.quantumSafe).length;
   const violations = data.filter((d) => !d.quantumSafe).length;
@@ -104,8 +107,8 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
         search={search}
         setSearch={setSearch}
         placeholder="Search by device name, type, manufacturer, or algorithm..."
-        onReset={() => deleteAll()}
-        resetLoading={isResetLoading}
+        onReset={isSampleData ? () => deleteAll() : undefined}
+        resetLoading={isSampleData ? isResetLoading : undefined}
       />
 
       <DataTable

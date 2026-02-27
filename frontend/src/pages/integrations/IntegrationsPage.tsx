@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useIntegrations } from './hooks/useIntegrations';
 import {
   PageHeader,
   StatsRow,
+  TypeBreakdown,
   EmptyState,
   IntegrationCard,
   AddCard,
@@ -9,6 +11,7 @@ import {
   CatalogOverlay,
   ConfigDrawer,
 } from './components';
+import { INTEGRATION_CATALOG } from './constants';
 import s from './IntegrationsPage.module.scss';
 
 export default function IntegrationsPage() {
@@ -38,6 +41,22 @@ export default function IntegrationsPage() {
     setConfigName,
   } = useIntegrations();
 
+  const [selectedType, setSelectedType] = useState<string | null>(
+    INTEGRATION_CATALOG.length > 0 ? INTEGRATION_CATALOG[0].type : null,
+  );
+
+  const handleTypeSelect = (type: string) => {
+    setSelectedType((prev) => (prev === type ? null : type));
+  };
+
+  const filteredIntegrations = selectedType
+    ? integrations.filter((i) => i.templateType === selectedType)
+    : integrations;
+
+  const selectedTypeName = selectedType
+    ? INTEGRATION_CATALOG.find((t) => t.type === selectedType)?.name ?? selectedType
+    : null;
+
   return (
     <div className={s.page}>
       {/* Header */}
@@ -50,6 +69,13 @@ export default function IntegrationsPage() {
         totalItems={totalItems}
       />
 
+      {/* Type breakdown */}
+      <TypeBreakdown
+        integrations={integrations}
+        selectedType={selectedType}
+        onSelectType={handleTypeSelect}
+      />
+
       {/* Empty state — workflow guide */}
       {integrations.length === 0 && !showCatalog && (
         <EmptyState onAddClick={() => setShowCatalog(true)} />
@@ -58,9 +84,23 @@ export default function IntegrationsPage() {
       {/* Active integrations grid */}
       {integrations.length > 0 && (
         <div className={s.section}>
-          <h2 className={s.sectionTitle}>Active Integrations</h2>
+          <div className={s.sectionHeader}>
+            <h2 className={s.sectionTitle}>
+              {selectedType
+                ? `Active Integrations — ${selectedTypeName}`
+                : 'Active Integrations'}
+            </h2>
+            {selectedType && (
+              <button
+                className={s.clearFilterBtn}
+                onClick={() => setSelectedType(null)}
+              >
+                Show all
+              </button>
+            )}
+          </div>
           <div className={s.intgGrid}>
-            {integrations.map((intg) => (
+            {filteredIntegrations.map((intg) => (
               <IntegrationCard
                 key={intg.id}
                 integration={intg}
@@ -70,6 +110,11 @@ export default function IntegrationsPage() {
                 onSync={triggerSync}
               />
             ))}
+            {filteredIntegrations.length === 0 && selectedType && (
+              <div className={s.noFilterResults}>
+                No active integrations of this type.
+              </div>
+            )}
             <AddCard onClick={() => setShowCatalog(true)} />
           </div>
         </div>

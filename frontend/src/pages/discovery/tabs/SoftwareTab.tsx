@@ -27,6 +27,9 @@ export default function SoftwareTab({ search, setSearch, onGoToIntegrations }: P
   const data = apiData;
   const loaded = data.length > 0;
 
+  // Data from a real integration has integrationId set — hide reset for integration-sourced data
+  const isSampleData = loaded && data.every((sw) => !sw.integrationId);
+
   const total      = data.length;
   const qsSafe     = data.filter((sw) => sw.quantumSafe).length;
   const violations = total - qsSafe;
@@ -108,8 +111,8 @@ export default function SoftwareTab({ search, setSearch, onGoToIntegrations }: P
         search={search}
         setSearch={setSearch}
         placeholder="Search by release name, vendor, algorithm, or library..."
-        onReset={() => deleteAll()}
-        resetLoading={isResetLoading}
+        onReset={isSampleData ? () => deleteAll() : undefined}
+        resetLoading={isSampleData ? isResetLoading : undefined}
       />
 
       <DataTable

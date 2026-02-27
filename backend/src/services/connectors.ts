@@ -36,6 +36,8 @@ export interface ConnectorConfig {
   accountId?: string;
   organizationId?: string;
   token?: string;
+  divisionId?: string;
+  allowInsecureTls?: string;
   [key: string]: string | undefined;
 }
 
@@ -63,12 +65,24 @@ function futureDate(daysAhead: number): string {
 
 /* ══════════════════════════════════════════════════════════════
  *  1. DigiCert TLM — Certificate Connector
+ *
+ *  When apiBaseUrl + apiKey are provided the connector calls the
+ *  real DigiCert ONE REST API.  Otherwise it falls back to
+ *  simulated data so the pipeline can be exercised in demo mode.
  * ══════════════════════════════════════════════════════════════ */
 
 export async function fetchCertificates(
-  _config: ConnectorConfig,
+  config: ConnectorConfig,
   integrationId: string,
 ): Promise<ConnectorResult<Record<string, unknown>>> {
+  // ── Real DigiCert ONE API mode ──
+  if (config.apiBaseUrl && config.apiKey) {
+    const { fetchCertificatesFromDigiCert } = await import('./digicertTlmConnector');
+    return fetchCertificatesFromDigiCert(config, integrationId);
+  }
+
+  // ── Simulated data mode (dev / demo — no DigiCert credentials) ──
+  console.log('[DigiCert TLM] No API credentials — generating simulated data');
   const algorithms = ['RSA', 'ECDSA', 'Ed25519', 'ML-DSA'];
   const keyLengths: Record<string, string[]> = {
     RSA: ['2048', '3072', '4096'],
@@ -107,12 +121,24 @@ export async function fetchCertificates(
 
 /* ══════════════════════════════════════════════════════════════
  *  2. Network Scanner — Endpoint Connector
+ *
+ *  When `targets` (hostnames / IPs / CIDRs) are configured in the
+ *  integration config the connector performs real TLS handshakes.
+ *  Otherwise it falls back to simulated data for demo mode.
  * ══════════════════════════════════════════════════════════════ */
 
 export async function fetchEndpoints(
-  _config: ConnectorConfig,
+  config: ConnectorConfig,
   integrationId: string,
 ): Promise<ConnectorResult<Record<string, unknown>>> {
+  // ── Real network scanning mode ──
+  if (config.targets) {
+    const { fetchEndpointsFromNetwork } = await import('./networkTlsConnector');
+    return fetchEndpointsFromNetwork(config, integrationId);
+  }
+
+  // ── Simulated data mode (dev / demo — no targets configured) ──
+  console.log('[Network Scanner] No targets configured — generating simulated data');
   const tlsVersions = ['TLS 1.2', 'TLS 1.3'];
   const cipherSuites = [
     'TLS_AES_256_GCM_SHA384',
