@@ -6,6 +6,8 @@ import ViolationsPage from "./pages/ViolationsPage";
 import NetworkPage from "./pages/NetworkPage";
 import IntegrationsPage from "./pages/integrations";
 import PoliciesPage from "./pages/policies";
+import { TrackingPage } from "./pages/tracking";
+import { TicketSettingsPage } from "./pages/tracking";
 import DiscoveryPage from "./pages/discovery";
 import RepoOverviewPage from "./pages/discovery/RepoOverviewPage";
 import type { DiscoveryTab } from "./pages/discovery/types";
@@ -29,6 +31,8 @@ const PAGE_TO_PATH: Record<NavPage, string> = {
   visualize: "/visualize",
   violations: "/violations",
   tracking: "/tracking",
+  "tracking-tickets": "/tracking/tickets",
+  "tracking-settings": "/tracking/settings",
   policies: "/policies",
   integrations: "/integrations",
   discovery: "/discovery",
@@ -174,6 +178,14 @@ export default function App() {
         return <NetworkPage />;
       // case 'violations':
       //   return <ViolationsPage cbom={cbom} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
+      case "tracking":
+        // bare parent → redirect to first child
+        nav("/tracking/tickets", { replace: true });
+        return null;
+      case "tracking-tickets":
+        return <TrackingPage />;
+      case "tracking-settings":
+        return <TicketSettingsPage />;
       case "policies":
         return <PoliciesPage />;
       case "integrations":

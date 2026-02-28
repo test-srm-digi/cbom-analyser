@@ -10,3 +10,5 @@ export { default as cbomImportRoutes } from './cbomImportRoutes';
 export { default as syncLogRoutes } from './syncLogRoutes';
 export { default as schedulerRoutes } from './schedulerRoutes';
 export { default as policyRoutes } from './policyRoutes';
+export { default as ticketRoutes } from './ticketRoutes';
+export { default as ticketConnectorRoutes } from './ticketConnectorRoutes';

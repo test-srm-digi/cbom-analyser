@@ -40,6 +40,8 @@ export type NavPage =
   | "visualize"
   | "violations"
   | "tracking"
+  | "tracking-tickets"
+  | "tracking-settings"
   | "policies"
   | "integrations"
   | "discovery"
@@ -100,7 +102,15 @@ const mainNavItems: NavItem[] = [
     ],
   },
   { id: "integrations", label: "Integrations", icon: faPlug },
-  { id: "tracking", label: "Tracking", icon: faListCheck },
+  {
+    id: "tracking",
+    label: "Tracking",
+    icon: faListCheck,
+    children: [
+      { id: "tracking-tickets", label: "Tickets", icon: faListCheck },
+      { id: "tracking-settings", label: "Integration Settings", icon: faPlug },
+    ],
+  },
   { id: "policies", label: "Policies", icon: faShieldHalved },
   { id: "settings", label: "Settings", icon: faGear },
 ];

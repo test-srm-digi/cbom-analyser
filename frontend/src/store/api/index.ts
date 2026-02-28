@@ -118,3 +118,19 @@ export {
 } from './policiesApi';
 
 export type { CreatePolicyRequest, UpdatePolicyRequest } from './policiesApi';
+
+export {
+  trackingApi,
+  useGetTicketsQuery,
+  useGetTicketQuery,
+  useCreateTicketMutation,
+  useUpdateTicketMutation,
+  useDeleteTicketMutation,
+  useGetConnectorsQuery,
+  useCreateConnectorMutation,
+  useUpdateConnectorMutation,
+  useToggleConnectorMutation,
+  useDeleteConnectorMutation,
+} from './trackingApi';
+
+export type { TicketConnector, CreateConnectorRequest, UpdateConnectorRequest } from './trackingApi';

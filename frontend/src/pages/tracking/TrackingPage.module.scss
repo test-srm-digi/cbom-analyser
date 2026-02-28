@@ -1,0 +1,347 @@
+@use '../../styles/variables' as *;
+
+/* ── Tracking Page ────────────────────────────────────── */
+.page {
+  max-width: 1200px;
+}
+
+/* ── Header ──────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  background: linear-gradient(135deg, $dc1-blue-light 0%, $dc1-card 100%);
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-lg;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+}
+.headerText { flex: 1; }
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: $dc1-blue;
+  margin: 0 0 4px;
+}
+.subtitle {
+  font-size: 14px;
+  color: $dc1-text-secondary;
+  margin: 0;
+  max-width: 640px;
+  line-height: 1.5;
+}
+
+/* ── Stat cards ──────────────────────────────────────── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.statCard {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 20px 24px;
+  border-left: 4px solid $dc1-blue;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.statCardSuccess { @extend .statCard; border-left-color: $dc1-success; }
+.statCardDanger  { @extend .statCard; border-left-color: $dc1-danger; }
+.statCardWarning { @extend .statCard; border-left-color: $dc1-warning; }
+.statCardInfo    { @extend .statCard; border-left-color: $neutral-500; }
+
+.statLabel {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: $dc1-text-secondary;
+}
+.statRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: $dc1-blue;
+  line-height: 1.2;
+}
+.statValueSuccess { @extend .statValue; color: $dc1-success; }
+.statValueDanger  { @extend .statValue; color: $dc1-danger; }
+.statValueWarning { @extend .statValue; color: $dc1-warning; }
+.statValueNeutral { @extend .statValue; color: $neutral-600; }
+
+.statIconGreen  { color: $dc1-success; width: 18px; height: 18px; }
+.statIconBlue   { color: $dc1-blue; width: 18px; height: 18px; }
+.statIconGray   { color: $neutral-500; width: 18px; height: 18px; }
+.statIconRed    { color: $dc1-danger; width: 18px; height: 18px; }
+.statIconOrange { color: $dc1-warning; width: 18px; height: 18px; }
+
+.statTrend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: $dc1-text-muted;
+}
+.trendUp   { color: $dc1-success; }
+.trendDown { color: $dc1-danger; }
+
+/* ── Table card ──────────────────────────────────────── */
+.tableCard {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 20px 24px;
+  overflow-x: auto;
+}
+.tableHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.tableTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0 0 2px;
+}
+.tableCount {
+  font-size: 12px;
+  color: $dc1-text-muted;
+}
+.tableActions {
+  display: flex;
+  gap: 8px;
+}
+.exportBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: $dc1-text;
+  cursor: pointer;
+  transition: background $transition-fast;
+  &:hover { background: $neutral-50; }
+}
+
+/* ── Search ──────────────────────────────────────────── */
+.searchBar {
+  position: relative;
+  max-width: 400px;
+  margin-bottom: 16px;
+}
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: $dc1-text-muted;
+}
+.searchInput {
+  width: 100%;
+  padding: 10px 12px 10px 34px;
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  font-size: 13px;
+  color: $dc1-text;
+  outline: none;
+  &::placeholder { color: $dc1-text-muted; }
+  &:focus { border-color: $dc1-blue; box-shadow: 0 0 0 2px rgba($dc1-blue, 0.12); }
+}
+
+/* ── Table ────────────────────────────────────────────── */
+.tableWrap {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: $dc1-text-secondary;
+  border-bottom: 1px solid $dc1-border;
+  white-space: nowrap;
+  svg { vertical-align: middle; margin-left: 4px; color: $dc1-text-muted; }
+}
+.thFilter {
+  margin-top: 4px;
+  select {
+    background: $dc1-card;
+    border: 1px solid $dc1-border;
+    border-radius: 4px;
+    color: $dc1-text;
+    font-size: 11px;
+    padding: 2px 6px;
+    outline: none;
+    cursor: pointer;
+  }
+}
+.table td {
+  padding: 12px 12px;
+  color: $dc1-text;
+  border-bottom: 1px solid rgba($dc1-border, 0.5);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.table tbody tr {
+  transition: background $transition-fast;
+  &:hover { background: rgba($dc1-bg, 0.5); }
+}
+
+/* ── Ticket-ID cell ──────────────────────────────────── */
+.ticketIdCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ticketIdIcon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ticketIconJIRA       { background: #0052cc; color: $white; }
+.ticketIconGitHub     { background: $neutral-900; color: $white; }
+.ticketIconServiceNow { background: #62d84e; color: $white; }
+.ticketIdText {
+  font-weight: 600;
+  color: $dc1-blue;
+}
+.ticketLink {
+  color: $dc1-text-muted;
+  cursor: pointer;
+  &:hover { color: $dc1-blue; }
+}
+
+/* ── Badges ──────────────────────────────────────────── */
+
+/* type */
+.typeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.typeBadgeJIRA       { background: rgba(#0052cc, 0.1);  color: #0052cc; }
+.typeBadgeGitHub     { background: $neutral-100; color: $neutral-800; }
+.typeBadgeServiceNow { background: rgba(#62d84e, 0.1); color: #3a8a29; }
+
+/* status */
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.statusDone       { background: $dc1-success-bg; color: $dc1-success; border: 1px solid rgba($dc1-success, 0.3); }
+.statusInProgress { background: $dc1-info-bg;    color: $dc1-blue;    border: 1px solid rgba($dc1-blue, 0.3); }
+.statusToDo       { background: $neutral-100;    color: $neutral-600; border: 1px solid $dc1-border; }
+.statusBlocked    { background: $dc1-danger-bg;  color: $dc1-danger;  border: 1px solid rgba($dc1-danger, 0.3); }
+
+/* priority */
+.priorityBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.priorityCritical { background: $dc1-danger;    color: $dc1-card; }
+.priorityHigh     { background: $error-50;      color: $dc1-danger;  border: 1px solid rgba($dc1-danger, 0.3); }
+.priorityMedium   { background: $warning-50;    color: $warning-200; border: 1px solid rgba($dc1-warning, 0.3); }
+.priorityLow      { background: $blue-50;       color: $dc1-blue;    border: 1px solid rgba($dc1-blue, 0.2); }
+
+/* entity type */
+.entityBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.entityCertificate  { background: rgba(#7C3AED, 0.08); color: #7C3AED; border: 1px solid rgba(#7C3AED, 0.2); }
+.entityEndpoint     { background: $dc1-info-bg;        color: $dc1-blue; border: 1px solid rgba($dc1-blue, 0.2); }
+.entityApplication  { background: rgba(#0D9488, 0.08); color: #0D9488; border: 1px solid rgba(#0D9488, 0.2); }
+.entityDevice       { background: $warning-50;         color: $warning-200; border: 1px solid rgba($dc1-warning, 0.2); }
+.entitySoftware     { background: rgba(#DB2777, 0.06); color: #DB2777; border: 1px solid rgba(#DB2777, 0.2); }
+
+.entityName { color: $dc1-text; font-weight: 500; }
+.assignee   { color: $dc1-text; }
+.date       { color: $dc1-text-muted; font-size: 12px; }
+
+/* severity */
+.severityBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.severityCritical { background: $dc1-danger;  color: $dc1-card; }
+.severityHigh     { background: $error-50;    color: $dc1-danger;  border: 1px solid rgba($dc1-danger, 0.3); }
+.severityMedium   { background: $warning-50;  color: $warning-200; border: 1px solid rgba($dc1-warning, 0.3); }
+.severityLow      { background: $blue-50;     color: $dc1-blue;    border: 1px solid rgba($dc1-blue, 0.2); }
+
+.titleCell {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+/* ── Empty state ─────────────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: $dc1-text-muted;
+}
+.emptyIcon {
+  width: 48px;
+  height: 48px;
+  color: $dc1-text-muted;
+  margin-bottom: 16px;
+}
+.emptyTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0 0 8px;
+}
+.emptyDesc {
+  font-size: 14px;
+  color: $dc1-text-secondary;
+  margin: 0 0 20px;
+  max-width: 460px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}

@@ -1,5 +1,8 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Eye, ExternalLink, Sparkles, Loader2, ShieldCheck, ShieldX } from 'lucide-react';
+import { Eye, ExternalLink, Sparkles, Loader2, ShieldCheck, ShieldX, Ticket } from 'lucide-react';
+import { CreateTicketModal } from '../../tracking';
+import type { TicketContext } from '../../tracking';
+import { useCreateTicketMutation } from '../../../store/api/trackingApi';
 import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, TlsPill, EmptyState, PolicyViolationCell } from '../components';
 import type { IntegrationStep } from '../components';
 import { ENDPOINTS } from '../data';
@@ -31,6 +34,10 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
 
   // Data from a real integration has integrationId set — hide reset for integration-sourced data
   const isSampleData = loaded && data.every((e) => !e.integrationId);
+
+  /* ── Create-ticket modal state ───────────────────────── */
+  const [ticketCtx, setTicketCtx] = useState<TicketContext | null>(null);
+  const [createTicket] = useCreateTicketMutation();
 
   /* ── AI suggestion state ────────────────────────────────── */
   const [suggestions, setSuggestions] = useState<Record<string, {
@@ -157,15 +164,36 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
         return (
           <div className={s.actions}>
             {!e.quantumSafe && (
-              <button
-                className={s.aiFixBtn}
-                title="Get AI-powered quantum-safe migration suggestion"
-                disabled={sg?.loading}
-                onClick={(ev) => { ev.stopPropagation(); fetchSuggestion(e); }}
-              >
-                {sg?.loading ? <Loader2 className={s.aiFixIcon} /> : <Sparkles className={s.aiFixIcon} />}
-                AI Fix
-              </button>
+              <>
+                <button
+                  className={s.aiFixBtn}
+                  title="Get AI-powered quantum-safe migration suggestion"
+                  disabled={sg?.loading}
+                  onClick={(ev) => { ev.stopPropagation(); fetchSuggestion(e); }}
+                >
+                  {sg?.loading ? <Loader2 className={s.aiFixIcon} /> : <Sparkles className={s.aiFixIcon} />}
+                  AI Fix
+                </button>
+                <button
+                  className={s.createTicketBtn}
+                  title="Create remediation ticket"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    setTicketCtx({
+                      entityType: 'Endpoint',
+                      entityName: `${e.hostname}:${e.port}`,
+                      quantumSafe: e.quantumSafe,
+                      problemStatement: `Endpoint ${e.hostname}:${e.port} uses ${e.tlsVersion} with ${e.cipherSuite} cipher and ${e.keyAgreement} key exchange which is not quantum-safe.`,
+                      details: { tlsVersion: e.tlsVersion, cipherSuite: e.cipherSuite, keyAgreement: e.keyAgreement, ipAddress: e.ipAddress },
+                      severity: e.tlsVersion === 'TLS 1.0' || e.tlsVersion === 'TLS 1.1' ? 'Critical' : 'High',
+                      aiSuggestion: sg?.fix,
+                    });
+                  }}
+                >
+                  <Ticket className={s.createTicketIcon} />
+                  Create Ticket
+                </button>
+              </>
             )}
             <button className={s.actionBtn} onClick={() => setExpandedId(expandedId === e.id ? null : e.id)}>
               <Eye className={s.actionIcon} />
@@ -281,6 +309,20 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
           </tbody>
         </table>
       </div>
+
+      {/* Create Ticket Modal */}
+      {ticketCtx && (
+        <CreateTicketModal
+          open
+          context={ticketCtx}
+          onClose={() => setTicketCtx(null)}
+          allowedTypes={['JIRA', 'ServiceNow']}
+          onSubmit={(payload) => {
+            createTicket(payload);
+            setTicketCtx(null);
+          }}
+        />
+      )}
     </>
   );
 }

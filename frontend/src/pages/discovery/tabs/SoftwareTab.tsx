@@ -1,10 +1,13 @@
-import { useMemo } from 'react';
-import { Eye, ExternalLink, Zap } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Eye, ExternalLink, Zap, Ticket } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, LibChips, EmptyState } from '../components';
 import type { IntegrationStep } from '../components';
 import { SOFTWARE } from '../data';
 import { useGetSoftwareListQuery, useBulkCreateSoftwareMutation, useDeleteAllSoftwareMutation } from '../../../store/api';
 import type { DiscoverySoftware, StatCardConfig } from '../types';
+import { CreateTicketModal } from '../../tracking';
+import type { TicketContext } from '../../tracking';
+import { useCreateTicketMutation } from '../../../store/api/trackingApi';
 import s from '../components/shared.module.scss';
 
 interface Props {
@@ -29,6 +32,10 @@ export default function SoftwareTab({ search, setSearch, onGoToIntegrations }: P
 
   // Data from a real integration has integrationId set — hide reset for integration-sourced data
   const isSampleData = loaded && data.every((sw) => !sw.integrationId);
+
+  /* ── Create-ticket modal state ─────────────────────────── */
+  const [ticketCtx, setTicketCtx] = useState<TicketContext | null>(null);
+  const [createTicket] = useCreateTicketMutation();
 
   const total      = data.length;
   const qsSafe     = data.filter((sw) => sw.quantumSafe).length;
@@ -69,10 +76,30 @@ export default function SoftwareTab({ search, setSearch, onGoToIntegrations }: P
       render: (sw: DiscoverySoftware) => (
         <div className={s.actions}>
           {!sw.quantumSafe && (
-            <button className={s.upgradeBtn}>
-              <Zap className={s.upgradeIcon} />
-              Re-sign
-            </button>
+            <>
+              <button className={s.upgradeBtn}>
+                <Zap className={s.upgradeIcon} />
+                Re-sign
+              </button>
+              <button
+                className={s.createTicketBtn}
+                title="Create remediation ticket"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  setTicketCtx({
+                    entityType: 'Software',
+                    entityName: `${sw.name} v${sw.version}`,
+                    quantumSafe: sw.quantumSafe,
+                    problemStatement: `Software release "${sw.name} v${sw.version}" is signed with ${sw.signingAlgorithm} (${sw.signingKeyLength}) which is not quantum-safe. Hash: ${sw.hashAlgorithm}.`,
+                    details: { signingAlgorithm: sw.signingAlgorithm, signingKeyLength: sw.signingKeyLength, hashAlgorithm: sw.hashAlgorithm, vendor: sw.vendor, cryptoLibraries: sw.cryptoLibraries.join(', ') },
+                    severity: 'Medium',
+                  });
+                }}
+              >
+                <Ticket className={s.createTicketIcon} />
+                Create Ticket
+              </button>
+            </>
           )}
           <button className={s.actionBtn}><Eye className={s.actionIcon} /></button>
           <button className={s.actionBtn}><ExternalLink className={s.actionIcon} /></button>
@@ -122,6 +149,20 @@ export default function SoftwareTab({ search, setSearch, onGoToIntegrations }: P
         data={filtered}
         rowKey={(sw) => sw.id}
       />
+
+      {/* Create Ticket Modal */}
+      {ticketCtx && (
+        <CreateTicketModal
+          open
+          context={ticketCtx}
+          onClose={() => setTicketCtx(null)}
+          allowedTypes={['JIRA', 'ServiceNow']}
+          onSubmit={(payload) => {
+            createTicket(payload);
+            setTicketCtx(null);
+          }}
+        />
+      )}
     </>
   );
 }

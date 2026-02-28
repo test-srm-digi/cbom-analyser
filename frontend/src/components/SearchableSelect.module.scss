@@ -1,0 +1,139 @@
+@use '../styles/variables' as *;
+
+/* ── Container ────────────────────────────────────────────── */
+.wrapper {
+  position: relative;
+}
+
+/* ── Trigger button (looks like a <select>) ───────────────── */
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: $dc1-text;
+  background: $dc1-card;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease;
+  text-align: left;
+  gap: 8px;
+
+  &:focus,
+  &.open {
+    border-color: $dc1-blue;
+  }
+}
+
+.triggerText {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.placeholder {
+  color: $dc1-text-muted;
+}
+
+.chevron {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  color: $neutral-500;
+  transition: transform 0.15s ease;
+
+  &.up {
+    transform: rotate(180deg);
+  }
+}
+
+/* ── Dropdown panel ───────────────────────────────────────── */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  max-height: 260px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Search input inside dropdown ─────────────────────────── */
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid $dc1-border;
+  flex-shrink: 0;
+}
+
+.searchIcon {
+  color: $dc1-text-muted;
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: $dc1-text;
+  background: transparent;
+  padding: 0;
+
+  &::placeholder {
+    color: $dc1-text-muted;
+  }
+}
+
+/* ── Options list ─────────────────────────────────────────── */
+.optionsList {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: $dc1-text;
+  cursor: pointer;
+  transition: background 0.1s ease;
+
+  &:hover,
+  &.highlighted {
+    background: $dc1-blue-light;
+  }
+
+  &.selected {
+    color: $dc1-blue;
+    font-weight: 600;
+  }
+}
+
+.optionCheck {
+  width: 14px;
+  flex-shrink: 0;
+  color: $dc1-blue;
+}
+
+.noResults {
+  padding: 16px 12px;
+  font-size: 12px;
+  color: $dc1-text-muted;
+  text-align: center;
+}

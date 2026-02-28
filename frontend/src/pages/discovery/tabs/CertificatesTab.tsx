@@ -1,5 +1,8 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Eye, ExternalLink, Sparkles, Loader2, BarChart3, AlertTriangle, TrendingUp, Clock, X, ShieldCheck, ShieldX } from 'lucide-react';
+import { Eye, ExternalLink, Sparkles, Loader2, BarChart3, AlertTriangle, TrendingUp, Clock, X, ShieldCheck, ShieldX, Ticket } from 'lucide-react';
+import { CreateTicketModal } from '../../tracking';
+import type { TicketContext } from '../../tracking';
+import { useCreateTicketMutation } from '../../../store/api/trackingApi';
 import { StatCards, Toolbar, AiBanner, QsBadge, CertStatusBadge, EmptyState, PolicyViolationCell } from '../components';
 import type { IntegrationStep } from '../components';
 import { CERTIFICATES } from '../data';
@@ -48,6 +51,10 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
 
   // Data from a real integration has integrationId set — hide reset for integration-sourced data
   const isSampleData = loaded && data.every((c) => !c.integrationId);
+
+  /* ── Create-ticket modal state ───────────────────────── */
+  const [ticketCtx, setTicketCtx] = useState<TicketContext | null>(null);
+  const [createTicket] = useCreateTicketMutation();
 
   /* ── AI insight state (banner "Show me") ────────────────── */
   const [insight, setInsight] = useState<InsightState>({ loading: false });
@@ -218,15 +225,36 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
         return (
           <div className={s.actions}>
             {!c.quantumSafe && (
-              <button
-                className={s.aiFixBtn}
-                title="Get AI-powered quantum-safe migration suggestion"
-                disabled={sg?.loading}
-                onClick={(ev) => { ev.stopPropagation(); fetchSuggestion(c); }}
-              >
-                {sg?.loading ? <Loader2 className={s.aiFixIcon} /> : <Sparkles className={s.aiFixIcon} />}
-                Upgrade
-              </button>
+              <>
+                <button
+                  className={s.aiFixBtn}
+                  title="Get AI-powered quantum-safe migration suggestion"
+                  disabled={sg?.loading}
+                  onClick={(ev) => { ev.stopPropagation(); fetchSuggestion(c); }}
+                >
+                  {sg?.loading ? <Loader2 className={s.aiFixIcon} /> : <Sparkles className={s.aiFixIcon} />}
+                  Upgrade
+                </button>
+                <button
+                  className={s.createTicketBtn}
+                  title="Create remediation ticket"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    setTicketCtx({
+                      entityType: 'Certificate',
+                      entityName: c.commonName,
+                      quantumSafe: c.quantumSafe,
+                      problemStatement: `Certificate "${c.commonName}" uses ${c.keyAlgorithm}-${c.keyLength} which is not quantum-safe. Signed with ${c.signatureAlgorithm ?? 'unknown'}.`,
+                      details: { keyAlgorithm: c.keyAlgorithm, keyLength: c.keyLength, signatureAlgorithm: c.signatureAlgorithm, caVendor: c.caVendor, status: c.status },
+                      severity: 'High',
+                      aiSuggestion: sg?.fix,
+                    });
+                  }}
+                >
+                  <Ticket className={s.createTicketIcon} />
+                  Create Ticket
+                </button>
+              </>
             )}
             <button className={s.actionBtn} onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}>
               <Eye className={s.actionIcon} />
@@ -443,6 +471,20 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
           </tbody>
         </table>
       </div>
+
+      {/* Create Ticket Modal */}
+      {ticketCtx && (
+        <CreateTicketModal
+          open
+          context={ticketCtx}
+          onClose={() => setTicketCtx(null)}
+          allowedTypes={['JIRA', 'ServiceNow']}
+          onSubmit={(payload) => {
+            createTicket(payload);
+            setTicketCtx(null);
+          }}
+        />
+      )}
     </>
   );
 }

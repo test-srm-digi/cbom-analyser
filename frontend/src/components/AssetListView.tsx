@@ -5,13 +5,16 @@ import {
   Github, GitBranch, FolderOpen, Sparkles, Loader2,
   X, Copy, Check, Zap, ShieldCheck, ChevronDown, ChevronUp,
   ShieldAlert, ShieldQuestion, Package, Filter,
-  BarChart3, AlertTriangle, TrendingUp, Clock,
+  BarChart3, AlertTriangle, TrendingUp, Clock, Ticket,
 } from 'lucide-react';
 import { CryptoAsset, QuantumSafetyStatus, ComplianceStatus, PQCReadinessVerdict, CBOMRepository } from '../types';
 import { useGetPoliciesQuery } from '../store/api';
 import { evaluateSingleAssetPolicies } from '../pages/policies';
 import type { CbomPolicyResult } from '../pages/policies';
 import PolicyViolationCell from '../pages/discovery/components/PolicyViolationCell';
+import { CreateTicketModal } from '../pages/tracking';
+import type { TicketContext } from '../pages/tracking';
+import { useCreateTicketMutation } from '../store/api/trackingApi';
 import s from './AssetListView.module.scss';
 
 interface AssetListViewProps {
@@ -250,11 +253,13 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
   const [suggestions, setSuggestions] = useState<Record<string, SuggestionState>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [insight, setInsight] = useState<InsightState>({ loading: false });
+  const [ticketCtx, setTicketCtx] = useState<TicketContext | null>(null);
+  const [createTicket] = useCreateTicketMutation();
   const [colWidths, setColWidths] = useState<Record<number, number>>({});
   const resizingCol = useRef<{ idx: number; startX: number; startW: number } | null>(null);
 
   // Per-column minimum widths (index-matched to colgroup order)
-  const COL_MIN: Record<number, number> = { 0: 120, 1: 170, 2: 100, 3: 140, 4: 170, 5: 120, 6: 240 };
+  const COL_MIN: Record<number, number> = { 0: 120, 1: 170, 2: 100, 3: 140, 4: 170, 5: 120, 6: 240, 7: 110 };
 
   /* ── Policy evaluation per asset ──────────────────────── */
   const { data: dbPolicies = [] } = useGetPoliciesQuery();
@@ -776,6 +781,10 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                 </span>
                 <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 6)} />
               </th>
+              <th className={s.th}>
+                Actions
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 7)} />
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -973,12 +982,57 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                   })()}
                 </td>
 
+                {/* Create Ticket — only for non-quantum-safe assets */}
+                <td className={s.td}>
+                  {asset.quantumSafety !== QuantumSafetyStatus.QUANTUM_SAFE && (
+                  <button
+                    className={s.ticketBtn}
+                    title="Create remediation ticket"
+                    onClick={() => {
+                      const sg = suggestions[asset.id];
+                      setTicketCtx({
+                        entityType: 'Software',
+                        entityName: asset.name,
+                        quantumSafe: asset.quantumSafety === 'quantum-safe',
+                        problemStatement: `Cryptographic asset "${asset.name}" is classified as ${getStatusLabel(asset.quantumSafety)}.${asset.keyLength ? ` Key length: ${asset.keyLength}-bit.` : ''}${asset.cryptoProperties?.algorithmProperties?.primitive ? ` Primitive: ${asset.cryptoProperties.algorithmProperties.primitive}.` : ''}`,
+                        details: {
+                          algorithm: asset.name,
+                          keyLength: asset.keyLength != null ? String(asset.keyLength) : undefined,
+                          primitive: asset.cryptoProperties?.algorithmProperties?.primitive,
+                          quantumSafety: asset.quantumSafety,
+                          pqcVerdict: asset.pqcVerdict?.verdict,
+                          location: asset.location ? `${asset.location.fileName}${asset.location.lineNumber ? ':' + asset.location.lineNumber : ''}` : undefined,
+                          source: asset.provider,
+                        },
+                        severity: asset.quantumSafety === 'not-quantum-safe' ? 'Critical' : asset.quantumSafety === 'conditional' ? 'High' : 'Medium',
+                        aiSuggestion: sg?.fix,
+                      });
+                    }}
+                  >
+                    <Ticket className={s.ticketBtnIcon} />
+                    Create Ticket
+                  </button>
+                  )}
+                </td>
 
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Create Ticket Modal */}
+      {ticketCtx && (
+        <CreateTicketModal
+          open
+          context={ticketCtx}
+          onClose={() => setTicketCtx(null)}
+          onSubmit={(payload) => {
+            createTicket(payload);
+            setTicketCtx(null);
+          }}
+        />
+      )}
 
       {/* Pagination */}
       <div className={s.pagination}>

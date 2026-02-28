@@ -1,0 +1,480 @@
+@use '../../styles/variables' as *;
+
+/* ── Page ─────────────────────────────────────────────────── */
+.page {
+  max-width: 1200px;
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  background: linear-gradient(135deg, $dc1-blue-light 0%, $dc1-card 100%);
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-lg;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+}
+.headerText { flex: 1; }
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  color: $dc1-blue;
+  margin: 0 0 4px;
+}
+.subtitle {
+  font-size: 14px;
+  color: $dc1-text-secondary;
+  margin: 0;
+  max-width: 640px;
+  line-height: 1.5;
+}
+
+/* ── Tab bar ──────────────────────────────────────────────── */
+.tabBar {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid $dc1-border;
+  margin-bottom: 24px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: $dc1-text-secondary;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    color: $dc1-text;
+  }
+}
+
+.tabActive {
+  color: $dc1-blue;
+  font-weight: 600;
+  border-bottom-color: $dc1-blue;
+}
+
+.tabIcon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  flex-shrink: 0;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.tabLabel {
+  white-space: nowrap;
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  color: $dc1-success;
+}
+
+/* ── Connector card ───────────────────────────────────────── */
+.card {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cardIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  svg {
+    width: 22px;
+    height: 22px;
+  }
+}
+.iconJIRA       { background: #E3F2FD; color: #0052CC; }
+.iconGitHub     { background: $neutral-100; color: $neutral-900; }
+.iconServiceNow { background: #E8F5E9; color: #1B5E20; }
+
+.cardTitleRow {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cardName {
+  font-size: 16px;
+  font-weight: 600;
+  color: $dc1-text;
+}
+.connectedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: $dc1-success-bg;
+  color: $dc1-success;
+  border: 1px solid rgba($dc1-success, 0.3);
+}
+.disconnectedBadge {
+  @extend .connectedBadge;
+  background: $neutral-100;
+  color: $neutral-600;
+  border-color: $dc1-border;
+}
+
+.cardDesc {
+  font-size: 13px;
+  color: $dc1-text-secondary;
+  line-height: 1.5;
+}
+
+/* ── Fields ───────────────────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: $dc1-text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  input, select {
+    border: 1px solid $dc1-border;
+    border-radius: $dc1-radius-sm;
+    padding: 9px 12px;
+    font-size: 13px;
+    color: $dc1-text;
+    background: $dc1-card;
+    outline: none;
+    transition: border-color 0.15s ease;
+
+    &:focus { border-color: $dc1-blue; }
+    &::placeholder { color: $dc1-text-muted; }
+  }
+
+  select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+}
+
+/* ── Section / field layout ────────────────────────────────── */
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $dc1-text-muted;
+  padding-top: 4px;
+  border-top: 1px solid $dc1-border;
+}
+
+.sectionLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid $dc1-border;
+  padding-top: 4px;
+}
+
+.refreshBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: transparent;
+  color: $dc1-blue;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background $transition-fast, border-color $transition-fast;
+  white-space: nowrap;
+
+  &:hover { background: $dc1-blue-light; border-color: $dc1-blue; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.fieldLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  color: $dc1-text;
+
+  svg { color: $dc1-blue; }
+}
+
+.fieldHint {
+  font-size: 11px;
+  color: $dc1-text-muted;
+  line-height: 1.4;
+
+  a {
+    color: $dc1-blue;
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+}
+
+.testRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.testBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-blue;
+  background: transparent;
+  color: $dc1-blue;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background $transition-fast;
+  white-space: nowrap;
+
+  &:hover { background: $dc1-blue-light; }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+.testSuccess {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: $dc1-success;
+}
+
+.testError {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: $dc1-danger;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* ── Toggle row ───────────────────────────────────────────── */
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.toggleLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: $dc1-text;
+}
+.toggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: $neutral-200;
+  border-radius: 24px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  padding: 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: $dc1-card;
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+}
+.toggleOn {
+  background: $dc1-success;
+
+  &::after {
+    transform: translateX(20px);
+  }
+}
+
+/* ── Footer row ───────────────────────────────────────────── */
+.cardFooter {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  border-top: 1px solid $dc1-border;
+  padding-top: 16px;
+}
+.configureBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-blue;
+  background: transparent;
+  color: $dc1-blue;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover { background: $dc1-blue-light; }
+}
+.deleteBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: transparent;
+  color: $dc1-text-muted;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background $transition-fast, color $transition-fast;
+
+  &:hover { background: $dc1-danger-bg; color: $dc1-danger; border-color: rgba($dc1-danger, 0.3); }
+}
+.saveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border-radius: $dc1-radius-sm;
+  border: none;
+  background: $dc1-blue;
+  color: $dc1-card;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover { background: $blue-400; }
+}
+
+.editBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-blue;
+  background: transparent;
+  color: $dc1-blue;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background $transition-fast;
+
+  &:hover { background: $dc1-blue-light; }
+}
+
+.cancelBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: $dc1-radius-sm;
+  border: 1px solid $dc1-border;
+  background: transparent;
+  color: $dc1-text-secondary;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background $transition-fast, color $transition-fast;
+
+  &:hover { background: $neutral-100; color: $dc1-text; }
+}
+
+/* ── View-mode value display ──────────────────────────────── */
+.viewValue {
+  font-size: 13px;
+  color: $dc1-text;
+  padding: 9px 0;
+  border-bottom: 1px solid $dc1-border;
+  min-height: 20px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* ── Empty state ──────────────────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+}
+.emptyTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0 0 8px;
+}
+.emptyDesc {
+  font-size: 14px;
+  color: $dc1-text-secondary;
+  margin: 0;
+  line-height: 1.5;
+}

@@ -1,10 +1,13 @@
-import { useMemo } from 'react';
-import { Eye, ExternalLink } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Eye, ExternalLink, Ticket } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, DeviceStatusBadge, EmptyState } from '../components';
 import type { IntegrationStep } from '../components';
 import { DEVICES } from '../data';
 import { useGetDevicesQuery, useBulkCreateDevicesMutation, useDeleteAllDevicesMutation } from '../../../store/api';
 import type { DiscoveryDevice, StatCardConfig } from '../types';
+import { CreateTicketModal } from '../../tracking';
+import type { TicketContext } from '../../tracking';
+import { useCreateTicketMutation } from '../../../store/api/trackingApi';
 import s from '../components/shared.module.scss';
 
 interface Props {
@@ -29,6 +32,10 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
 
   // Data from a real integration has integrationId set — hide reset for integration-sourced data
   const isSampleData = loaded && data.every((d) => !d.integrationId);
+
+  /* ── Create-ticket modal state ─────────────────────────── */
+  const [ticketCtx, setTicketCtx] = useState<TicketContext | null>(null);
+  const [createTicket] = useCreateTicketMutation();
 
   const total      = data.length;
   const qsSafe     = data.filter((d) => d.quantumSafe).length;
@@ -70,6 +77,26 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
       headerStyle: { textAlign: 'right' as const },
       render: (_d: DiscoveryDevice) => (
         <div className={s.actions}>
+          {!_d.quantumSafe && (
+            <button
+              className={s.createTicketBtn}
+              title="Create remediation ticket"
+              onClick={(ev) => {
+                ev.stopPropagation();
+                setTicketCtx({
+                  entityType: 'Device',
+                  entityName: _d.deviceName,
+                  quantumSafe: _d.quantumSafe,
+                  problemStatement: `Device "${_d.deviceName}" (${_d.deviceType}) uses ${_d.certAlgorithm} ${_d.keyLength} certificate which is not quantum-safe. Manufacturer: ${_d.manufacturer}, Firmware: ${_d.firmwareVersion}.`,
+                  details: { certAlgorithm: _d.certAlgorithm, keyLength: _d.keyLength, manufacturer: _d.manufacturer, firmwareVersion: _d.firmwareVersion, deviceType: _d.deviceType },
+                  severity: _d.keyLength === '1024 bits' ? 'Critical' : 'High',
+                });
+              }}
+            >
+              <Ticket className={s.createTicketIcon} />
+              Create Ticket
+            </button>
+          )}
           <button className={s.actionBtn}><Eye className={s.actionIcon} /></button>
           <button className={s.actionBtn}><ExternalLink className={s.actionIcon} /></button>
         </div>
@@ -118,6 +145,20 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
         data={filtered}
         rowKey={(d) => d.id}
       />
+
+      {/* Create Ticket Modal */}
+      {ticketCtx && (
+        <CreateTicketModal
+          open
+          context={ticketCtx}
+          onClose={() => setTicketCtx(null)}
+          allowedTypes={['JIRA', 'ServiceNow']}
+          onSubmit={(payload) => {
+            createTicket(payload);
+            setTicketCtx(null);
+          }}
+        />
+      )}
     </>
   );
 }
