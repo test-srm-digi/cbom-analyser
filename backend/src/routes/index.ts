@@ -9,3 +9,4 @@ export { default as deviceRoutes } from './deviceRoutes';
 export { default as cbomImportRoutes } from './cbomImportRoutes';
 export { default as syncLogRoutes } from './syncLogRoutes';
 export { default as schedulerRoutes } from './schedulerRoutes';
+export { default as policyRoutes } from './policyRoutes';

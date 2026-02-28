@@ -3,6 +3,7 @@ export { default as Toolbar } from './Toolbar';
 export { default as AiBanner } from './AiBanner';
 export { default as DataTable } from './DataTable';
 export { default as EmptyState } from './EmptyState';
+export { default as PolicyViolationCell } from './PolicyViolationCell';
 export type { IntegrationStep } from './EmptyState';
 export {
   QsBadge,

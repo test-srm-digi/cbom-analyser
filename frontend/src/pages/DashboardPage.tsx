@@ -258,6 +258,7 @@ export default function DashboardPage({
             quantumSafe={safe}
             notQuantumSafe={notSafe}
             policyViolations={policyViolations}
+            onViewPolicies={onNavigate ? () => onNavigate('policies') : undefined}
           />
 
           <div className="dc1-two-col">

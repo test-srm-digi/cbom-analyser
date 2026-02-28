@@ -1,10 +1,13 @@
 import { useMemo, useState, useCallback } from 'react';
-import { ShieldAlert, ShieldCheck, TrendingUp as TrendUp, TrendingDown, Loader2, X, BarChart3, AlertTriangle, TrendingUp, Clock, GitBranch, FileText, ArrowUpRight } from 'lucide-react';
-import { StatCards, Toolbar, AiBanner, DataTable, CbomStatusBadge, ProgressBar, EmptyState } from '../components';
+import { ShieldAlert, ShieldCheck, TrendingUp as TrendUp, TrendingDown, Loader2, X, BarChart3, AlertTriangle, TrendingUp, Clock, GitBranch, FileText, ArrowUpRight, ShieldX } from 'lucide-react';
+import { StatCards, Toolbar, AiBanner, DataTable, CbomStatusBadge, ProgressBar, EmptyState, PolicyViolationCell } from '../components';
 import type { IntegrationStep } from '../components';
 import { CBOM_IMPORTS } from '../data';
-import { useGetCbomImportsQuery, useBulkCreateCbomImportsMutation, useDeleteAllCbomImportsMutation } from '../../../store/api';
+import { useGetCbomImportsQuery, useBulkCreateCbomImportsMutation, useDeleteAllCbomImportsMutation, useGetPoliciesQuery } from '../../../store/api';
 import type { DiscoveryCbomImport, StatCardConfig } from '../types';
+import { evaluatePolicies } from '../../policies';
+import type { CbomPolicyResult } from '../../policies';
+import { parseCbomJson } from '../../../utils/cbomParser';
 import s from '../components/shared.module.scss';
 
 interface ProjectInsight {
@@ -56,6 +59,60 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
   const totalQsSafe   = data.reduce((sum, cb) => sum + cb.quantumSafeComponents, 0);
   const totalNotSafe  = data.reduce((sum, cb) => sum + cb.nonQuantumSafeComponents, 0);
   const totalConditional = data.reduce((sum, cb) => sum + cb.conditionalComponents, 0);
+
+  /* ── Policy evaluation per CBOM import ────────────────── */
+  const { data: dbPolicies = [] } = useGetPoliciesQuery();
+
+  const policyResultsMap = useMemo<Map<string, CbomPolicyResult>>(() => {
+    const map = new Map<string, CbomPolicyResult>();
+    for (const cb of data) {
+      if (!cb.cbomFile) {
+        // No raw CBOM to parse — use approximate evaluation from aggregate counts
+        const hasViolation = cb.nonQuantumSafeComponents > 0;
+        const violatedPolicies = hasViolation
+          ? dbPolicies
+              .filter((p) => p.status === 'active' && p.rules.some((r) => r.field === 'quantumSafe'))
+              .map((p) => ({
+                policyId: p.id,
+                policyName: p.name,
+                severity: p.severity,
+                violated: true,
+                violatingAssetCount: cb.nonQuantumSafeComponents,
+                violations: [],
+              }))
+          : [];
+
+        map.set(cb.id, {
+          totalViolations: violatedPolicies.length,
+          violatedPolicies,
+          passedPolicies: [],
+        });
+        continue;
+      }
+      try {
+        const raw = atob(cb.cbomFile);
+        const { doc } = parseCbomJson(raw, cb.fileName);
+        const result = evaluatePolicies(dbPolicies, doc.cryptoAssets);
+        map.set(cb.id, result);
+      } catch {
+        // Parse failed — fall back to aggregate-based evaluation
+        map.set(cb.id, { totalViolations: 0, violatedPolicies: [], passedPolicies: [] });
+      }
+    }
+    return map;
+  }, [data, dbPolicies]);
+
+  const totalPolicyViolations = useMemo(() => {
+    let count = 0;
+    for (const r of policyResultsMap.values()) count += r.totalViolations;
+    return count;
+  }, [policyResultsMap]);
+
+  const importsWithViolations = useMemo(() => {
+    let count = 0;
+    for (const r of policyResultsMap.values()) if (r.totalViolations > 0) count++;
+    return count;
+  }, [policyResultsMap]);
 
   const fetchCbomInsight = useCallback(async () => {
     setInsight({ loading: true });
@@ -176,6 +233,7 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
     { title: 'CBOM Files Imported', value: total,       sub: `${processed} processed successfully — ${totalCrypto} crypto components found`, variant: 'default' },
     { title: 'PQC Components',     value: totalQsSafe,  sub: `${totalQsSafe} of ${totalCrypto} crypto components are quantum-safe`,          variant: 'success' },
     { title: 'Import Issues',      value: failed,       sub: 'Failed or partially processed imports',                                        variant: 'danger' },
+    { title: 'Policy Violations',  value: totalPolicyViolations, sub: `${importsWithViolations} of ${total} imports have policy violations`, variant: totalPolicyViolations > 0 ? 'danger' : 'success' },
   ];
 
   const formatDate = (iso: string) => {
@@ -197,6 +255,23 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
         {cb.nonQuantumSafeComponents}
       </span>
     ) },
+    { key: 'policiesViolated', label: 'Policies Violated', sortable: false, render: (cb: DiscoveryCbomImport) => {
+      const result = policyResultsMap.get(cb.id);
+      return (
+        <PolicyViolationCell
+          result={result}
+          enableAi
+          aiContext={{
+            type: 'cbom-import',
+            name: cb.applicationName ?? cb.fileName,
+            cryptoComponents: cb.cryptoComponents,
+            nonQuantumSafe: cb.nonQuantumSafeComponents,
+            quantumSafe: cb.quantumSafeComponents,
+            violatedPolicies: result?.violatedPolicies?.map((p) => p.policyName) ?? [],
+          }}
+        />
+      );
+    }},
     { key: 'status',          label: 'Status',            render: (cb: DiscoveryCbomImport) => <CbomStatusBadge status={cb.status} /> },
     { key: 'importDate',      label: 'Imported',          render: (cb: DiscoveryCbomImport) => formatDate(cb.importDate) },
   ];

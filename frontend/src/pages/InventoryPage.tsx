@@ -10,9 +10,10 @@ interface Props {
   readinessScore: QuantumReadinessScore | null;
   onUpload: () => void;
   onLoadSample: () => void;
+  onViewPolicies?: () => void;
 }
 
-export default function InventoryPage({ cbom, readinessScore, onUpload, onLoadSample }: Props) {
+export default function InventoryPage({ cbom, readinessScore, onUpload, onLoadSample, onViewPolicies }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('assets');
 
   const assets = cbom?.cryptoAssets ?? [];
@@ -69,7 +70,12 @@ export default function InventoryPage({ cbom, readinessScore, onUpload, onLoadSa
           <span className="dc1-inv-card-desc">{safeCerts} of {totalAssets} assets</span>
         </div>
 
-        <div className="dc1-inv-card dc1-inv-card-violations">
+        <div
+          className="dc1-inv-card dc1-inv-card-violations"
+          style={onViewPolicies ? { cursor: 'pointer' } : undefined}
+          onClick={onViewPolicies}
+          title={onViewPolicies ? 'View Policies' : undefined}
+        >
           <div className="dc1-inv-card-header">
             <span className="dc1-inv-card-title">Policy Violations</span>
           </div>

@@ -10,6 +10,7 @@ import { devicesApi } from './api/devicesApi';
 import { cbomImportsApi } from './api/cbomImportsApi';
 import { syncLogsApi } from './api/syncLogsApi';
 import { schedulerApi } from './api/schedulerApi';
+import { policiesApi } from './api/policiesApi';
 
 export const store = configureStore({
   reducer: {
@@ -21,6 +22,7 @@ export const store = configureStore({
     [cbomImportsApi.reducerPath]: cbomImportsApi.reducer,
     [syncLogsApi.reducerPath]: syncLogsApi.reducer,
     [schedulerApi.reducerPath]: schedulerApi.reducer,
+    [policiesApi.reducerPath]: policiesApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -31,7 +33,8 @@ export const store = configureStore({
       .concat(devicesApi.middleware)
       .concat(cbomImportsApi.middleware)
       .concat(syncLogsApi.middleware)
-      .concat(schedulerApi.middleware),
+      .concat(schedulerApi.middleware)
+      .concat(policiesApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

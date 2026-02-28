@@ -221,4 +221,26 @@ router.post('/ai-suggest', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/ai-policy-evaluate
+ * AI-powered policy violation assessment.
+ * Sends crypto context about an asset (cert, endpoint, or CBOM import)
+ * to Bedrock for an intelligent evaluation beyond static rule matching.
+ */
+router.post('/ai-policy-evaluate', async (req: Request, res: Response) => {
+  try {
+    const context = req.body;
+    if (!context || !context.type) {
+      res.status(400).json({ success: false, error: 'type is required (certificate, endpoint, or cbom-import)' });
+      return;
+    }
+
+    const { getAIPolicyEvaluation } = await import('../services/bedrockService');
+    const result = await getAIPolicyEvaluation(context);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
+
 export default router;

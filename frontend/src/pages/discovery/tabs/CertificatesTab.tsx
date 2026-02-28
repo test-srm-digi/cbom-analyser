@@ -1,10 +1,12 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Eye, ExternalLink, Sparkles, Loader2, BarChart3, AlertTriangle, TrendingUp, Clock, X } from 'lucide-react';
-import { StatCards, Toolbar, AiBanner, QsBadge, CertStatusBadge, EmptyState } from '../components';
+import { Eye, ExternalLink, Sparkles, Loader2, BarChart3, AlertTriangle, TrendingUp, Clock, X, ShieldCheck, ShieldX } from 'lucide-react';
+import { StatCards, Toolbar, AiBanner, QsBadge, CertStatusBadge, EmptyState, PolicyViolationCell } from '../components';
 import type { IntegrationStep } from '../components';
 import { CERTIFICATES } from '../data';
-import { useGetCertificatesQuery, useBulkCreateCertificatesMutation, useDeleteAllCertificatesMutation } from '../../../store/api';
+import { useGetCertificatesQuery, useBulkCreateCertificatesMutation, useDeleteAllCertificatesMutation, useGetPoliciesQuery } from '../../../store/api';
 import type { DiscoveryCertificate, StatCardConfig } from '../types';
+import { evaluateSingleCertPolicies } from '../../policies';
+import type { CbomPolicyResult } from '../../policies';
 import s from '../components/shared.module.scss';
 
 interface Props {
@@ -63,6 +65,29 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
   const total      = data.length;
   const qsSafe     = data.filter((c) => c.quantumSafe).length;
   const violations = total - qsSafe;
+
+  /* ── Policy evaluation per certificate ──────────────── */
+  const { data: dbPolicies = [] } = useGetPoliciesQuery();
+
+  const policyResultsMap = useMemo<Map<string, CbomPolicyResult>>(() => {
+    const map = new Map<string, CbomPolicyResult>();
+    for (const cert of data) {
+      map.set(cert.id, evaluateSingleCertPolicies(dbPolicies, cert));
+    }
+    return map;
+  }, [data, dbPolicies]);
+
+  const totalPolicyViolations = useMemo(() => {
+    let count = 0;
+    for (const r of policyResultsMap.values()) count += r.totalViolations;
+    return count;
+  }, [policyResultsMap]);
+
+  const certsWithViolations = useMemo(() => {
+    let count = 0;
+    for (const r of policyResultsMap.values()) if (r.totalViolations > 0) count++;
+    return count;
+  }, [policyResultsMap]);
 
   /* ── Fetch project-level AI insight ─────────────────────── */
   const fetchCertInsight = useCallback(async () => {
@@ -150,7 +175,8 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
   const stats: StatCardConfig[] = [
     { title: 'Total Certificates', value: total,      sub: `Discovered via DigiCert Trust Lifecycle Manager`, variant: 'default' },
     { title: 'Quantum-safe',       value: qsSafe,     sub: `${qsSafe} of ${total} certificates`,             variant: 'success' },
-    { title: 'Policy Violations',  value: violations, sub: 'Non PQC-ready certificates',                     variant: 'danger' },
+    { title: 'PQC Violations',     value: violations, sub: 'Non PQC-ready certificates',                     variant: 'danger' },
+    { title: 'Policy Violations',  value: totalPolicyViolations, sub: `${certsWithViolations} of ${total} certificates have policy violations`, variant: totalPolicyViolations > 0 ? 'danger' : 'success' },
   ];
 
   const columns = [
@@ -161,6 +187,26 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
     { key: 'keyLength',      label: 'Key Length',    render: (c: DiscoveryCertificate) => c.keyLength },
     { key: 'signatureAlgo',  label: 'Signature',     render: (c: DiscoveryCertificate) => <span className={s.mono}>{c.signatureAlgorithm ?? '—'}</span> },
     { key: 'quantumSafe',    label: 'Quantum-safe',  render: (c: DiscoveryCertificate) => <QsBadge safe={c.quantumSafe} />, sortable: false },
+    { key: 'policiesViolated', label: 'Policies Violated', sortable: false, render: (c: DiscoveryCertificate) => {
+      const result = policyResultsMap.get(c.id);
+      return (
+        <PolicyViolationCell
+          result={result}
+          enableAi
+          aiContext={{
+            type: 'certificate',
+            commonName: c.commonName,
+            keyAlgorithm: c.keyAlgorithm,
+            keyLength: c.keyLength,
+            signatureAlgorithm: c.signatureAlgorithm,
+            quantumSafe: c.quantumSafe,
+            caVendor: c.caVendor,
+            expiryDate: c.expiryDate,
+            violatedPolicies: result?.violatedPolicies?.map((p) => p.policyName) ?? [],
+          }}
+        />
+      );
+    }},
     { key: 'source',         label: 'Source',        render: (c: DiscoveryCertificate) => <span className={s.sourceLink}>{c.source}</span> },
     {
       key: 'actions',

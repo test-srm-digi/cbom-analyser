@@ -1,4 +1,5 @@
 import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { ComplianceSummary } from '../types';
 import styles from './ComplianceBanner.module.scss';
 
@@ -7,6 +8,7 @@ interface ComplianceBannerProps {
 }
 
 export default function ComplianceBanner({ compliance }: ComplianceBannerProps) {
+  const navigate = useNavigate();
   if (!compliance) return null;
 
   const isCompliant = compliance.isCompliant;
@@ -26,8 +28,8 @@ export default function ComplianceBanner({ compliance }: ComplianceBannerProps) 
         <span className={styles.separator}>–</span>
         <span className={styles.message}>
           {isCompliant
-            ? `This CBOM complies with the policy "${compliance.policy}".`
-            : `This CBOM does not comply with the policy "${compliance.policy}".`}
+            ? <>This CBOM complies with the policy "<a style={{ color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/policies')}>{compliance.policy}</a>".</>
+            : <>This CBOM does not comply with the policy "<a style={{ color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/policies')}>{compliance.policy}</a>".</>}
         </span>
       </div>
 

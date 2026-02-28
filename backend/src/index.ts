@@ -21,6 +21,7 @@ import {
   cbomImportRoutes,
   syncLogRoutes,
   schedulerRoutes,
+  policyRoutes,
 } from './routes';
 import { initDatabase } from './config/database';
 import { initScheduler, stopAllJobs } from './services/syncScheduler';
@@ -48,6 +49,7 @@ app.use('/api', deviceRoutes);
 app.use('/api', cbomImportRoutes);
 app.use('/api', syncLogRoutes);
 app.use('/api', schedulerRoutes);
+app.use('/api', policyRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

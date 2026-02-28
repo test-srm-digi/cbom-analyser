@@ -1,0 +1,718 @@
+@use '../../styles/variables' as *;
+
+/* ═══════════════════════════════════════════════════════════════
+   PoliciesPage — Cryptographic Policy Management
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Page header ──────────────────────────────────────────── */
+.header {
+  background: linear-gradient(135deg, $dc1-blue, $dc1-blue-dark);
+  border-radius: $dc1-radius-lg;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.headerText h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: $dc1-white;
+  margin: 0 0 4px;
+}
+
+.headerText p {
+  font-size: 14px;
+  color: rgba($dc1-white, 0.8);
+  margin: 0;
+}
+
+.newPolicyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: $dc1-white;
+  color: $dc1-blue;
+  font-weight: 600;
+  font-size: 13px;
+  border: none;
+  border-radius: $dc1-radius;
+  padding: 9px 18px;
+  cursor: pointer;
+  transition: box-shadow $transition-fast;
+  white-space: nowrap;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* ── Stats row ────────────────────────────────────────────── */
+.statsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.statCard {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 20px 24px;
+  position: relative;
+}
+
+.statCardIcon {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: $dc1-text-muted;
+  opacity: 0.5;
+}
+
+.statCardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0 0 8px;
+}
+
+.statCardNumber {
+  font-size: 32px;
+  font-weight: 700;
+  color: $dc1-text;
+  display: block;
+}
+
+.statCardSub {
+  font-size: 12px;
+  color: $dc1-text-muted;
+  margin-top: 4px;
+}
+
+.linksCard {
+  composes: statCard;
+
+  .statCardTitle {
+    margin-bottom: 12px;
+  }
+}
+
+.linkItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: $dc1-blue;
+  text-decoration: none;
+  margin-bottom: 6px;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+/* ── Policy definitions card ─────────────────────────────── */
+.definitionsCard {
+  background: $dc1-card;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 24px;
+}
+
+.definitionsTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: $dc1-text;
+  margin: 0 0 2px;
+}
+
+.definitionsSubtitle {
+  font-size: 13px;
+  color: $dc1-text-muted;
+  margin: 0 0 16px;
+}
+
+/* ── Table ────────────────────────────────────────────────── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: $dc1-text-secondary;
+  padding: 10px 12px;
+  border-bottom: 2px solid $dc1-border;
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+
+  svg {
+    margin-left: 4px;
+    opacity: 0.5;
+  }
+}
+
+.table td {
+  padding: 12px;
+  font-size: 13px;
+  color: $dc1-text;
+  border-bottom: 1px solid $dc1-border;
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background: $dc1-bg;
+}
+
+.filterRow td {
+  padding: 6px 12px;
+  border-bottom: 2px solid $dc1-border;
+}
+
+.filterInput {
+  width: 100%;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: $dc1-text;
+  background: $dc1-white;
+  outline: none;
+  
+  &:focus {
+    border-color: $dc1-blue;
+  }
+
+  &::placeholder {
+    color: $dc1-text-muted;
+  }
+}
+
+.filterSelect {
+  width: 100%;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius-sm;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: $dc1-text;
+  background: $dc1-white;
+  cursor: pointer;
+  outline: none;
+
+  &:focus {
+    border-color: $dc1-blue;
+  }
+}
+
+.policyName {
+  font-weight: 600;
+}
+
+/* ── Severity badges ──────────────────────────────────────── */
+.severityBadge {
+  display: inline-block;
+  padding: 3px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  min-width: 60px;
+}
+
+.severityHigh {
+  composes: severityBadge;
+  background: $dc1-danger;
+  color: $dc1-white;
+}
+
+.severityMedium {
+  composes: severityBadge;
+  background: $dc1-warning;
+  color: $dc1-white;
+}
+
+.severityLow {
+  composes: severityBadge;
+  background: $dc1-success;
+  color: $dc1-white;
+}
+
+/* ── Toggle switch ────────────────────────────────────────── */
+.statusCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.toggleInput {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: $dc1-text-muted;
+  border-radius: 22px;
+  transition: background $transition-fast;
+
+  &::before {
+    content: '';
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background: $dc1-white;
+    border-radius: 50%;
+    transition: transform $transition-fast;
+  }
+}
+
+.toggleInput:checked + .toggleSlider {
+  background: $dc1-blue;
+
+  &::before {
+    transform: translateX(18px);
+  }
+}
+
+.statusLabel {
+  font-size: 12px;
+  color: $dc1-text-secondary;
+}
+
+/* ── Delete button ────────────────────────────────────────── */
+.deleteBtn {
+  background: none;
+  border: none;
+  color: $dc1-text-muted;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+
+  &:hover {
+    color: $dc1-danger;
+    background: $dc1-danger-bg;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Modal Overlay
+   ═══════════════════════════════════════════════════════════════ */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.modal {
+  width: 520px;
+  max-width: 95vw;
+  height: 100vh;
+  background: $dc1-white;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modalHeader {
+  padding: 24px 24px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.modalTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: $dc1-text;
+  margin: 0 0 4px;
+}
+
+.modalSubtitle {
+  font-size: 13px;
+  color: $dc1-text-muted;
+  margin: 0;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: $dc1-text-muted;
+  padding: 4px;
+
+  &:hover {
+    color: $dc1-text;
+  }
+}
+
+.modalBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.modalFooter {
+  padding: 16px 24px;
+  border-top: 1px solid $dc1-border;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cancelBtn {
+  width: 100%;
+  padding: 10px;
+  background: $dc1-white;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  font-size: 13px;
+  font-weight: 500;
+  color: $dc1-text;
+  cursor: pointer;
+
+  &:hover {
+    background: $dc1-bg;
+  }
+}
+
+.createBtn {
+  width: 100%;
+  padding: 10px;
+  background: $dc1-blue;
+  border: none;
+  border-radius: $dc1-radius;
+  font-size: 13px;
+  font-weight: 600;
+  color: $dc1-white;
+  cursor: pointer;
+
+  &:hover {
+    background: $dc1-blue-dark;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* ── Form fields ──────────────────────────────────────────── */
+.formGroup {
+  margin-bottom: 16px;
+}
+
+.formLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin-bottom: 6px;
+}
+
+.formInput {
+  width: 100%;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: $dc1-text;
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: $dc1-blue;
+    box-shadow: 0 0 0 2px rgba($dc1-blue, 0.15);
+  }
+
+  &::placeholder {
+    color: $dc1-text-muted;
+  }
+}
+
+.formSelect {
+  width: 100%;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: $dc1-text;
+  background: $dc1-white;
+  outline: none;
+  cursor: pointer;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: $dc1-blue;
+    box-shadow: 0 0 0 2px rgba($dc1-blue, 0.15);
+  }
+}
+
+/* ── Rules section ────────────────────────────────────────── */
+.rulesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20px 0 12px;
+}
+
+.rulesTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: $dc1-text;
+  margin: 0;
+}
+
+.addRuleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: $dc1-text;
+  cursor: pointer;
+
+  &:hover {
+    background: $dc1-bg;
+  }
+}
+
+.ruleCard {
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  padding: 16px;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.ruleCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.ruleLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: $dc1-text;
+}
+
+.removeRuleBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: $dc1-text-muted;
+  padding: 2px;
+
+  &:hover {
+    color: $dc1-danger;
+  }
+}
+
+.ruleGrid {
+  display: grid;
+  gap: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Preset Picker
+   ═══════════════════════════════════════════════════════════════ */
+.presetSection {
+  margin-bottom: 20px;
+  border-bottom: 1px solid $dc1-border;
+  padding-bottom: 16px;
+}
+
+.presetSectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: $dc1-text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 10px;
+}
+
+.presetList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.presetItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid $dc1-border;
+  border-radius: $dc1-radius;
+  cursor: pointer;
+  transition: border-color $transition-fast, background $transition-fast;
+
+  &:hover {
+    border-color: $dc1-blue;
+    background: $dc1-blue-light;
+  }
+}
+
+.presetItemActive {
+  composes: presetItem;
+  border-color: $dc1-blue;
+  background: $dc1-blue-light;
+}
+
+.presetCheck {
+  margin-top: 2px;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 2px solid $dc1-text-muted;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all $transition-fast;
+}
+
+.presetCheckActive {
+  composes: presetCheck;
+  border-color: $dc1-blue;
+  background: $dc1-blue;
+  color: $dc1-white;
+}
+
+.presetInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.presetName {
+  font-size: 13px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0 0 2px;
+}
+
+.presetDesc {
+  font-size: 11px;
+  color: $dc1-text-muted;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.presetBadge {
+  flex-shrink: 0;
+}
+
+/* ── Tabs (preset / custom toggle) ────────────────────────── */
+.modeTabs {
+  display: flex;
+  margin-bottom: 16px;
+  border-bottom: 2px solid $dc1-border;
+}
+
+.modeTab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: $dc1-text-muted;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color $transition-fast, border-color $transition-fast;
+
+  &:hover {
+    color: $dc1-text;
+  }
+}
+
+.modeTabActive {
+  composes: modeTab;
+  color: $dc1-blue;
+  border-bottom-color: $dc1-blue;
+  font-weight: 600;
+}
+
+/* ── Or divider ───────────────────────────────────────────── */
+.orDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  font-size: 12px;
+  color: $dc1-text-muted;
+  text-transform: uppercase;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: $dc1-border;
+  }
+}
+
+/* ── Empty state ──────────────────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.emptyIcon {
+  color: $dc1-text-muted;
+  margin-bottom: 12px;
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: $dc1-text;
+  margin: 0 0 4px;
+}
+
+.emptyDesc {
+  font-size: 13px;
+  color: $dc1-text-muted;
+  margin: 0;
+}

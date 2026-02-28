@@ -1,10 +1,12 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Eye, ExternalLink, Sparkles, Loader2 } from 'lucide-react';
-import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, TlsPill, EmptyState } from '../components';
+import { Eye, ExternalLink, Sparkles, Loader2, ShieldCheck, ShieldX } from 'lucide-react';
+import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, TlsPill, EmptyState, PolicyViolationCell } from '../components';
 import type { IntegrationStep } from '../components';
 import { ENDPOINTS } from '../data';
-import { useGetEndpointsQuery, useBulkCreateEndpointsMutation, useDeleteAllEndpointsMutation } from '../../../store/api';
+import { useGetEndpointsQuery, useBulkCreateEndpointsMutation, useDeleteAllEndpointsMutation, useGetPoliciesQuery } from '../../../store/api';
 import type { DiscoveryEndpoint, StatCardConfig } from '../types';
+import { evaluateSingleEndpointPolicies } from '../../policies';
+import type { CbomPolicyResult } from '../../policies';
 import s from '../components/shared.module.scss';
 
 interface Props {
@@ -75,6 +77,29 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
   const qsPct      = total > 0 ? Math.round((qsSafe / total) * 100) : 0;
   const deprecated = data.filter((e) => e.tlsVersion === 'TLS 1.1' || e.tlsVersion === 'TLS 1.0').length;
 
+  /* ── Policy evaluation per endpoint ────────────────── */
+  const { data: dbPolicies = [] } = useGetPoliciesQuery();
+
+  const policyResultsMap = useMemo<Map<string, CbomPolicyResult>>(() => {
+    const map = new Map<string, CbomPolicyResult>();
+    for (const ep of data) {
+      map.set(ep.id, evaluateSingleEndpointPolicies(dbPolicies, ep));
+    }
+    return map;
+  }, [data, dbPolicies]);
+
+  const totalPolicyViolations = useMemo(() => {
+    let count = 0;
+    for (const r of policyResultsMap.values()) count += r.totalViolations;
+    return count;
+  }, [policyResultsMap]);
+
+  const endpointsWithViolations = useMemo(() => {
+    let count = 0;
+    for (const r of policyResultsMap.values()) if (r.totalViolations > 0) count++;
+    return count;
+  }, [policyResultsMap]);
+
   const filtered = useMemo(() => {
     if (!search) return data;
     const q = search.toLowerCase();
@@ -91,6 +116,7 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
     { title: 'Total Endpoints',   value: total,       sub: 'Discovered via Network TLS Scanner',                                         variant: 'default' },
     { title: 'Quantum-safe',      value: `${qsPct}%`, sub: `${qsSafe} of ${total} endpoints using PQC key agreement`,                    variant: 'success' },
     { title: 'Deprecated TLS',    value: deprecated,   sub: 'Endpoints on TLS 1.0 / 1.1 — immediate upgrade required',                   variant: 'danger' },
+    { title: 'Policy Violations', value: totalPolicyViolations, sub: `${endpointsWithViolations} of ${total} endpoints have policy violations`, variant: totalPolicyViolations > 0 ? 'danger' : 'success' },
   ];
 
   const columns = [
@@ -101,6 +127,25 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
     { key: 'cipherSuite',  label: 'Cipher Suite',  render: (e: DiscoveryEndpoint) => <span className={s.mono} style={{ fontSize: 11 }}>{e.cipherSuite}</span> },
     { key: 'keyAgreement', label: 'Key Agreement', render: (e: DiscoveryEndpoint) => <span className={s.mono}>{e.keyAgreement}</span> },
     { key: 'quantumSafe',  label: 'Quantum-safe',  render: (e: DiscoveryEndpoint) => <QsBadge safe={e.quantumSafe} />, sortable: false },
+    { key: 'policiesViolated', label: 'Policies Violated', sortable: false, render: (e: DiscoveryEndpoint) => {
+      const result = policyResultsMap.get(e.id);
+      return (
+        <PolicyViolationCell
+          result={result}
+          enableAi
+          aiContext={{
+            type: 'endpoint',
+            hostname: e.hostname,
+            port: e.port,
+            tlsVersion: e.tlsVersion,
+            cipherSuite: e.cipherSuite,
+            keyAgreement: e.keyAgreement,
+            quantumSafe: e.quantumSafe,
+            violatedPolicies: result?.violatedPolicies?.map((p) => p.policyName) ?? [],
+          }}
+        />
+      );
+    }},
     { key: 'source',       label: 'Source',         render: (e: DiscoveryEndpoint) => <span className={s.sourceLink}>{e.source}</span> },
     {
       key: 'actions',

@@ -5,6 +5,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ViolationsPage from "./pages/ViolationsPage";
 import NetworkPage from "./pages/NetworkPage";
 import IntegrationsPage from "./pages/integrations";
+import PoliciesPage from "./pages/policies";
 import DiscoveryPage from "./pages/discovery";
 import RepoOverviewPage from "./pages/discovery/RepoOverviewPage";
 import type { DiscoveryTab } from "./pages/discovery/types";
@@ -173,6 +174,8 @@ export default function App() {
         return <NetworkPage />;
       // case 'violations':
       //   return <ViolationsPage cbom={cbom} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
+      case "policies":
+        return <PoliciesPage />;
       case "integrations":
         return <IntegrationsPage />;
       case "discovery":
