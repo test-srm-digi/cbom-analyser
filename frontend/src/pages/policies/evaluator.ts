@@ -121,7 +121,12 @@ function extractCryptoField(asset: CryptoAsset, field: string): string | undefin
       if (ap?.primitive === 'hash' || ap?.primitive === 'digest') return asset.name;
       return undefined;
     case 'quantumSafe':
-      return asset.quantumSafety === 'quantum-safe' ? 'true' : 'false';
+      // Only evaluate assets with a definitive quantum safety status.
+      // Unknown/unclassified assets (e.g. HashMap detected as "hash") are skipped.
+      if (asset.quantumSafety === 'quantum-safe') return 'true';
+      if (asset.quantumSafety === 'not-quantum-safe') return 'false';
+      if (asset.quantumSafety === 'conditional') return 'conditional';
+      return undefined; // unknown — don't flag as violation
     case 'tlsVersion':
       if (pp?.version) return pp.version;
       if (asset.cryptoProperties?.assetType === 'protocol') return asset.name;
@@ -227,8 +232,14 @@ function evaluatePolicyWithPrereqs<T>(
   }
 
   // Separate prerequisite rules from constraint rules
-  const prereqRules = applicableRules.filter((r) => isPrerequisiteCondition(r.condition));
-  const constraintRules = applicableRules.filter((r) => !isPrerequisiteCondition(r.condition));
+  const rawPrereqRules = applicableRules.filter((r) => isPrerequisiteCondition(r.condition));
+  const rawConstraintRules = applicableRules.filter((r) => !isPrerequisiteCondition(r.condition));
+
+  // When ALL rules are prerequisite-type (e.g. "quantumSafe equals true") with no
+  // constraint rules, the "prereqs" are actually requirements, not filters.
+  // Only use the prerequisite/constraint split when there are BOTH kinds.
+  const prereqRules = rawConstraintRules.length > 0 ? rawPrereqRules : [];
+  const constraintRules = rawConstraintRules.length > 0 ? rawConstraintRules : rawPrereqRules;
 
   if (policy.operator === 'AND') {
     for (const item of items) {
@@ -258,12 +269,6 @@ function evaluatePolicyWithPrereqs<T>(
           });
           violatingIds.add(getItemId(item));
         }
-      }
-
-      // If there are only prereq rules (no constraints) and they all pass, no violation
-      // But if ALL rules are negative/constraint and at least one fails, that's a violation
-      if (prereqRules.length === 0) {
-        // Pure constraint rules: already handled above
       }
     }
   } else {
@@ -428,4 +433,18 @@ export function evaluateSingleEndpointPolicies(
   ep: DiscoveryEndpoint,
 ): CbomPolicyResult {
   return evaluateEndpointPolicies(policies, [ep]);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Single CryptoAsset Evaluation
+   ─────────────────────────────────────────────────────────────
+   Evaluates one CryptoAsset against all active policies.
+   Used in the per-asset inventory table.
+   ═══════════════════════════════════════════════════════════════ */
+
+export function evaluateSingleAssetPolicies(
+  policies: CryptoPolicy[],
+  asset: CryptoAsset,
+): CbomPolicyResult {
+  return evaluatePolicies(policies, [asset]);
 }

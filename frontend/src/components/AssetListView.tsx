@@ -8,6 +8,10 @@ import {
   BarChart3, AlertTriangle, TrendingUp, Clock,
 } from 'lucide-react';
 import { CryptoAsset, QuantumSafetyStatus, ComplianceStatus, PQCReadinessVerdict, CBOMRepository } from '../types';
+import { useGetPoliciesQuery } from '../store/api';
+import { evaluateSingleAssetPolicies } from '../pages/policies';
+import type { CbomPolicyResult } from '../pages/policies';
+import PolicyViolationCell from '../pages/discovery/components/PolicyViolationCell';
 import s from './AssetListView.module.scss';
 
 interface AssetListViewProps {
@@ -250,7 +254,18 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
   const resizingCol = useRef<{ idx: number; startX: number; startW: number } | null>(null);
 
   // Per-column minimum widths (index-matched to colgroup order)
-  const COL_MIN: Record<number, number> = { 0: 120, 1: 180, 2: 100, 3: 155, 4: 180, 5: 260 };
+  const COL_MIN: Record<number, number> = { 0: 120, 1: 170, 2: 100, 3: 140, 4: 170, 5: 120, 6: 240 };
+
+  /* ── Policy evaluation per asset ──────────────────────── */
+  const { data: dbPolicies = [] } = useGetPoliciesQuery();
+  const policyResultsMap = useMemo<Map<string, CbomPolicyResult>>(() => {
+    const map = new Map<string, CbomPolicyResult>();
+    if (dbPolicies.length === 0) return map;
+    for (const asset of assets) {
+      map.set(asset.id, evaluateSingleAssetPolicies(dbPolicies, asset));
+    }
+    return map;
+  }, [assets, dbPolicies]);
 
   const onResizeStart = useCallback((e: React.MouseEvent, colIdx: number) => {
     e.preventDefault();
@@ -726,6 +741,7 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
             <col style={{ width: colWidths[3] || COL_MIN[3], minWidth: COL_MIN[3] }} />
             <col style={{ width: colWidths[4] || COL_MIN[4], minWidth: COL_MIN[4] }} />
             <col style={{ width: colWidths[5] || COL_MIN[5], minWidth: COL_MIN[5] }} />
+            <col style={{ width: colWidths[6] || COL_MIN[6], minWidth: COL_MIN[6] }} />
           </colgroup>
           <thead className={s.thead}>
             <tr>
@@ -749,12 +765,16 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                 Location {sortField === 'location' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                 <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 4)} />
               </th>
+              <th className={s.th}>
+                Policy Violations
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 5)} />
+              </th>
               <th className={s.thAi}>
                 <span className={s.thAiInner}>
                   <Sparkles className={s.aiSparkle} />
                   <span className={s.aiLabel}>AI Suggested Fix</span>
                 </span>
-                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 5)} />
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 6)} />
               </th>
             </tr>
           </thead>
@@ -840,6 +860,24 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                   ) : (
                     <span className={s.noDash}>—</span>
                   )}
+                </td>
+
+                {/* Policy Violations */}
+                <td className={s.td}>
+                  <PolicyViolationCell
+                    result={policyResultsMap.get(asset.id)}
+                    enableAi
+                    aiContext={{
+                      type: 'crypto-asset',
+                      name: asset.name,
+                      algorithm: asset.name,
+                      keyLength: asset.keyLength,
+                      primitive: asset.cryptoProperties?.algorithmProperties?.primitive,
+                      quantumSafety: asset.quantumSafety,
+                      pqcVerdict: asset.pqcVerdict?.verdict,
+                      violatedPolicies: policyResultsMap.get(asset.id)?.violatedPolicies?.map((p) => p.policyName) ?? [],
+                    }}
+                  />
                 </td>
 
                 {/* Suggested Fix */}

@@ -3,6 +3,107 @@
  *
  * Shared helper functions for the regex-based crypto scanner.
  */
+import type { CryptoAsset } from '../../types';
+
+// ─── False-Positive Exclusion ───────────────────────────────────────────────
+
+/**
+ * Non-cryptographic class / function names that upstream scanners (e.g.
+ * sonar-cryptography) sometimes misclassify as crypto hash functions.
+ *
+ * These are checked against:
+ *   - the asset `name` field  (case-insensitive exact match)
+ *   - the `additionalContext` or `evidence` fields  (substring match)
+ *   - the occurrence `location` path  (for import-only hits)
+ */
+const FALSE_POSITIVE_NAMES: Set<string> = new Set([
+  // ── Java Collections (contain "Hash" but are data structures) ──
+  'hashmap',
+  'hashset',
+  'hashtable',
+  'concurrenthashmap',
+  'linkedhashmap',
+  'linkedhashset',
+  'identityhashmap',
+  'weakhashmap',
+  'enummap',        // sometimes confused with enum hash
+  'hashcode',
+  'objects.hash',
+  'objects.hashcode',
+  'system.identityhashcode',
+
+  // ── .NET / C# collections ──
+  'dictionary',
+  'hashtable',      // System.Collections.Hashtable
+  'hashset',        // System.Collections.Generic.HashSet
+
+  // ── Python built-ins ──
+  'hash',           // built-in hash() function — not crypto
+  'dict',
+
+  // ── Go maps ──
+  'map',
+
+  // ── General non-crypto terms ──
+  'hashcode',
+  'gethashcode',
+  'hash_code',
+]);
+
+/**
+ * Fully-qualified class / package prefixes that are never cryptographic.
+ * Matched as prefixes against the `additionalContext` or evidence fields.
+ */
+const FALSE_POSITIVE_PREFIXES: string[] = [
+  'java.util.hashmap',
+  'java.util.hashset',
+  'java.util.hashtable',
+  'java.util.linkedhashmap',
+  'java.util.linkedhashset',
+  'java.util.identityhashmap',
+  'java.util.weakhashmap',
+  'java.util.concurrent.concurrenthashmap',
+  'java.util.objects#hash',
+  'java.lang.object#hashcode',
+  'java.lang.system#identityhashcode',
+  'system.collections.generic.hashset',
+  'system.collections.generic.dictionary',
+  'system.collections.hashtable',
+];
+
+/**
+ * Return `true` when a crypto asset is actually a non-cryptographic
+ * false positive (e.g. `java.util.HashMap` detected as a hash function).
+ */
+export function isFalsePositiveCryptoAsset(asset: CryptoAsset): boolean {
+  const name = (asset.name ?? '').toLowerCase().trim();
+
+  // 1. Exact name match
+  if (FALSE_POSITIVE_NAMES.has(name)) return true;
+
+  // 2. Name looks like a data-structure hash (e.g. "HashMap<String,Object>")
+  if (/^(concurrent|linked|identity|weak|enum)?(hash)(map|set|table|code)\b/i.test(name)) return true;
+
+  // 3. Check evidence / additionalContext for known non-crypto qualified names
+  const context = (asset as any)?.evidence?.occurrences
+    ?.map((o: any) => (o.additionalContext ?? '').toLowerCase())
+    .join(' ') ?? '';
+  const descLower = (asset.description ?? '').toLowerCase();
+  const combined = `${context} ${descLower}`;
+
+  for (const prefix of FALSE_POSITIVE_PREFIXES) {
+    if (combined.includes(prefix)) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Filter an array of crypto assets, removing known false positives.
+ */
+export function filterFalsePositives(assets: CryptoAsset[]): CryptoAsset[] {
+  return assets.filter(a => !isFalsePositiveCryptoAsset(a));
+}
 
 // ─── Glob Pattern Matching ──────────────────────────────────────────────────
 

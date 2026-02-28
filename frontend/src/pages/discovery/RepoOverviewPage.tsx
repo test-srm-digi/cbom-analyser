@@ -180,6 +180,9 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
     });
   }, [repoImports]);
 
+  /* ── Table display (newest first) ──────────────────────── */
+  const displayImports = useMemo(() => [...repoImports].reverse(), [repoImports]);
+
   /* ── AI insight ────────────────────────────────────────── */
   const fetchRepoInsight = useCallback(async () => {
     setInsight({ loading: true });
@@ -310,7 +313,7 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
                   <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
                   <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} domain={[0, 100]} />
                   <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }} />
-                  <Line type="monotone" dataKey="pqcPct" name="PQC %" stroke={CHART_COLORS.pqc} strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="pqcPct" name="PQC %" stroke={CHART_COLORS.pqc} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.pqc, formatter: (v: number) => `${v}%` }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -330,11 +333,11 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)" />
                   <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} domain={[(min: number) => Math.floor(min * 0.9), (max: number) => Math.ceil(max * 1.05)]} />
                   <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }} />
-                  <Line type="monotone" dataKey="safe" name="Safe" stroke={CHART_COLORS.safe} strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="notSafe" name="Not Safe" stroke={CHART_COLORS.notSafe} strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="conditional" name="Conditional" stroke={CHART_COLORS.conditional} strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="safe" name="Safe" stroke={CHART_COLORS.safe} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.safe }} />
+                  <Line type="monotone" dataKey="notSafe" name="Not Safe" stroke={CHART_COLORS.notSafe} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.notSafe }} />
+                  <Line type="monotone" dataKey="conditional" name="Conditional" stroke={CHART_COLORS.conditional} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'bottom', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.conditional }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -356,10 +359,10 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)" />
                   <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                  <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} domain={[(min: number) => Math.floor(min * 0.9), (max: number) => Math.ceil(max * 1.05)]} />
                   <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }} />
-                  <Line type="monotone" dataKey="crypto" name="Crypto" stroke={CHART_COLORS.crypto} strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="total" name="Total" stroke={CHART_COLORS.total} strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="crypto" name="Crypto" stroke={CHART_COLORS.crypto} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'bottom', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.crypto }} />
+                  <Line type="monotone" dataKey="total" name="Total" stroke={CHART_COLORS.total} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.total }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -382,9 +385,9 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
                   <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
                   <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} domain={[0, 100]} />
                   <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }} />
-                  <Line type="monotone" dataKey="safePct" name="Safe %" stroke={CHART_COLORS.safePct} strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="notSafePct" name="Not Safe %" stroke={CHART_COLORS.notSafePct} strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="condPct" name="Conditional %" stroke={CHART_COLORS.condPct} strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="safePct" name="Safe %" stroke={CHART_COLORS.safePct} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'bottom', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.safePct, formatter: (v: number) => `${v}%` }} />
+                  <Line type="monotone" dataKey="notSafePct" name="Not Safe %" stroke={CHART_COLORS.notSafePct} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.notSafePct, formatter: (v: number) => `${v}%` }} />
+                  <Line type="monotone" dataKey="condPct" name="Conditional %" stroke={CHART_COLORS.condPct} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'bottom', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.condPct, formatter: (v: number) => `${v}%` }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -530,9 +533,10 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
               </tr>
             </thead>
             <tbody>
-              {repoImports.map((cb, idx) => {
+              {displayImports.map((cb) => {
                 const cbPct = pqcPct(cb.quantumSafeComponents, cb.cryptoComponents);
-                const prev = idx > 0 ? repoImports[idx - 1] : null;
+                const origIdx = repoImports.findIndex((r) => r.id === cb.id);
+                const prev = origIdx > 0 ? repoImports[origIdx - 1] : null;
                 const prevPct = prev ? pqcPct(prev.quantumSafeComponents, prev.cryptoComponents) : null;
                 const pctChange = prevPct !== null ? cbPct - prevPct : null;
                 return (

@@ -26,7 +26,7 @@ import { analyzeAllConditionalAssets } from './pqcParameterAnalyzer';
 
 // ── Scanner module (refactored) ──
 import { CryptoPattern, SKIP_FILE_PATTERNS } from './scanner/scannerTypes';
-import { globToRegex, shouldExcludeFile, normaliseAlgorithmName, resolveVariableToAlgorithm } from './scanner/scannerUtils';
+import { globToRegex, shouldExcludeFile, normaliseAlgorithmName, resolveVariableToAlgorithm, filterFalsePositives } from './scanner/scannerUtils';
 import { scanNearbyContext } from './scanner/contextScanners';
 import { allCryptoPatterns } from './scanner/patterns';
 
@@ -100,6 +100,8 @@ export function parseCBOMFile(jsonContent: string): CBOMDocument {
     data.cryptoAssets = data.cryptoAssets.map((asset: CryptoAsset) =>
       enrichAssetWithPQCData(asset)
     );
+    // Remove false positives (e.g. HashMap misclassified as crypto hash)
+    data.cryptoAssets = filterFalsePositives(data.cryptoAssets);
     return data as CBOMDocument;
   }
 
@@ -158,6 +160,8 @@ export function parseCBOMFile(jsonContent: string): CBOMDocument {
 
     cbom.components = data.components;
     cbom.dependencies = data.dependencies;
+    // Remove false positives (e.g. HashMap misclassified as crypto hash)
+    cbom.cryptoAssets = filterFalsePositives(cbom.cryptoAssets);
     return cbom;
   }
 
@@ -571,6 +575,9 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
     console.error('Regex scan error:', (error as Error).message);
   }
 
+  // Remove false positives (e.g. HashMap, HashSet misclassified as crypto)
+  cbom.cryptoAssets = filterFalsePositives(cbom.cryptoAssets);
+
   return cbom;
 }
 
@@ -650,6 +657,9 @@ export async function runFullScan(
   // 6. Safety-net: sync quantumSafety column with pqcVerdict
   //    (catches any ordering/overwrite issues from enrichment → analysis pipeline)
   merged.cryptoAssets = syncQuantumSafetyWithVerdict(merged.cryptoAssets);
+
+  // 7. Final false-positive filter (removes HashMap, HashSet, etc.)
+  merged.cryptoAssets = filterFalsePositives(merged.cryptoAssets);
 
   return merged;
 }
