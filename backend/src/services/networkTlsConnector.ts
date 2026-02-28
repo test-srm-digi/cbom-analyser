@@ -171,7 +171,9 @@ function probeTls(
             cipherSuite: cipherName,
             keyAgreement: kex,
             quantumSafe: isQuantumSafeKex(kex),
-            certCommonName: cert?.subject?.CN || null,
+            certCommonName: cert?.subject?.CN
+              ? (Array.isArray(cert.subject.CN) ? cert.subject.CN[0] : cert.subject.CN)
+              : null,
             lastScanned: new Date().toISOString(),
           };
 
