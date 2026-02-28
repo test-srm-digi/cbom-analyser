@@ -264,6 +264,8 @@
 .statusDone       { background: $dc1-success-bg; color: $dc1-success; border: 1px solid rgba($dc1-success, 0.3); }
 .statusInProgress { background: $dc1-info-bg;    color: $dc1-blue;    border: 1px solid rgba($dc1-blue, 0.3); }
 .statusToDo       { background: $neutral-100;    color: $neutral-600; border: 1px solid $dc1-border; }
+.statusOpen       { background: $dc1-info-bg;    color: $dc1-blue;    border: 1px solid rgba($dc1-blue, 0.3); }
+.statusNew        { background: $dc1-info-bg;    color: $dc1-blue;    border: 1px solid rgba($dc1-blue, 0.3); }
 .statusBlocked    { background: $dc1-danger-bg;  color: $dc1-danger;  border: 1px solid rgba($dc1-danger, 0.3); }
 
 /* priority */

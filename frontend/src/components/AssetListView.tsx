@@ -990,6 +990,9 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                     title="Create remediation ticket"
                     onClick={() => {
                       const sg = suggestions[asset.id];
+                      // Extract owner/repo from repoUrl (e.g. https://github.com/owner/repo)
+                      const ghMatch = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+                      const effectiveBranch = branch === 'custom' ? customBranch : branch;
                       setTicketCtx({
                         entityType: 'Software',
                         entityName: asset.name,
@@ -1006,6 +1009,8 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                         },
                         severity: asset.quantumSafety === 'not-quantum-safe' ? 'Critical' : asset.quantumSafety === 'conditional' ? 'High' : 'Medium',
                         aiSuggestion: sg?.fix,
+                        githubRepo: ghMatch ? ghMatch[1] : undefined,
+                        githubBranch: effectiveBranch || undefined,
                       });
                     }}
                   >

@@ -105,8 +105,17 @@ router.post('/tickets', async (req: Request, res: Response) => {
           cfg = typeof connector.config === 'string' ? JSON.parse(connector.config) : connector.config;
         } catch { cfg = {} as GitHubConnectorConfig; }
 
-        const owner = body.owner || cfg.owner || '';
-        const repo = body.repository?.split('/').pop() || cfg.repo || '';
+        // Extract owner/repo from repository field (e.g. "test-srm-digi/cbom-analyser")
+        let owner = cfg.owner || '';
+        let repo = cfg.repo || '';
+        if (body.repository && body.repository.includes('/')) {
+          const parts = body.repository.split('/');
+          owner = parts[0];
+          repo = parts[1];
+        } else if (body.repository) {
+          repo = body.repository;
+        }
+        if (body.owner) owner = body.owner;
         const assignees = body.assignee ? [body.assignee] : cfg.defaultAssignee ? [cfg.defaultAssignee] : [];
         const ghLabels = Array.isArray(body.labels) ? body.labels : cfg.defaultLabels || [];
 

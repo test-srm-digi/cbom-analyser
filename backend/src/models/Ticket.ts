@@ -13,7 +13,7 @@ export interface TicketAttributes {
   type: 'JIRA' | 'GitHub' | 'ServiceNow';
   title: string;
   description: string;
-  status: 'To Do' | 'In Progress' | 'Done' | 'Blocked';
+  status: 'To Do' | 'In Progress' | 'Done' | 'Blocked' | 'Open' | 'New';
   priority: 'Critical' | 'High' | 'Medium' | 'Low';
   severity: 'Critical' | 'High' | 'Medium' | 'Low';
   entityType: 'Certificate' | 'Endpoint' | 'Application' | 'Device' | 'Software';
@@ -80,7 +80,7 @@ Ticket.init(
       defaultValue: '',
     },
     status: {
-      type: DataTypes.ENUM('To Do', 'In Progress', 'Done', 'Blocked'),
+      type: DataTypes.ENUM('To Do', 'In Progress', 'Done', 'Blocked', 'Open', 'New'),
       allowNull: false,
       defaultValue: 'To Do',
     },

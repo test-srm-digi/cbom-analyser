@@ -123,7 +123,8 @@ export default function CreateTicketModal({ open, onClose, context, onSubmit, al
       const prio = sev === 'Critical' ? 'Critical' : sev === 'High' ? 'High' : 'Medium';
       setPriority(prio);
       setTitle(`${sev} Risk: Non-quantum-safe ${context.entityType.toLowerCase()} for ${context.entityName}`);
-      setDescription(context.problemStatement);
+      const branchNote = context.githubBranch ? `\nBranch: ${context.githubBranch}` : '';
+      setDescription(context.problemStatement + branchNote);
       setAiSuggestion(context.aiSuggestion || null);
       setSelectedType(null);
 
@@ -141,9 +142,20 @@ export default function CreateTicketModal({ open, onClose, context, onSubmit, al
         if (cfg.defaultAssignee) setAssignee(cfg.defaultAssignee);
       }
 
-      // Auto-fill GitHub defaults from connector config
+      // Auto-fill GitHub defaults — prefer repo from CBOM context, fall back to connector config
       const ghConn = connectors.find(c => c.type === 'GitHub' && c.enabled);
-      if (ghConn) {
+      if (context.githubRepo) {
+        // Pre-populate from CBOM import repo URL
+        setRepository(context.githubRepo);
+        const [owner, repo] = context.githubRepo.split('/');
+        if (owner && repo) loadGhCollaborators(owner, repo);
+        // Still load connector defaults for assignee/labels
+        if (ghConn) {
+          const cfg = (ghConn.config ?? {}) as GitHubConfig;
+          if (cfg.defaultAssignee) setAssignee(cfg.defaultAssignee);
+          if (cfg.defaultLabels?.length) setLabels(cfg.defaultLabels);
+        }
+      } else if (ghConn) {
         const cfg = (ghConn.config ?? {}) as GitHubConfig;
         if (cfg.owner) {
           loadGhRepos(cfg.owner);
@@ -347,15 +359,27 @@ export default function CreateTicketModal({ open, onClose, context, onSubmit, al
           )}
 
           {selectedType === 'GitHub' && (
-            <div className={s.field}>
-              <label>Repository {loadingGhRepos && <Loader2 size={12} className={s.spinning} />}</label>
-              <SearchableSelect
-                options={ghRepoOptions}
-                value={repository}
-                onChange={handleGhRepoChange}
-                placeholder="Select repository…"
-              />
-            </div>
+            <>
+              <div className={s.field}>
+                <label>Repository {loadingGhRepos && <Loader2 size={12} className={s.spinning} />}</label>
+                {context.githubRepo ? (
+                  <input value={repository} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
+                ) : (
+                  <SearchableSelect
+                    options={ghRepoOptions}
+                    value={repository}
+                    onChange={handleGhRepoChange}
+                    placeholder="Select repository…"
+                  />
+                )}
+              </div>
+              {context.githubBranch && (
+                <div className={s.field}>
+                  <label>Branch</label>
+                  <input value={context.githubBranch} disabled style={{ opacity: 0.7, cursor: 'not-allowed' }} />
+                </div>
+              )}
+            </>
           )}
 
           {selectedType === 'ServiceNow' && (

@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════════════════════════
 
 export type TicketType = 'JIRA' | 'GitHub' | 'ServiceNow';
-export type TicketStatus = 'To Do' | 'In Progress' | 'Done' | 'Blocked';
+export type TicketStatus = 'To Do' | 'In Progress' | 'Done' | 'Blocked' | 'Open' | 'New';
 export type TicketPriority = 'Critical' | 'High' | 'Medium' | 'Low';
 export type TicketSeverity = 'Critical' | 'High' | 'Medium' | 'Low';
 export type EntityType = 'Certificate' | 'Endpoint' | 'Application' | 'Device' | 'Software';
@@ -59,4 +59,8 @@ export interface TicketContext {
   details: Record<string, string | undefined>;
   severity: TicketSeverity;
   aiSuggestion?: string;
+  /** Pre-populated GitHub repo (owner/repo) from CBOM import context */
+  githubRepo?: string;
+  /** Pre-populated branch from CBOM import context */
+  githubBranch?: string;
 }
