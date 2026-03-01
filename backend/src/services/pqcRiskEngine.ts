@@ -20,6 +20,10 @@ interface AlgorithmProfile {
   recommendedPQC?: string;
   notes?: string;
   minSafeKeyLength?: number;
+  /** Marks entries that are informational (e.g., provider registrations) — not actual algorithms.
+   *  Informational entries are excluded from conditional/unknown counts but preserved in the CBOM
+   *  for audit trail purposes. @see docs/advanced-resolution-techniques.md — Phase 1C */
+  isInformational?: boolean;
 }
 
 const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
@@ -319,19 +323,23 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
   },
   'JCE-Signature-Registration': {
     quantumSafety: QuantumSafetyStatus.CONDITIONAL,
-    notes: 'JCE Signature provider registration — indicates a custom/BouncyCastle provider. Quantum safety depends on the registered algorithm. Review provider source.',
+    notes: 'JCE Signature provider registration — informational only, not an algorithm. The actual algorithms registered through this provider are detected separately. This entry indicates BouncyCastle/custom provider infrastructure.',
+    isInformational: true,
   },
   'JCE-KeyPairGen-Registration': {
     quantumSafety: QuantumSafetyStatus.CONDITIONAL,
-    notes: 'JCE KeyPairGenerator provider registration — indicates a custom/BouncyCastle provider. Quantum safety depends on the registered key generation algorithm.',
+    notes: 'JCE KeyPairGenerator provider registration — informational only, not an algorithm. The actual key generation algorithms are detected separately.',
+    isInformational: true,
   },
   'JCE-Digest-Registration': {
     quantumSafety: QuantumSafetyStatus.CONDITIONAL,
-    notes: 'JCE MessageDigest provider registration — indicates a custom/BouncyCastle digest provider. Most hash algorithms are not directly quantum-vulnerable at 256-bit+.',
+    notes: 'JCE MessageDigest provider registration — informational only, not an algorithm. The actual digest algorithms are detected separately.',
+    isInformational: true,
   },
   'BouncyCastle-Provider': {
     quantumSafety: QuantumSafetyStatus.CONDITIONAL,
-    notes: 'BouncyCastle JCE/JCA security provider — not an algorithm itself. Provides both quantum-safe (AES, SHA-256, ML-KEM, ML-DSA) and vulnerable (RSA, EC) implementations. Audit which algorithms are used through this provider.',
+    notes: 'BouncyCastle JCE/JCA security provider — informational only, not an algorithm itself. Provides both quantum-safe (AES, SHA-256, ML-KEM, ML-DSA) and vulnerable (RSA, EC) implementations. The actual algorithms used through this provider are detected and classified separately.',
+    isInformational: true,
   },
   'PBKDF2': {
     quantumSafety: QuantumSafetyStatus.CONDITIONAL,
@@ -677,9 +685,39 @@ export function classifyAlgorithm(algorithmName: string): AlgorithmProfile {
 
 /**
  * Enrich a crypto asset with PQC risk data.
+ *
+ * BC-Provider reclassification (Phase 1C): Entries marked `isInformational` in the
+ * ALGORITHM_DATABASE are treated as audit-trail metadata, not actionable findings.
+ * They get a special REVIEW_NEEDED verdict with low confidence (10) and a clear
+ * note that actual algorithms are classified separately.
  */
 export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
   const profile = classifyAlgorithm(asset.name);
+
+  // ── Phase 1C: BC-Provider / JCE-Registration reclassification ──
+  if (profile.isInformational) {
+    const pqcVerdict = asset.pqcVerdict ?? {
+      verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+      confidence: 10,
+      reasons: [
+        `${asset.name} is informational — this is a provider/framework registration, not an algorithm.`,
+        'The actual cryptographic algorithms used through this provider are detected and classified as separate findings.',
+        ...(profile.notes ? [profile.notes] : []),
+        ...(asset.description ? [`\u{1F50D} ${asset.description}`] : []),
+      ],
+      recommendation: 'No direct action needed. Review the individual algorithm classifications that use this provider.',
+    };
+
+    return {
+      ...asset,
+      quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+      pqcVerdict,
+      complianceStatus: ComplianceStatus.COMPLIANT,  // Informational entries are not compliance violations
+      description: asset.description
+        ? `[INFORMATIONAL] ${asset.description}`
+        : `[INFORMATIONAL] ${asset.name} — provider registration, not an algorithm. See individual algorithm findings.`,
+    };
+  }
 
   // Build a pqcVerdict for definitively classified assets so the frontend always has verdict data
   let pqcVerdict = asset.pqcVerdict;
@@ -860,3 +898,22 @@ export function getPQCAlgorithms(): string[] {
 }
 
 export { ALGORITHM_DATABASE };
+
+// ─── Informational Asset Helpers (Phase 1C) ─────────────────────────────────
+
+/**
+ * Check if a crypto asset is informational (provider registration, not an algorithm).
+ * Informational assets should be excluded from compliance/readiness counts
+ * but preserved in the CBOM for audit trail.
+ */
+export function isInformationalAsset(asset: CryptoAsset): boolean {
+  const profile = classifyAlgorithm(asset.name);
+  return profile.isInformational === true;
+}
+
+/**
+ * Filter out informational assets from a list (for counting/scoring purposes).
+ */
+export function filterInformationalAssets(assets: CryptoAsset[]): CryptoAsset[] {
+  return assets.filter(a => !isInformationalAsset(a));
+}
