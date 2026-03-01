@@ -6,7 +6,7 @@
  *  • Detail view — tabs: Overview  |  Software Components  |  Crypto Assets
  *                        Vulnerabilities  |  Cross-References
  */
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import {
   useGetXBOMStatusQuery,
   useGetXBOMListQuery,
@@ -17,6 +17,17 @@ import {
   useDeleteXBOMMutation,
 } from '../store/api';
 import type { XBOMDocument, XBOMAnalytics, XBOMListItem, SBOMComponent, SBOMVulnerability, XBOMCrossReference, CryptoAsset } from '../types';
+import {
+  SoftwarePanel,
+  CryptoPanel,
+  CryptoAnalysisPanel,
+  VulnerabilityPanel,
+  CrossRefPanel,
+  BomOverviewPanel,
+  BomDownloadButtons,
+} from '../components/bom-panels';
+import Pagination from '../components/Pagination';
+import { Download } from 'lucide-react';
 import s from './XBOMPage.module.scss';
 
 /* ── helper ─────────────── */
@@ -39,6 +50,29 @@ export default function XBOMPage() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [localXbom, setLocalXbom] = useState<{ xbom: XBOMDocument; analytics: XBOMAnalytics } | null>(null);
+  const [listPage, setListPage] = useState(1);
+  const [listPageSize, setListPageSize] = useState(25);
+
+  const pagedList = useMemo(() => {
+    const start = (listPage - 1) * listPageSize;
+    return xbomList.slice(start, start + listPageSize);
+  }, [xbomList, listPage, listPageSize]);
+
+  const downloadXbom = useCallback(async (id: string, component: string) => {
+    try {
+      const res = await fetch(`/api/xbom/${encodeURIComponent(id)}`);
+      const json = await res.json();
+      const blob = new Blob([JSON.stringify(json.xbom ?? json, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${component.replace(/[^a-zA-Z0-9_-]/g, '_')}-xbom.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch { /* ignore */ }
+  }, []);
 
   /* ── Local upload viewer ─── */
   if (localXbom) {
@@ -111,7 +145,7 @@ export default function XBOMPage() {
               <span>Cross-refs</span>
               <span />
             </div>
-            {xbomList.map((item: XBOMListItem) => (
+            {pagedList.map((item: XBOMListItem) => (
               <div key={item.id} className={s.listRow}>
                 <span
                   className="dc1-cell-name"
@@ -126,6 +160,14 @@ export default function XBOMPage() {
                 <span>{item.vulnerabilities}</span>
                 <span>{item.crossReferences}</span>
                 <span className={s.actionBtns}>
+                  <button
+                    className={s.iconBtn}
+                    title="Download xBOM"
+                    onClick={() => downloadXbom(item.id, item.component)}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Download size={14} />
+                  </button>
                   <button className={s.iconBtn} title="View" onClick={() => setSelectedId(item.id)}>
                     View
                   </button>
@@ -136,6 +178,13 @@ export default function XBOMPage() {
                 </span>
               </div>
             ))}
+            <Pagination
+              page={listPage}
+              total={xbomList.length}
+              pageSize={listPageSize}
+              onPageChange={setListPage}
+              onPageSizeChange={(sz) => { setListPageSize(sz); setListPage(1); }}
+            />
           </div>
         )}
       </div>
@@ -774,18 +823,28 @@ function XBOMDetailView({ id, onBack }: { id: string; onBack: () => void }) {
     { key: 'cross-references', label: 'Cross-References', count: xbom.crossReferences?.length },
   ];
 
+  const componentName = xbom.metadata?.component?.name ?? 'xBOM';
+
   return (
     <div className={s.xbomPage}>
       <div className={s.detailHeader}>
         <div>
           <button className={s.backBtn} onClick={onBack}>← Back to xBOM list</button>
-          <h2 style={{ margin: '8px 0 4px' }}>{xbom.metadata?.component?.name ?? 'xBOM'}</h2>
+          <h2 style={{ margin: '8px 0 4px' }}>{componentName}</h2>
           <div className={s.detailMeta}>
             <span>Format: {xbom.bomFormat} {xbom.specVersion}</span>
             <span>Generated: {fmtDate(xbom.metadata?.timestamp)}</span>
             {xbom.metadata?.repository?.url && <span>Repo: {xbom.metadata.repository.url}</span>}
           </div>
         </div>
+        <BomDownloadButtons
+          compact
+          items={[
+            { label: 'xBOM', filename: `${componentName}-xbom.json`, data: xbom },
+            { label: 'SBOM', filename: `${componentName}-sbom.json`, data: xbom.components?.length ? { bomFormat: 'CycloneDX', specVersion: xbom.specVersion, components: xbom.components } : null },
+            { label: 'CBOM', filename: `${componentName}-cbom.json`, data: xbom.cryptoAssets?.length ? { bomFormat: 'CycloneDX', specVersion: xbom.specVersion, cryptoAssets: xbom.cryptoAssets } : null },
+          ]}
+        />
       </div>
 
       {/* Tabs */}
@@ -798,12 +857,12 @@ function XBOMDetailView({ id, onBack }: { id: string; onBack: () => void }) {
         ))}
       </div>
 
-      {/* Tab content */}
-      {tab === 'overview' && <OverviewTab xbom={xbom} analytics={analytics} />}
-      {tab === 'software' && <SoftwareTab components={xbom.components} />}
-      {tab === 'crypto' && <CryptoTab assets={xbom.cryptoAssets} />}
-      {tab === 'vulnerabilities' && <VulnerabilityTab vulns={xbom.vulnerabilities} analytics={analytics} />}
-      {tab === 'cross-references' && <CrossRefTab refs={xbom.crossReferences} />}
+      {/* Tab content — shared panels */}
+      {tab === 'overview' && <BomOverviewPanel xbom={xbom} analytics={analytics} />}
+      {tab === 'software' && <SoftwarePanel components={xbom.components ?? []} />}
+      {tab === 'crypto' && <CryptoAnalysisPanel assets={xbom.cryptoAssets ?? []} />}
+      {tab === 'vulnerabilities' && <VulnerabilityPanel vulns={xbom.vulnerabilities ?? []} summary={analytics?.vulnerabilitySummary} />}
+      {tab === 'cross-references' && <CrossRefPanel refs={xbom.crossReferences ?? []} components={xbom.components} cryptoAssets={xbom.cryptoAssets} />}
     </div>
   );
 }
@@ -834,13 +893,15 @@ function LocalXBOMDetailView({ xbom, analytics, onBack }: { xbom: XBOMDocument; 
     { key: 'cross-references', label: 'Cross-References', count: xbom.crossReferences?.length },
   ];
 
+  const componentName = xbom.metadata?.component?.name ?? 'xBOM';
+
   return (
     <div className={s.xbomPage}>
       <div className={s.detailHeader}>
         <div>
           <button className={s.backBtn} onClick={onBack}>← Back to xBOM list</button>
           <h2 style={{ margin: '8px 0 4px' }}>
-            {xbom.metadata?.component?.name ?? 'xBOM'}
+            {componentName}
             <span style={{ fontSize: 12, fontWeight: 400, marginLeft: 10, padding: '2px 8px', borderRadius: 10, background: '#dbeafe', color: '#1d4ed8' }}>Uploaded</span>
           </h2>
           <div className={s.detailMeta}>
@@ -849,14 +910,24 @@ function LocalXBOMDetailView({ xbom, analytics, onBack }: { xbom: XBOMDocument; 
             {xbom.metadata?.repository?.url && <span>Repo: {xbom.metadata.repository.url}</span>}
           </div>
         </div>
-        <button
-          className={s.iconBtn}
-          style={{ padding: '8px 16px', fontSize: 13, opacity: saved ? 0.6 : 1 }}
-          onClick={handleSave}
-          disabled={saving || saved}
-        >
-          {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save to server'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <BomDownloadButtons
+            compact
+            items={[
+              { label: 'xBOM', filename: `${componentName}-xbom.json`, data: xbom },
+              { label: 'SBOM', filename: `${componentName}-sbom.json`, data: xbom.components?.length ? { bomFormat: 'CycloneDX', specVersion: xbom.specVersion, components: xbom.components } : null },
+              { label: 'CBOM', filename: `${componentName}-cbom.json`, data: xbom.cryptoAssets?.length ? { bomFormat: 'CycloneDX', specVersion: xbom.specVersion, cryptoAssets: xbom.cryptoAssets } : null },
+            ]}
+          />
+          <button
+            className={s.iconBtn}
+            style={{ padding: '8px 16px', fontSize: 13, opacity: saved ? 0.6 : 1 }}
+            onClick={handleSave}
+            disabled={saving || saved}
+          >
+            {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save to server'}
+          </button>
+        </div>
       </div>
 
       <div className={s.tabs}>
@@ -868,259 +939,15 @@ function LocalXBOMDetailView({ xbom, analytics, onBack }: { xbom: XBOMDocument; 
         ))}
       </div>
 
-      {tab === 'overview' && <OverviewTab xbom={xbom} analytics={analytics} />}
-      {tab === 'software' && <SoftwareTab components={xbom.components} />}
-      {tab === 'crypto' && <CryptoTab assets={xbom.cryptoAssets} />}
-      {tab === 'vulnerabilities' && <VulnerabilityTab vulns={xbom.vulnerabilities} analytics={analytics} />}
-      {tab === 'cross-references' && <CrossRefTab refs={xbom.crossReferences} />}
+      {/* Tab content — shared panels */}
+      {tab === 'overview' && <BomOverviewPanel xbom={xbom} analytics={analytics} />}
+      {tab === 'software' && <SoftwarePanel components={xbom.components ?? []} />}
+      {tab === 'crypto' && <CryptoAnalysisPanel assets={xbom.cryptoAssets ?? []} />}
+      {tab === 'vulnerabilities' && <VulnerabilityPanel vulns={xbom.vulnerabilities ?? []} summary={analytics?.vulnerabilitySummary} />}
+      {tab === 'cross-references' && <CrossRefPanel refs={xbom.crossReferences ?? []} components={xbom.components} cryptoAssets={xbom.cryptoAssets} />}
     </div>
   );
 }
 
-/* ── Overview Tab ────────── */
-function OverviewTab({ xbom, analytics }: { xbom: XBOMDocument; analytics?: XBOMAnalytics }) {
-  return (
-    <>
-      <div className={s.statusCards}>
-        <div className={s.statusCard}>
-          <span className={s.statusLabel}>Software Components</span>
-          <span className={s.statusValue}>{analytics?.totalSoftwareComponents ?? xbom.components?.length ?? 0}</span>
-        </div>
-        <div className={s.statusCard}>
-          <span className={s.statusLabel}>Crypto Assets</span>
-          <span className={s.statusValue}>{analytics?.totalCryptoAssets ?? xbom.cryptoAssets?.length ?? 0}</span>
-        </div>
-        <div className={s.statusCard}>
-          <span className={s.statusLabel}>Vulnerabilities</span>
-          <span className={s.statusValue}>{xbom.vulnerabilities?.length ?? 0}</span>
-        </div>
-        <div className={s.statusCard}>
-          <span className={s.statusLabel}>Cross-References</span>
-          <span className={s.statusValue}>{analytics?.totalCrossReferences ?? xbom.crossReferences?.length ?? 0}</span>
-        </div>
-      </div>
 
-      {analytics && (
-        <div className="dc1-card" style={{ marginTop: 16 }}>
-          <h3 className="dc1-card-section-title">Quantum Readiness</h3>
-          <div className={s.statusCards}>
-            <div className={s.statusCard}>
-              <span className={s.statusLabel}>Readiness Score</span>
-              <span className={s.statusValue}>{analytics.quantumReadiness?.score ?? '—'}</span>
-            </div>
-            <div className={s.statusCard}>
-              <span className={s.statusLabel}>Quantum Safe</span>
-              <span className={`${s.statusBadge} ${s.badgeGreen}`}>{analytics.quantumReadiness?.quantumSafe ?? 0}</span>
-            </div>
-            <div className={s.statusCard}>
-              <span className={s.statusLabel}>Not Quantum Safe</span>
-              <span className={`${s.statusBadge} ${s.badgeRed}`}>{analytics.quantumReadiness?.notQuantumSafe ?? 0}</span>
-            </div>
-            <div className={s.statusCard}>
-              <span className={s.statusLabel}>Conditional</span>
-              <span className={`${s.statusBadge} ${s.badgeAmber}`}>{analytics.quantumReadiness?.conditional ?? 0}</span>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {analytics?.vulnerabilitySummary && analytics.vulnerabilitySummary.total > 0 && (
-        <div className="dc1-card" style={{ marginTop: 16 }}>
-          <h3 className="dc1-card-section-title">Vulnerability Summary</h3>
-          <VulnSummaryGrid vuln={analytics.vulnerabilitySummary} />
-        </div>
-      )}
-    </>
-  );
-}
-
-/* ── Software Components Tab ── */
-function SoftwareTab({ components }: { components?: SBOMComponent[] }) {
-  const items = components ?? [];
-  if (!items.length) return <div className={s.emptyState}><h3>No software components</h3></div>;
-
-  return (
-    <div className="dc1-card">
-      <div className="dc1-table-wrapper">
-        <table className="dc1-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Version</th>
-              <th>Type</th>
-              <th>Group</th>
-              <th>PURL</th>
-              <th>Licenses</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((c, i) => (
-              <tr key={c['bom-ref'] ?? i}>
-                <td className="dc1-cell-name">{c.name}</td>
-                <td>{c.version ?? '—'}</td>
-                <td>{c.type}</td>
-                <td>{c.group ?? '—'}</td>
-                <td style={{ fontSize: 11, fontFamily: 'monospace', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {c.purl ?? '—'}
-                </td>
-                <td>{c.licenses?.map(l => l.license?.id ?? l.license?.name ?? l.expression).filter(Boolean).join(', ') || '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-/* ── Crypto Assets Tab ── */
-function CryptoTab({ assets }: { assets?: CryptoAsset[] }) {
-  const items = assets ?? [];
-  if (!items.length) return <div className={s.emptyState}><h3>No cryptographic assets</h3></div>;
-
-  return (
-    <div className="dc1-card">
-      <div className="dc1-table-wrapper">
-        <table className="dc1-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Primitive</th>
-              <th>Parameter Set</th>
-              <th>Quantum Safety</th>
-              <th>Source</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((a, i) => (
-              <tr key={a.id ?? i}>
-                <td className="dc1-cell-name">{a.name}</td>
-                <td>{a.cryptoProperties?.assetType ?? a.type}</td>
-                <td>{a.cryptoProperties?.algorithmProperties?.primitive ?? '—'}</td>
-                <td>{a.cryptoProperties?.algorithmProperties?.parameterSetIdentifier ?? '—'}</td>
-                <td>
-                  <span className={`${s.statusBadge} ${
-                    a.quantumSafety === 'quantum-safe' ? s.badgeGreen :
-                    a.quantumSafety === 'not-quantum-safe' ? s.badgeRed : s.badgeAmber
-                  }`}>
-                    {a.quantumSafety}
-                  </span>
-                </td>
-                <td style={{ fontSize: 11, fontFamily: 'monospace' }}>
-                  {a.location?.fileName ?? '—'}
-                  {a.location?.lineNumber ? `:${a.location.lineNumber}` : ''}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-/* ── Vulnerabilities Tab ── */
-function VulnerabilityTab({ vulns, analytics }: { vulns?: SBOMVulnerability[]; analytics?: XBOMAnalytics }) {
-  const items = vulns ?? [];
-
-  return (
-    <>
-      {analytics?.vulnerabilitySummary && <VulnSummaryGrid vuln={analytics.vulnerabilitySummary} />}
-
-      {items.length === 0 ? (
-        <div className={s.emptyState}><h3>No vulnerabilities detected</h3><p>Trivy did not find any known vulnerabilities in this scan.</p></div>
-      ) : (
-        <div className="dc1-card">
-          <div className="dc1-table-wrapper">
-            <table className="dc1-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Source</th>
-                  <th>Severity</th>
-                  <th>Score</th>
-                  <th>Description</th>
-                  <th>Recommendation</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((v, i) => {
-                  const rating = v.ratings?.[0];
-                  const sev = (rating?.severity ?? 'unknown').toLowerCase();
-                  return (
-                    <tr key={v.id + '-' + i}>
-                      <td className="dc1-cell-name" style={{ fontFamily: 'monospace', fontSize: 12 }}>{v.id}</td>
-                      <td>{v.source?.name ?? '—'}</td>
-                      <td>
-                        <span className={`${s.statusBadge} ${
-                          sev === 'critical' ? s.badgeRed :
-                          sev === 'high' ? s.badgeRed :
-                          sev === 'medium' ? s.badgeAmber : s.badgeGreen
-                        }`}>
-                          {rating?.severity ?? 'Unknown'}
-                        </span>
-                      </td>
-                      <td>{rating?.score ?? '—'}</td>
-                      <td style={{ maxWidth: 300, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {v.description ?? '—'}
-                      </td>
-                      <td style={{ fontSize: 12 }}>{v.recommendation ?? '—'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
-/* ── Cross-References Tab ── */
-function CrossRefTab({ refs }: { refs?: XBOMCrossReference[] }) {
-  const items = refs ?? [];
-  if (!items.length) return <div className={s.emptyState}><h3>No cross-references</h3><p>No relational links between software components and crypto assets were found.</p></div>;
-
-  const methodClass = (m: string) => {
-    switch (m) {
-      case 'dependency-manifest': return s.linkMethodManifest;
-      case 'code-scan': return s.linkMethodCodeScan;
-      case 'file-co-location': return s.linkMethodCoLocation;
-      default: return s.linkMethodManual;
-    }
-  };
-
-  return (
-    <div className="dc1-card">
-      <div className={`${s.crossRefRow} ${s.crossRefHeader}`}>
-        <span>Software Component</span>
-        <span>Crypto Assets</span>
-        <span>Link Method</span>
-      </div>
-      {items.map((cr, i) => (
-        <div key={i} className={s.crossRefRow}>
-          <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{cr.softwareRef}</span>
-          <span className={s.chipList}>
-            {cr.cryptoRefs.map((r, j) => <span key={j} className={s.chip}>{r}</span>)}
-          </span>
-          <span className={`${s.linkMethodTag} ${methodClass(cr.linkMethod)}`}>{cr.linkMethod}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ── Vuln Summary Grid (shared) ── */
-function VulnSummaryGrid({ vuln }: { vuln: { total: number; critical: number; high: number; medium: number; low: number; info: number } }) {
-  return (
-    <div className={s.vulnGrid}>
-      <div className={`${s.vulnCard} ${s.criticalCard}`}><h4>Critical</h4><span className={s.vulnCount} style={{ color: '#991b1b' }}>{vuln.critical}</span></div>
-      <div className={`${s.vulnCard} ${s.highCard}`}><h4>High</h4><span className={s.vulnCount} style={{ color: '#ef4444' }}>{vuln.high}</span></div>
-      <div className={`${s.vulnCard} ${s.mediumCard}`}><h4>Medium</h4><span className={s.vulnCount} style={{ color: '#f59e0b' }}>{vuln.medium}</span></div>
-      <div className={`${s.vulnCard} ${s.lowCard}`}><h4>Low</h4><span className={s.vulnCount} style={{ color: '#3b82f6' }}>{vuln.low}</span></div>
-      <div className={`${s.vulnCard} ${s.infoCard}`}><h4>Info</h4><span className={s.vulnCount} style={{ color: '#94a3b8' }}>{vuln.info}</span></div>
-    </div>
-  );
-}

@@ -18,7 +18,7 @@ const TAB_META: Record<DiscoveryTab, { title: string; subtitle: string }> = {
   endpoints:      { title: 'Endpoints',     subtitle: 'Network endpoints scanned for TLS configuration, cipher suites, and key-agreement protocols used in transit encryption.' },
   software:       { title: 'Software',      subtitle: 'Software releases and signing artifacts discovered via DigiCert STM — signing algorithm and PQC migration status.' },
   devices:        { title: 'Devices',       subtitle: 'IoT and managed devices discovered via DigiCert DTM — firmware crypto, certificate enrollment, and key-strength audit.' },
-  'cbom-imports':  { title: 'CBOM Imports',  subtitle: 'CycloneDX CBOM files imported from CI/CD pipelines — crypto component inventory and PQC-readiness breakdown.' },
+  'cbom-imports':  { title: 'BOM Imports',  subtitle: 'CycloneDX BOM files (CBOM, SBOM, xBOM) imported from CI/CD pipelines — crypto inventory, software components, vulnerabilities, and PQC-readiness breakdown.' },
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -30,9 +30,10 @@ interface Props {
   onViewCbom?: (id: string) => void;
   onViewRepo?: (name: string) => void;
   onGoToIntegrations?: () => void;
+  onGoToXBOM?: () => void;
 }
 
-export default function DiscoveryPage({ tab, onViewCbom, onViewRepo, onGoToIntegrations }: Props) {
+export default function DiscoveryPage({ tab, onViewCbom, onViewRepo, onGoToIntegrations, onGoToXBOM }: Props) {
   const [search, setSearch] = useState('');
   const meta = TAB_META[tab];
 
@@ -42,7 +43,7 @@ export default function DiscoveryPage({ tab, onViewCbom, onViewRepo, onGoToInteg
       case 'endpoints':      return <EndpointsTab    search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
       case 'software':       return <SoftwareTab     search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
       case 'devices':        return <DevicesTab      search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
-      case 'cbom-imports':   return <CbomImportsTab  search={search} setSearch={setSearch} onViewCbom={onViewCbom} onViewRepo={onViewRepo} onGoToIntegrations={onGoToIntegrations} />;
+      case 'cbom-imports':   return <CbomImportsTab  search={search} setSearch={setSearch} onViewCbom={onViewCbom} onViewRepo={onViewRepo} onGoToIntegrations={onGoToIntegrations} onGoToXBOM={onGoToXBOM} />;
     }
   };
 

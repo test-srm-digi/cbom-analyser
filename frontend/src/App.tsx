@@ -215,6 +215,7 @@ export default function App() {
               setActivePage("repo-overview");
             }}
             onGoToIntegrations={() => setActivePage("integrations")}
+            onGoToXBOM={() => setActivePage("xbom")}
           />
         );
       case "cbom-detail":

@@ -10,6 +10,7 @@ import { useGetCertificatesQuery, useBulkCreateCertificatesMutation, useDeleteAl
 import type { DiscoveryCertificate, StatCardConfig } from '../types';
 import { evaluateSingleCertPolicies } from '../../policies';
 import type { CbomPolicyResult } from '../../policies';
+import Pagination from '../../../components/Pagination';
 import s from '../components/shared.module.scss';
 
 interface Props {
@@ -48,6 +49,10 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
   const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllCertificatesMutation();
   const data = apiData;
   const loaded = data.length > 0;
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Data from a real integration has integrationId set — hide reset for integration-sourced data
   const isSampleData = loaded && data.every((c) => !c.integrationId);
@@ -178,6 +183,16 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
         c.source.toLowerCase().includes(q),
     );
   }, [search, data]);
+
+  // Reset page when filter changes
+  const filteredLen = filtered.length;
+  const [prevFilteredLen, setPrevFilteredLen] = useState(filteredLen);
+  if (filteredLen !== prevFilteredLen) { setPrevFilteredLen(filteredLen); setPage(1); }
+
+  const paged = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
 
   const stats: StatCardConfig[] = [
     { title: 'Total Certificates', value: total,      sub: `Discovered via DigiCert Trust Lifecycle Manager`, variant: 'default' },
@@ -413,7 +428,7 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
             </tr>
           </thead>
           <tbody>
-            {filtered.map((cert) => {
+            {paged.map((cert) => {
               const sg = suggestions[cert.id];
               return (
                 <>{/* Fragment needed for adjacent rows */}
@@ -470,9 +485,14 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
             })}
           </tbody>
         </table>
+        <Pagination
+          page={page}
+          total={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(sz) => { setPageSize(sz); setPage(1); }}
+        />
       </div>
-
-      {/* Create Ticket Modal */}
       {ticketCtx && (
         <CreateTicketModal
           open

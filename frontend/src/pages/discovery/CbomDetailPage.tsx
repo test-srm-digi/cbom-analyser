@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ArrowLeft, AlertTriangle, ShieldCheck, FileCode2, Clock, Package, Box, Link2, Bug } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, ShieldCheck, FileCode2, Clock, Package, Box, Link2, Bug, Download } from 'lucide-react';
 import { useGetCbomImportQuery } from '../../store/api';
 import {
   ReadinessScoreCard,
@@ -12,9 +12,15 @@ import {
   CbomStatsRow,
   AssetBreakdown,
 } from '../../components';
+import {
+  SoftwarePanel,
+  VulnerabilityPanel,
+  CrossRefPanel,
+  BomDownloadButtons,
+} from '../../components/bom-panels';
 import { CbomStatusBadge, ProgressBar } from './components';
 import { parseCbomJson } from '../../utils/cbomParser';
-import type { QuantumReadinessScore, ComplianceSummary, CryptoAsset, CBOMDocument } from '../../types';
+import type { QuantumReadinessScore, ComplianceSummary, CryptoAsset, CBOMDocument, SBOMComponent, SBOMVulnerability, XBOMCrossReference } from '../../types';
 import s from './CbomDetailPage.module.scss';
 
 /* ── Props ──────────────────────────────────────────────────── */
@@ -28,46 +34,20 @@ interface Props {
 
 type DetailTab = 'overview' | 'inventory' | 'sbom' | 'vulnerabilities' | 'xbom-crossrefs';
 
-/** Software component extracted from SBOM/xBOM data */
-interface SoftwareComponent {
-  name: string;
-  version: string;
-  type: string;
-  purl?: string;
-  group?: string;
-  licenses?: string[];
-}
-
-/** Cross-reference from xBOM linking software ↔ crypto */
-interface CrossRef {
-  softwareRef: string;
-  softwareName: string;
-  softwareVersion?: string;
-  cryptoRefs: { ref: string; name: string; algorithm?: string; relationship?: string }[];
-}
-
-/** Vulnerability from SBOM */
-interface VulnEntry {
-  id: string;
-  source?: string;
-  severity: string;
-  description: string;
-  affects: string[];
-}
-
 export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
   const { data: cbomImport, isLoading, isError } = useGetCbomImportQuery(cbomImportId);
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
 
-  const { assets, readinessScore, compliance, cbomDoc, softwareComponents, vulnerabilities, crossReferences } = useMemo(() => {
+  const { assets, readinessScore, compliance, cbomDoc, softwareComponents, vulnerabilities, crossReferences, rawJson } = useMemo(() => {
     const empty = {
       assets: [] as CryptoAsset[],
       readinessScore: null as QuantumReadinessScore | null,
       compliance: null as ComplianceSummary | null,
       cbomDoc: null as CBOMDocument | null,
-      softwareComponents: [] as SoftwareComponent[],
-      vulnerabilities: [] as VulnEntry[],
-      crossReferences: [] as CrossRef[],
+      softwareComponents: [] as SBOMComponent[],
+      vulnerabilities: [] as SBOMVulnerability[],
+      crossReferences: [] as XBOMCrossReference[],
+      rawJson: null as any,
     };
     if (!cbomImport) return empty;
 
@@ -82,7 +62,7 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
 
         // Extract SBOM software components (non-crypto)
         const allComps: any[] = rawJson.components || [];
-        const swComps: SoftwareComponent[] = allComps
+        const swComps: SBOMComponent[] = allComps
           .filter((c: any) => {
             const type = c.type || '';
             const hasCp = c.cryptoProperties || c['crypto-properties'] || c['crypto:properties'];
@@ -94,29 +74,25 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
             type: c.type || 'library',
             purl: c.purl,
             group: c.group,
-            licenses: (c.licenses || []).map((l: any) => l?.license?.id || l?.license?.name || l?.expression || '').filter(Boolean),
+            'bom-ref': c['bom-ref'],
+            licenses: c.licenses,
           }));
 
         // Extract vulnerabilities
-        const vulns: VulnEntry[] = (rawJson.vulnerabilities || []).map((v: any) => ({
+        const vulns: SBOMVulnerability[] = (rawJson.vulnerabilities || []).map((v: any) => ({
           id: v.id || 'unknown',
-          source: v.source?.name || v.source?.url || '',
-          severity: v.ratings?.[0]?.severity || 'unknown',
+          source: v.source,
+          ratings: v.ratings,
           description: v.description || '',
-          affects: (v.affects || []).map((a: any) => a.ref || ''),
+          recommendation: v.recommendation,
+          affects: v.affects,
         }));
 
         // Extract xBOM cross-references
-        const xrefs: CrossRef[] = (rawJson.crossReferences || []).map((cr: any) => ({
+        const xrefs: XBOMCrossReference[] = (rawJson.crossReferences || []).map((cr: any) => ({
           softwareRef: cr.softwareRef || '',
-          softwareName: cr.softwareName || '',
-          softwareVersion: cr.softwareVersion || '',
-          cryptoRefs: (cr.cryptoRefs || []).map((r: any) => ({
-            ref: r.ref || '',
-            name: r.name || '',
-            algorithm: r.algorithm || '',
-            relationship: r.relationship || 'uses',
-          })),
+          cryptoRefs: Array.isArray(cr.cryptoRefs) ? cr.cryptoRefs.map((r: any) => typeof r === 'string' ? r : r.ref || r.name || '') : [],
+          linkMethod: cr.linkMethod || 'unknown',
         }));
 
         return {
@@ -127,6 +103,7 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
           softwareComponents: swComps,
           vulnerabilities: vulns,
           crossReferences: xrefs,
+          rawJson,
         };
       } catch (e) {
         console.warn('Failed to parse cbomFile, falling back to metadata:', e);
@@ -187,7 +164,7 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
         <h3>CBOM import not found</h3>
         <p>The requested CBOM import could not be loaded.</p>
         <button className={s.backBtn} onClick={onBack}>
-          <ArrowLeft size={16} /> Back to CBOM Imports
+          <ArrowLeft size={16} /> Back to BOM Imports
         </button>
       </div>
     );
@@ -209,18 +186,28 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
     <div className={s.page}>
       {/* ── Back navigation ─────────────────────────── */}
       <button className={s.backBtn} onClick={onBack}>
-        <ArrowLeft size={16} /> Back to CBOM Imports
+<ArrowLeft size={16} /> Back to BOM Imports
       </button>
 
-      {/* ── Header ──────────────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────── */}
       <div className={s.header}>
         <div className={s.headerTop}>
           <div>
-            <p className={s.breadcrumb}>Discovery / CBOM Imports</p>
+            <p className={s.breadcrumb}>Discovery / BOM Imports</p>
             <h1 className={s.title}>{cbomImport.applicationName ?? cbomImport.fileName}</h1>
             <p className={s.subtitle}>{cbomImport.fileName}</p>
           </div>
-          <CbomStatusBadge status={cbomImport.status} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <BomDownloadButtons
+              compact
+              items={[
+                { label: 'CBOM', filename: `${cbomImport.applicationName || 'cbom'}-cbom.json`, data: rawJson },
+                { label: 'SBOM', filename: `${cbomImport.applicationName || 'sbom'}-sbom.json`, data: softwareComponents.length ? { bomFormat: 'CycloneDX', components: softwareComponents } : null },
+                { label: 'xBOM', filename: `${cbomImport.applicationName || 'xbom'}-xbom.json`, data: crossReferences.length ? { crossReferences } : null },
+              ]}
+            />
+            <CbomStatusBadge status={cbomImport.status} />
+          </div>
         </div>
 
         <div className={s.metaRow}>
@@ -293,8 +280,8 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
             Vulnerabilities
             <span style={{
               marginLeft: 6, fontSize: 11, borderRadius: 10, padding: '1px 7px', fontWeight: 600,
-              background: vulnerabilities.some(v => v.severity === 'critical') ? '#fee2e2' : '#fef3c7',
-              color: vulnerabilities.some(v => v.severity === 'critical') ? '#dc2626' : '#d97706',
+              background: vulnerabilities.some(v => (v.ratings?.[0]?.severity ?? '').toLowerCase() === 'critical') ? '#fee2e2' : '#fef3c7',
+              color: vulnerabilities.some(v => (v.ratings?.[0]?.severity ?? '').toLowerCase() === 'critical') ? '#dc2626' : '#d97706',
             }}>
               {vulnerabilities.length}
             </span>
@@ -366,275 +353,22 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
         </div>
       )}
 
-      {/* ── SBOM: Software components (decoupled) ───────────────── */}
+      {/* ── SBOM: Software components (shared panel) ───────────────── */}
       {activeTab === 'sbom' && softwareComponents.length > 0 && (
-        <SbomPanel components={softwareComponents} />
+        <SoftwarePanel components={softwareComponents} />
       )}
 
-      {/* ── Vulnerabilities (decoupled) ─────────────────────────── */}
+      {/* ── Vulnerabilities (shared panel) ─────────────────────────── */}
       {activeTab === 'vulnerabilities' && vulnerabilities.length > 0 && (
         <VulnerabilityPanel vulns={vulnerabilities} />
       )}
 
-      {/* ── xBOM Cross-References (decoupled) ───────────────────── */}
+      {/* ── xBOM Cross-References (shared panel) ───────────────────── */}
       {activeTab === 'xbom-crossrefs' && crossReferences.length > 0 && (
-        <CrossRefPanel refs={crossReferences} />
+        <CrossRefPanel refs={crossReferences} components={softwareComponents} cryptoAssets={assets} />
       )}
     </div>
   );
 }
 
-/* ================================================================== */
-/*  SBOM Panel — Software component inventory (decoupled)             */
-/* ================================================================== */
 
-function SbomPanel({ components }: { components: SoftwareComponent[] }) {
-  const [filter, setFilter] = useState('');
-  const filtered = filter
-    ? components.filter(c =>
-        c.name.toLowerCase().includes(filter.toLowerCase()) ||
-        c.type.toLowerCase().includes(filter.toLowerCase()) ||
-        (c.purl || '').toLowerCase().includes(filter.toLowerCase())
-      )
-    : components;
-
-  const byType = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const c of components) { m[c.type] = (m[c.type] || 0) + 1; }
-    return Object.entries(m).sort((a, b) => b[1] - a[1]);
-  }, [components]);
-
-  return (
-    <>
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <div className="dc1-card" style={{ padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 24, fontWeight: 700, color: '#1d4ed8' }}>{components.length}</div>
-          <div style={{ fontSize: 12, color: 'var(--dc1-text-muted)' }}>Total Packages</div>
-        </div>
-        {byType.slice(0, 3).map(([type, count]) => (
-          <div key={type} className="dc1-card" style={{ padding: 16, textAlign: 'center' }}>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#475569' }}>{count}</div>
-            <div style={{ fontSize: 12, color: 'var(--dc1-text-muted)', textTransform: 'capitalize' }}>{type}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filter */}
-      <div className="dc1-card" style={{ marginBottom: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>
-            <Box size={15} style={{ marginRight: 6, verticalAlign: -2 }} />
-            Software Components
-          </h3>
-          <input
-            type="text"
-            placeholder="Filter by name, type, purl…"
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
-            style={{ padding: '6px 10px', fontSize: 12, borderRadius: 6, border: '1px solid var(--dc1-border)', width: 240 }}
-          />
-        </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--dc1-border)', textAlign: 'left' }}>
-              <th style={{ padding: '8px 6px', fontWeight: 600 }}>Package Name</th>
-              <th style={{ padding: '8px 6px', fontWeight: 600 }}>Version</th>
-              <th style={{ padding: '8px 6px', fontWeight: 600 }}>Type</th>
-              <th style={{ padding: '8px 6px', fontWeight: 600 }}>License</th>
-              <th style={{ padding: '8px 6px', fontWeight: 600 }}>PURL</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.slice(0, 200).map((c, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid var(--dc1-border)', opacity: 0.95 }}>
-                <td style={{ padding: '6px', fontWeight: 500 }}>
-                  {c.group ? <span style={{ color: 'var(--dc1-text-muted)', fontSize: 11 }}>{c.group}/</span> : ''}
-                  {c.name}
-                </td>
-                <td style={{ padding: '6px', fontFamily: 'var(--dc1-mono)', fontSize: 11 }}>{c.version || '—'}</td>
-                <td style={{ padding: '6px' }}>
-                  <span style={{ background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 500, textTransform: 'capitalize' }}>
-                    {c.type}
-                  </span>
-                </td>
-                <td style={{ padding: '6px', fontSize: 11 }}>{c.licenses?.join(', ') || '—'}</td>
-                <td style={{ padding: '6px', fontSize: 10, fontFamily: 'var(--dc1-mono)', color: 'var(--dc1-text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {c.purl || '—'}
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr><td colSpan={5} style={{ padding: 24, textAlign: 'center', color: 'var(--dc1-text-muted)' }}>No matching components</td></tr>
-            )}
-          </tbody>
-        </table>
-        {filtered.length > 200 && (
-          <div style={{ padding: 8, textAlign: 'center', color: 'var(--dc1-text-muted)', fontSize: 12 }}>
-            Showing 200 of {filtered.length} components
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
-
-/* ================================================================== */
-/*  Vulnerability Panel (decoupled — only rendered when data present) */
-/* ================================================================== */
-
-function VulnerabilityPanel({ vulns }: { vulns: VulnEntry[] }) {
-  const [sevFilter, setSevFilter] = useState<string>('all');
-  const sevCounts = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const v of vulns) { m[v.severity] = (m[v.severity] || 0) + 1; }
-    return m;
-  }, [vulns]);
-  const filtered = sevFilter === 'all' ? vulns : vulns.filter(v => v.severity === sevFilter);
-
-  const sevColor = (sev: string) => {
-    switch (sev) {
-      case 'critical': return { bg: '#fee2e2', text: '#dc2626' };
-      case 'high': return { bg: '#ffedd5', text: '#ea580c' };
-      case 'medium': return { bg: '#fef3c7', text: '#d97706' };
-      case 'low': return { bg: '#dbeafe', text: '#2563eb' };
-      default: return { bg: '#f1f5f9', text: '#64748b' };
-    }
-  };
-
-  return (
-    <>
-      {/* Severity stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, marginBottom: 16 }}>
-        {['critical', 'high', 'medium', 'low'].map(sev => {
-          const sc = sevColor(sev);
-          const count = sevCounts[sev] || 0;
-          return (
-            <div
-              key={sev}
-              className="dc1-card"
-              style={{ padding: 16, textAlign: 'center', cursor: 'pointer', border: sevFilter === sev ? `2px solid ${sc.text}` : undefined }}
-              onClick={() => setSevFilter(sevFilter === sev ? 'all' : sev)}
-            >
-              <div style={{ fontSize: 24, fontWeight: 700, color: sc.text }}>{count}</div>
-              <div style={{ fontSize: 12, color: 'var(--dc1-text-muted)', textTransform: 'capitalize' }}>{sev}</div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="dc1-card" style={{ marginBottom: 0 }}>
-        <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600 }}>
-          <Bug size={15} style={{ marginRight: 6, verticalAlign: -2 }} />
-          Vulnerabilities ({filtered.length})
-          {sevFilter !== 'all' && (
-            <button onClick={() => setSevFilter('all')} style={{ marginLeft: 8, fontSize: 11, background: 'none', border: '1px solid var(--dc1-border)', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}>
-              Clear filter
-            </button>
-          )}
-        </h3>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--dc1-border)', textAlign: 'left' }}>
-              <th style={{ padding: '8px 6px', fontWeight: 600 }}>ID</th>
-              <th style={{ padding: '8px 6px', fontWeight: 600 }}>Severity</th>
-              <th style={{ padding: '8px 6px', fontWeight: 600 }}>Source</th>
-              <th style={{ padding: '8px 6px', fontWeight: 600 }}>Affected Components</th>
-              <th style={{ padding: '8px 6px', fontWeight: 600 }}>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.slice(0, 200).map((v, i) => {
-              const sc = sevColor(v.severity);
-              return (
-                <tr key={i} style={{ borderBottom: '1px solid var(--dc1-border)' }}>
-                  <td style={{ padding: '6px', fontWeight: 600, fontFamily: 'var(--dc1-mono)', fontSize: 12 }}>
-                    {v.id.startsWith('CVE') ? (
-                      <a href={`https://nvd.nist.gov/vuln/detail/${v.id}`} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>
-                        {v.id}
-                      </a>
-                    ) : v.id}
-                  </td>
-                  <td style={{ padding: '6px' }}>
-                    <span style={{ background: sc.bg, color: sc.text, padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, textTransform: 'capitalize' }}>
-                      {v.severity}
-                    </span>
-                  </td>
-                  <td style={{ padding: '6px', fontSize: 11, color: 'var(--dc1-text-muted)' }}>{v.source || '—'}</td>
-                  <td style={{ padding: '6px', fontSize: 11 }}>
-                    {v.affects.length > 0 ? v.affects.join(', ') : '—'}
-                  </td>
-                  <td style={{ padding: '6px', fontSize: 12, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {v.description || '—'}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {filtered.length > 200 && (
-          <div style={{ padding: 8, textAlign: 'center', color: 'var(--dc1-text-muted)', fontSize: 12 }}>
-            Showing 200 of {filtered.length} vulnerabilities
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
-
-/* ================================================================== */
-/*  xBOM Cross-Reference Panel (decoupled)                            */
-/* ================================================================== */
-
-function CrossRefPanel({ refs }: { refs: CrossRef[] }) {
-  return (
-    <>
-      {/* Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <div className="dc1-card" style={{ padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 24, fontWeight: 700, color: '#7c3aed' }}>{refs.length}</div>
-          <div style={{ fontSize: 12, color: 'var(--dc1-text-muted)' }}>Cross-References</div>
-        </div>
-        <div className="dc1-card" style={{ padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 24, fontWeight: 700, color: '#1d4ed8' }}>{refs.reduce((s, r) => s + r.cryptoRefs.length, 0)}</div>
-          <div style={{ fontSize: 12, color: 'var(--dc1-text-muted)' }}>Crypto Usages Mapped</div>
-        </div>
-      </div>
-
-      <div className="dc1-card">
-        <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600 }}>
-          <Link2 size={15} style={{ marginRight: 6, verticalAlign: -2 }} />
-          Software ↔ Crypto Mappings
-        </h3>
-        <p style={{ fontSize: 12, color: 'var(--dc1-text-muted)', marginBottom: 16 }}>
-          These cross-references show which software components use which cryptographic assets — generated by the xBOM merge process.
-        </p>
-        {refs.map((cr, i) => (
-          <div key={i} style={{ marginBottom: 12, padding: 12, borderRadius: 8, background: 'var(--dc1-bg-subtle, #f8fafc)', border: '1px solid var(--dc1-border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <Box size={14} style={{ color: '#1d4ed8' }} />
-              <span style={{ fontWeight: 600, fontSize: 13 }}>{cr.softwareName}</span>
-              {cr.softwareVersion && (
-                <span style={{ fontSize: 11, fontFamily: 'var(--dc1-mono)', color: 'var(--dc1-text-muted)' }}>v{cr.softwareVersion}</span>
-              )}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingLeft: 22 }}>
-              {cr.cryptoRefs.map((c, j) => (
-                <span key={j} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 500,
-                  background: '#f0e8ff', color: '#7c3aed', border: '1px solid #e8d5ff',
-                }}>
-                  <ShieldCheck size={11} />
-                  {c.name}
-                  {c.algorithm && c.algorithm !== c.name && ` (${c.algorithm})`}
-                  {c.relationship && <span style={{ color: '#a78bfa', marginLeft: 2 }}>· {c.relationship}</span>}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}

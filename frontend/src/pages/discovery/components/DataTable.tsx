@@ -1,5 +1,6 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useState, useMemo } from 'react';
 import { ArrowUpDown } from 'lucide-react';
+import Pagination from '../../../components/Pagination';
 import s from './shared.module.scss';
 
 interface Column<T> {
@@ -18,9 +19,24 @@ interface Props<T> {
   data: T[];
   rowKey: (item: T) => string;
   onRowClick?: (item: T) => void;
+  /** Default page size (default: 25) */
+  defaultPageSize?: number;
 }
 
-export default function DataTable<T>({ title, count, columns, data, rowKey, onRowClick }: Props<T>) {
+export default function DataTable<T>({ title, count, columns, data, rowKey, onRowClick, defaultPageSize = 25 }: Props<T>) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(defaultPageSize);
+
+  // Reset to page 1 when data changes
+  const dataLen = data.length;
+  const [prevLen, setPrevLen] = useState(dataLen);
+  if (dataLen !== prevLen) { setPrevLen(dataLen); setPage(1); }
+
+  const paged = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return data.slice(start, start + pageSize);
+  }, [data, page, pageSize]);
+
   return (
     <div className={s.tableCard}>
       <h3 className={s.tableTitle}>{title} ({count})</h3>
@@ -36,7 +52,7 @@ export default function DataTable<T>({ title, count, columns, data, rowKey, onRo
           </tr>
         </thead>
         <tbody>
-          {data.map((item) => (
+          {paged.map((item) => (
             <tr
               key={rowKey(item)}
               onClick={onRowClick ? () => onRowClick(item) : undefined}
@@ -51,6 +67,13 @@ export default function DataTable<T>({ title, count, columns, data, rowKey, onRo
           ))}
         </tbody>
       </table>
+      <Pagination
+        page={page}
+        total={data.length}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+      />
     </div>
   );
 }

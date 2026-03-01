@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useGetTicketsQuery } from '../../store/api/trackingApi';
 import type { RemediationTicket, TicketStatus, TicketPriority, EntityType, TicketType } from './types';
+import Pagination from '../../components/Pagination';
 import s from './TrackingPage.module.scss';
 
 export default function TrackingPage() {
@@ -15,6 +16,8 @@ export default function TrackingPage() {
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority | 'All'>('All');
   const [entityTypeFilter, setEntityTypeFilter] = useState<EntityType | 'All'>('All');
   const [typeFilter, setTypeFilter] = useState<TicketType | 'All'>('All');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   /* ── Stats ──────────────────────────────────────────────── */
   const stats = useMemo(() => {
@@ -45,6 +48,16 @@ export default function TrackingPage() {
     if (typeFilter !== 'All') list = list.filter(t => t.type === typeFilter);
     return list;
   }, [tickets, search, statusFilter, priorityFilter, entityTypeFilter, typeFilter]);
+
+  // Reset page when filters change
+  const filteredLen = filtered.length;
+  const [prevFilteredLen, setPrevFilteredLen] = useState(filteredLen);
+  if (filteredLen !== prevFilteredLen) { setPrevFilteredLen(filteredLen); setPage(1); }
+
+  const paged = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
 
   /* ── Helpers ────────────────────────────────────────────── */
   const statusIcon = (status: TicketStatus) => {
@@ -169,6 +182,7 @@ export default function TrackingPage() {
               </p>
             </div>
           ) : (
+          <>
           <table className={s.table}>
             <thead>
               <tr>
@@ -221,7 +235,7 @@ export default function TrackingPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(t => (
+              {paged.map(t => (
                 <tr key={t.id}>
                   <td>
                     {t.externalUrl ? (
@@ -274,6 +288,14 @@ export default function TrackingPage() {
               ))}
             </tbody>
           </table>
+          <Pagination
+            page={page}
+            total={filtered.length}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(sz) => { setPageSize(sz); setPage(1); }}
+          />
+          </>
           )}
         </div>
       </div>
