@@ -8,6 +8,7 @@ import type { DiscoverySoftware, StatCardConfig } from '../types';
 import { CreateTicketModal } from '../../tracking';
 import type { TicketContext } from '../../tracking';
 import { useCreateTicketMutation } from '../../../store/api/trackingApi';
+import { exportTableToCSV } from '../utils/exportCsv';
 import s from '../components/shared.module.scss';
 
 interface Props {
@@ -138,6 +139,17 @@ export default function SoftwareTab({ search, setSearch, onGoToIntegrations }: P
         search={search}
         setSearch={setSearch}
         placeholder="Search by release name, vendor, algorithm, or library..."
+        onExport={() => exportTableToCSV(filtered as unknown as Record<string, unknown>[], [
+          { key: 'name', label: 'Release Name' },
+          { key: 'version', label: 'Version' },
+          { key: 'vendor', label: 'Vendor' },
+          { key: 'signingAlgorithm', label: 'Signing Algorithm' },
+          { key: 'signingKeyLength', label: 'Key Length' },
+          { key: 'hashAlgorithm', label: 'Hash Algorithm' },
+          { key: 'cryptoLibraries', label: 'Crypto Libraries' },
+          { key: 'quantumSafe', label: 'PQC-signed' },
+          { key: 'source', label: 'Source' },
+        ], 'software-releases')}
         onReset={isSampleData ? () => deleteAll() : undefined}
         resetLoading={isSampleData ? isResetLoading : undefined}
       />

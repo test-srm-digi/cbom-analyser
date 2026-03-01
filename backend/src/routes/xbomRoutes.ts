@@ -19,7 +19,7 @@ import {
 import { CBOMDocument } from '../types/cbom.types';
 import { SBOMDocument } from '../types/sbom.types';
 import { mergeToXBOM, computeXBOMAnalytics } from '../services/xbomMergeService';
-import { runTrivyScan, isTrivyInstalled, getTrivyVersion, parseSBOMFile } from '../services/trivyScanner';
+import { runTrivyScan, isTrivyInstalled, getTrivyVersion, parseSBOMFile, resetTrivyCache, installTrivy } from '../services/trivyScanner';
 import { runFullScan, calculateReadinessScore, checkNISTPQCCompliance, parseCBOMFile } from '../services';
 import { CBOMRepository } from '../types/cbom.types';
 
@@ -55,6 +55,31 @@ router.get('/xbom/status', async (_req: Request, res: Response) => {
       xbomMerge: true,
     },
   });
+});
+
+/**
+ * POST /api/xbom/trivy/install
+ * Attempt to install Trivy automatically on the server.
+ */
+router.post('/xbom/trivy/install', async (_req: Request, res: Response) => {
+  const result = await installTrivy();
+  if (result.success) {
+    const trivyVersion = await getTrivyVersion();
+    res.json({ success: true, message: result.message, trivyInstalled: true, trivyVersion });
+  } else {
+    res.json({ success: false, message: result.message, trivyInstalled: false });
+  }
+});
+
+/**
+ * POST /api/xbom/trivy/recheck
+ * Reset the cached Trivy detection and re-probe.
+ */
+router.post('/xbom/trivy/recheck', async (_req: Request, res: Response) => {
+  resetTrivyCache();
+  const trivyInstalled = await isTrivyInstalled();
+  const trivyVersion = trivyInstalled ? await getTrivyVersion() : null;
+  res.json({ success: true, trivyInstalled, trivyVersion });
 });
 
 // ─── Generate xBOM (full scan) ───────────────────────────────────────────────
@@ -221,16 +246,31 @@ router.post('/xbom/merge', upload.fields([
  * List all stored xBOMs with summary metadata.
  */
 router.get('/xbom/list', (_req: Request, res: Response) => {
-  const list = Array.from(xbomStore.entries()).map(([key, xbom]) => ({
-    id: key,
-    component: xbom.metadata.component?.name || 'Unknown',
-    timestamp: xbom.metadata.timestamp,
-    softwareComponents: xbom.components.length,
-    cryptoAssets: xbom.cryptoAssets.length,
-    vulnerabilities: xbom.vulnerabilities.length,
-    crossReferences: xbom.crossReferences.length,
-    repository: xbom.metadata?.repository,
-  }));
+  const list = Array.from(xbomStore.entries()).map(([key, xbom]) => {
+    // Derive a meaningful component name: prefer metadata.component.name,
+    // fall back to repo name extracted from metadata.repository.url
+    let componentName = xbom.metadata.component?.name;
+    if (!componentName || componentName === '.' || componentName === './') {
+      const repoUrl = xbom.metadata?.repository?.url;
+      if (repoUrl) {
+        const m = repoUrl.match(/([^\/]+\/[^\/]+?)(\.git)?$/);
+        componentName = m ? m[1] : repoUrl;
+      } else {
+        componentName = 'Unknown';
+      }
+    }
+
+    return {
+      id: key,
+      component: componentName,
+      timestamp: xbom.metadata.timestamp,
+      softwareComponents: xbom.components.length,
+      cryptoAssets: xbom.cryptoAssets.length,
+      vulnerabilities: xbom.vulnerabilities.length,
+      crossReferences: xbom.crossReferences.length,
+      repository: xbom.metadata?.repository,
+    };
+  });
 
   res.json({ success: true, xboms: list });
 });

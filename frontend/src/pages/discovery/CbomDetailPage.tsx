@@ -11,6 +11,7 @@ import {
   AssetListView,
   CbomStatsRow,
   AssetBreakdown,
+  ThirdPartyLibrariesView,
 } from '../../components';
 import {
   SoftwarePanel,
@@ -32,13 +33,13 @@ interface Props {
 
 /* ── Component ──────────────────────────────────────────────── */
 
-type DetailTab = 'overview' | 'inventory' | 'sbom' | 'vulnerabilities' | 'xbom-crossrefs';
+type DetailTab = 'overview' | 'inventory' | 'libraries' | 'sbom' | 'vulnerabilities' | 'xbom-crossrefs';
 
 export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
   const { data: cbomImport, isLoading, isError } = useGetCbomImportQuery(cbomImportId);
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
 
-  const { assets, readinessScore, compliance, cbomDoc, softwareComponents, vulnerabilities, crossReferences, rawJson } = useMemo(() => {
+  const { assets, readinessScore, compliance, cbomDoc, softwareComponents, vulnerabilities, crossReferences, rawJson, sbomJson, xbomJson } = useMemo(() => {
     const empty = {
       assets: [] as CryptoAsset[],
       readinessScore: null as QuantumReadinessScore | null,
@@ -48,10 +49,23 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
       vulnerabilities: [] as SBOMVulnerability[],
       crossReferences: [] as XBOMCrossReference[],
       rawJson: null as any,
+      sbomJson: null as any,
+      xbomJson: null as any,
     };
     if (!cbomImport) return empty;
 
     let rawJson: any = null;
+    let sbomJson: any = null;
+    let xbomJson: any = null;
+
+    // Decode stored SBOM file if present
+    if (cbomImport.sbomFile) {
+      try { sbomJson = JSON.parse(atob(cbomImport.sbomFile)); } catch { /* ignore */ }
+    }
+    // Decode stored xBOM file if present
+    if (cbomImport.xbomFile) {
+      try { xbomJson = JSON.parse(atob(cbomImport.xbomFile)); } catch { /* ignore */ }
+    }
 
     // If we have the artifact file stored, decode and parse it
     if (cbomImport.cbomFile) {
@@ -60,13 +74,14 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
         rawJson = JSON.parse(rawText);
         const { doc, readinessScore: score, compliance: comp } = parseCbomJson(rawText, 'CBOM Import Analysis');
 
-        // Extract SBOM software components (non-crypto)
-        const allComps: any[] = rawJson.components || [];
+        // Extract SBOM software components — prefer stored SBOM file, fall back to cbom components
+        const sbomSource = sbomJson || rawJson;
+        const allComps: any[] = sbomSource?.components || [];
         const swComps: SBOMComponent[] = allComps
           .filter((c: any) => {
             const type = c.type || '';
             const hasCp = c.cryptoProperties || c['crypto-properties'] || c['crypto:properties'];
-            return !hasCp && type !== 'crypto-asset';
+            return !hasCp && type !== 'crypto-asset' && type !== 'cryptographic-asset';
           })
           .map((c: any) => ({
             name: c.name || 'unknown',
@@ -78,8 +93,9 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
             licenses: c.licenses,
           }));
 
-        // Extract vulnerabilities
-        const vulns: SBOMVulnerability[] = (rawJson.vulnerabilities || []).map((v: any) => ({
+        // Extract vulnerabilities — prefer stored SBOM, then xBOM, then cbom
+        const vulnSource = sbomJson?.vulnerabilities || xbomJson?.vulnerabilities || rawJson.vulnerabilities || [];
+        const vulns: SBOMVulnerability[] = vulnSource.map((v: any) => ({
           id: v.id || 'unknown',
           source: v.source,
           ratings: v.ratings,
@@ -88,8 +104,9 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
           affects: v.affects,
         }));
 
-        // Extract xBOM cross-references
-        const xrefs: XBOMCrossReference[] = (rawJson.crossReferences || []).map((cr: any) => ({
+        // Extract xBOM cross-references — prefer stored xBOM, then cbom
+        const xrefSource = xbomJson?.crossReferences || rawJson.crossReferences || [];
+        const xrefs: XBOMCrossReference[] = xrefSource.map((cr: any) => ({
           softwareRef: cr.softwareRef || '',
           cryptoRefs: Array.isArray(cr.cryptoRefs) ? cr.cryptoRefs.map((r: any) => typeof r === 'string' ? r : r.ref || r.name || '') : [],
           linkMethod: cr.linkMethod || 'unknown',
@@ -104,6 +121,8 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
           vulnerabilities: vulns,
           crossReferences: xrefs,
           rawJson,
+          sbomJson,
+          xbomJson,
         };
       } catch (e) {
         console.warn('Failed to parse cbomFile, falling back to metadata:', e);
@@ -181,6 +200,7 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
   const conditional = readinessScore?.conditional ?? 0;
   const unknown = readinessScore?.unknown ?? 0;
   const totalAssets = assets.length;
+  const libraries = cbomDoc?.thirdPartyLibraries ?? [];
 
   return (
     <div className={s.page}>
@@ -202,8 +222,8 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
               compact
               items={[
                 { label: 'CBOM', filename: `${cbomImport.applicationName || 'cbom'}-cbom.json`, data: rawJson },
-                { label: 'SBOM', filename: `${cbomImport.applicationName || 'sbom'}-sbom.json`, data: softwareComponents.length ? { bomFormat: 'CycloneDX', components: softwareComponents } : null },
-                { label: 'xBOM', filename: `${cbomImport.applicationName || 'xbom'}-xbom.json`, data: crossReferences.length ? { crossReferences } : null },
+                { label: 'SBOM', filename: `${cbomImport.applicationName || 'sbom'}-sbom.json`, data: sbomJson || (softwareComponents.length ? { bomFormat: 'CycloneDX', components: softwareComponents } : null) },
+                { label: 'xBOM', filename: `${cbomImport.applicationName || 'xbom'}-xbom.json`, data: xbomJson || (crossReferences.length ? { crossReferences } : null) },
               ]}
             />
             <CbomStatusBadge status={cbomImport.status} />
@@ -257,6 +277,14 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
         >
           Crypto Inventory ({totalAssets})
         </button>
+        {libraries.length > 0 && (
+          <button
+            className={`dc1-tab-btn ${activeTab === 'libraries' ? 'dc1-tab-active' : ''}`}
+            onClick={() => setActiveTab('libraries')}
+          >
+            Third-Party Libraries ({libraries.length})
+          </button>
+        )}
         {/* ── SBOM tab — only if software components detected */}
         {softwareComponents.length > 0 && (
           <button
@@ -351,6 +379,11 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
         <div className="dc1-card" style={{ marginTop: 0 }}>
           <AssetListView assets={assets} />
         </div>
+      )}
+
+      {/* ── Third-Party Libraries ───────────────────────────────────── */}
+      {activeTab === 'libraries' && libraries.length > 0 && (
+        <ThirdPartyLibrariesView libraries={libraries} />
       )}
 
       {/* ── SBOM: Software components (shared panel) ───────────────── */}

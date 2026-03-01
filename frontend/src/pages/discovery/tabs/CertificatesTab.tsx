@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Eye, ExternalLink, Sparkles, Loader2, BarChart3, AlertTriangle, TrendingUp, Clock, X, ShieldCheck, ShieldX, Ticket } from 'lucide-react';
+import { Sparkles, Loader2, BarChart3, AlertTriangle, TrendingUp, Clock, X, ShieldCheck, ShieldX, Ticket } from 'lucide-react';
 import { CreateTicketModal } from '../../tracking';
 import type { TicketContext } from '../../tracking';
 import { useCreateTicketMutation } from '../../../store/api/trackingApi';
@@ -11,6 +11,7 @@ import type { DiscoveryCertificate, StatCardConfig } from '../types';
 import { evaluateSingleCertPolicies } from '../../policies';
 import type { CbomPolicyResult } from '../../policies';
 import Pagination from '../../../components/Pagination';
+import { exportTableToCSV } from '../utils/exportCsv';
 import s from '../components/shared.module.scss';
 
 interface Props {
@@ -234,7 +235,7 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
       key: 'actions',
       label: 'Actions',
       sortable: false,
-      headerStyle: { textAlign: 'right' as const },
+      headerStyle: { textAlign: 'center' as const },
       render: (c: DiscoveryCertificate) => {
         const sg = suggestions[c.id];
         return (
@@ -271,10 +272,6 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
                 </button>
               </>
             )}
-            <button className={s.actionBtn} onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}>
-              <Eye className={s.actionIcon} />
-            </button>
-            <button className={s.actionBtn}><ExternalLink className={s.actionIcon} /></button>
           </div>
         );
       },
@@ -412,6 +409,16 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
         search={search}
         setSearch={setSearch}
         placeholder="Search by common name, CA vendor, algorithm, or source..."
+        onExport={() => exportTableToCSV(filtered as unknown as Record<string, unknown>[], [
+          { key: 'commonName', label: 'Common Name' },
+          { key: 'caVendor', label: 'CA Vendor' },
+          { key: 'status', label: 'Status' },
+          { key: 'keyAlgorithm', label: 'Key Algorithm' },
+          { key: 'keyLength', label: 'Key Length' },
+          { key: 'quantumSafe', label: 'Quantum-safe' },
+          { key: 'expiryDate', label: 'Expiry Date' },
+          { key: 'source', label: 'Source' },
+        ], 'certificates')}
         onReset={isSampleData ? () => deleteAll() : undefined}
         resetLoading={isSampleData ? isResetLoading : undefined}
       />
@@ -444,12 +451,14 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
                         {sg.loading ? (
                           <div className={s.aiLoading}>
                             <Loader2 size={16} /> Generating AI suggestion for {cert.commonName}…
+                            <button className={s.aiCloseBtn} onClick={() => setExpandedId(null)} title="Close"><X size={14} /></button>
                           </div>
                         ) : sg.error ? (
                           <div className={s.aiSuggestionPanel}>
                             <div className={s.aiSuggestionHeader}>
                               <Sparkles />
                               <span className={s.aiSuggestionTitle}>AI Suggestion</span>
+                              <button className={s.aiCloseBtn} onClick={() => setExpandedId(null)} title="Close"><X size={14} /></button>
                             </div>
                             <p className={s.aiSuggestionText}>{sg.error}</p>
                             <button className={s.aiFixBtn} onClick={() => fetchSuggestion(cert)}>
@@ -470,6 +479,7 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
                                   {sg.confidence} confidence
                                 </span>
                               )}
+                              <button className={s.aiCloseBtn} onClick={() => setExpandedId(null)} title="Close"><X size={14} /></button>
                             </div>
                             <p className={s.aiSuggestionText}>{sg.fix}</p>
                             {sg.codeSnippet && (

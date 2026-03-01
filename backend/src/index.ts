@@ -19,6 +19,7 @@ import {
   softwareRoutes,
   deviceRoutes,
   cbomImportRoutes,
+  cbomUploadRoutes,
   syncLogRoutes,
   schedulerRoutes,
   policyRoutes,
@@ -28,6 +29,7 @@ import {
 } from './routes';
 import { initDatabase } from './config/database';
 import { initScheduler, stopAllJobs } from './services/syncScheduler';
+import { loadXBOMsFromImports } from './services/xbomDbLoader';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -50,6 +52,7 @@ app.use('/api', endpointRoutes);
 app.use('/api', softwareRoutes);
 app.use('/api', deviceRoutes);
 app.use('/api', cbomImportRoutes);
+app.use('/api', cbomUploadRoutes);
 app.use('/api', syncLogRoutes);
 app.use('/api', schedulerRoutes);
 app.use('/api', policyRoutes);
@@ -84,6 +87,9 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   ║   Running on http://localhost:${PORT}            ║
   ╚═══════════════════════════════════════════════╝
     `);
+
+    // Load previously-stored xBOMs from DB into in-memory store
+    await loadXBOMsFromImports();
 
     // Initialize sync scheduler (reads DB for active schedules)
     await initScheduler();

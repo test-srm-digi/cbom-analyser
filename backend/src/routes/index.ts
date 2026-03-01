@@ -7,6 +7,7 @@ export { default as endpointRoutes } from './endpointRoutes';
 export { default as softwareRoutes } from './softwareRoutes';
 export { default as deviceRoutes } from './deviceRoutes';
 export { default as cbomImportRoutes } from './cbomImportRoutes';
+export { default as cbomUploadRoutes } from './cbomUploadRoutes';
 export { default as syncLogRoutes } from './syncLogRoutes';
 export { default as schedulerRoutes } from './schedulerRoutes';
 export { default as policyRoutes } from './policyRoutes';

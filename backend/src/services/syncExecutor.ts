@@ -17,6 +17,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Integration, SyncLog, Certificate, Endpoint, Software, Device, CbomImport } from '../models';
 import { CONNECTOR_REGISTRY, ConnectorConfig } from './connectors';
+import { loadXBOMsFromImports } from './xbomDbLoader';
 
 /* ── Model lookup map ──────────────────────────────────────── */
 
@@ -158,11 +159,33 @@ export async function executeSyncForIntegration(
       }
 
       if (fetchedRecords.length > 0) {
-        const created = await (TargetModel as any).bulkCreate(
-          fetchedRecords,
-          { validate: true },
-        );
-        createdCount = created.length;
+        // For models with large BLOB fields (CbomImport), insert one-by-one
+        // to avoid exceeding MariaDB max_allowed_packet on bulk inserts.
+        if (connector.model === 'CbomImport') {
+          for (const record of fetchedRecords) {
+            try {
+              await (TargetModel as any).create(record, { validate: true });
+              createdCount++;
+            } catch (recErr) {
+              errors.push(`Record ${(record as any).fileName || 'unknown'}: ${(recErr as Error).message}`);
+            }
+          }
+        } else {
+          const created = await (TargetModel as any).bulkCreate(
+            fetchedRecords,
+            { validate: true },
+          );
+          createdCount = created.length;
+        }
+
+        // If this was a CBOM import, load any xBOM files into the in-memory xBOM store
+        if (connector.model === 'CbomImport') {
+          try {
+            await loadXBOMsFromImports();
+          } catch (e) {
+            console.warn('[SyncExecutor] Failed to load xBOMs into store:', e);
+          }
+        }
       }
     } catch (err) {
       errors.push(`Persistence failed: ${(err as Error).message}`);

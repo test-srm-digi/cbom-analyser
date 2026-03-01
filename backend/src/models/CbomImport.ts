@@ -24,12 +24,16 @@ export interface CbomImportAttributes {
   applicationName: string | null;
   cbomFile: Buffer | null;
   cbomFileType: string | null;
+  sbomFile: Buffer | null;
+  sbomFileType: string | null;
+  xbomFile: Buffer | null;
+  xbomFileType: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CbomImportCreationAttributes
-  extends Optional<CbomImportAttributes, 'id' | 'integrationId' | 'applicationName' | 'cbomFile' | 'cbomFileType' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<CbomImportAttributes, 'id' | 'integrationId' | 'applicationName' | 'cbomFile' | 'cbomFileType' | 'sbomFile' | 'sbomFileType' | 'xbomFile' | 'xbomFileType' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -53,6 +57,10 @@ class CbomImport
   declare applicationName: string | null;
   declare cbomFile: Buffer | null;
   declare cbomFileType: string | null;
+  declare sbomFile: Buffer | null;
+  declare sbomFileType: string | null;
+  declare xbomFile: Buffer | null;
+  declare xbomFileType: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -141,6 +149,26 @@ CbomImport.init(
       type: DataTypes.STRING(50),
       allowNull: true,
       field: 'cbom_file_type',
+    },
+    sbomFile: {
+      type: DataTypes.BLOB('long'),
+      allowNull: true,
+      field: 'sbom_file',
+    },
+    sbomFileType: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      field: 'sbom_file_type',
+    },
+    xbomFile: {
+      type: DataTypes.BLOB('long'),
+      allowNull: true,
+      field: 'xbom_file',
+    },
+    xbomFileType: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      field: 'xbom_file_type',
     },
     createdAt: {
       type: DataTypes.DATE,

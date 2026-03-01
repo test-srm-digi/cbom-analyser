@@ -931,6 +931,33 @@
   }
 }
 
+.aiCloseBtn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 4px;
+  color: #94A3B8;
+  transition: all 0.15s;
+  flex-shrink: 0;
+
+  &:hover {
+    background: #F1F5F9;
+    border-color: #CBD5E1;
+    color: #475569;
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+    color: inherit;
+  }
+}
+
 .aiSuggestionTitle {
   font-size: 13px;
   font-weight: 700;
@@ -988,7 +1015,7 @@
   font-size: 13px;
   color: #7C3AED;
 
-  svg {
+  > svg {
     animation: spin 1s linear infinite;
   }
 }

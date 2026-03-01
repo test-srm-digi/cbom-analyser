@@ -12,7 +12,7 @@ import DiscoveryPage from "./pages/discovery";
 import RepoOverviewPage from "./pages/discovery/RepoOverviewPage";
 import type { DiscoveryTab } from "./pages/discovery/types";
 import PlaceholderPage from "./pages/PlaceholderPage";
-import XBOMPage from "./pages/XBOMPage";
+import XBOMPage, { XBOMDetailView } from "./pages/XBOMPage";
 import { ShieldHalf, Tablet, FileSignature } from "lucide-react";
 import {
   CBOMDocument,
@@ -46,6 +46,7 @@ const PAGE_TO_PATH: Record<NavPage, string> = {
   "repo-overview": "/discovery/cbom-imports/repo",
   network: "/network",
   xbom: "/xbom",
+  "xbom-detail": "/xbom/detail",
   settings: "/settings",
   "private-ca": "/private-ca",
   "device-trust": "/device-trust",
@@ -64,6 +65,8 @@ function pathToPage(pathname: string): NavPage {
     return "cbom-detail";
   if (pathname.startsWith("/discovery/cbom-imports/repo"))
     return "repo-overview";
+  if (pathname.startsWith("/xbom/detail"))
+    return "xbom-detail";
   // fallback
   return "dashboard";
 }
@@ -95,6 +98,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCbomId, setSelectedCbomId] = useState<string | null>(null);
   const [selectedRepoName, setSelectedRepoName] = useState<string | null>(null);
+  const [selectedXbomId, setSelectedXbomId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* ── Upload ──────────────────────────────────────────── */
@@ -174,6 +178,19 @@ export default function App() {
             onNavigate={(p) => setActivePage(p as NavPage)}
             onUpload={triggerUpload}
             onLoadSample={loadSampleData}
+            onClearCbom={() => { setCbom(null); setReadinessScore(null); setCompliance(null); }}
+            onLoadCbomUpload={async (id: string) => {
+              try {
+                const res = await fetch(`/api/cbom-uploads/${encodeURIComponent(id)}`);
+                const json = await res.json();
+                if (!json.success || !json.data?.cbomFile) return;
+                const raw = atob(json.data.cbomFile);
+                const { doc, readinessScore: score, compliance: comp } = parseCbomJson(raw, 'Basic Local Compliance Service');
+                setCbom(doc);
+                setReadinessScore(score);
+                setCompliance(comp);
+              } catch { /* ignore */ }
+            }}
           />
         );
       case "network":
@@ -216,6 +233,10 @@ export default function App() {
             }}
             onGoToIntegrations={() => setActivePage("integrations")}
             onGoToXBOM={() => setActivePage("xbom")}
+            onViewXBOM={(id) => {
+              setSelectedXbomId(id);
+              setActivePage("xbom-detail");
+            }}
           />
         );
       case "cbom-detail":
@@ -239,6 +260,17 @@ export default function App() {
             onViewCbom={(id) => {
               setSelectedCbomId(id);
               setActivePage("cbom-detail");
+            }}
+          />
+        ) : null;
+
+      case "xbom-detail":
+        return selectedXbomId ? (
+          <XBOMDetailView
+            id={selectedXbomId}
+            onBack={() => {
+              setSelectedXbomId(null);
+              setActivePage("discovery-cbom-imports");
             }}
           />
         ) : null;

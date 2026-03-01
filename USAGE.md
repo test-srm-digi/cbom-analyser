@@ -409,23 +409,31 @@ Use `exclude-patterns` to skip test files, mocks, or other directories:
 - `**/Test.java`, `**/*Test.java`, `**/*Tests.java`
 - `**/test_*.py`, `**/*_test.py`
 
-### Downloading CBOM Artifacts
+### Downloading BOM Artifacts
 
-After a workflow run, download the CBOM report:
+After a workflow run completes the unified pipeline produces **three artifacts**:
+
+| Artifact | Description |
+|----------|-------------|
+| `cbom-report` | Cryptographic Bill of Materials (CBOM) — crypto assets, algorithms, protocols |
+| `sbom-report` | Software Bill of Materials (SBOM) — packages, licenses, CVEs (via Trivy) |
+| `xbom-report` | Unified xBOM — merged SBOM + CBOM with cross-references and analytics |
 
 **Via GitHub UI:**
 1. Go to **Actions** → Select workflow run
 2. Scroll to **Artifacts** section
-3. Download `cbom-report`
+3. Download `cbom-report`, `sbom-report`, or `xbom-report`
 
 **Via GitHub CLI:**
 ```bash
 # List artifacts
-gh run list --workflow=ci.yml
+gh run list --workflow=pipeline.yml
 gh run view <run-id>
 
-# Download artifact
+# Download individual artifacts
 gh run download <run-id> -n cbom-report
+gh run download <run-id> -n sbom-report
+gh run download <run-id> -n xbom-report
 ```
 
 **Via REST API:**
@@ -526,6 +534,20 @@ docker run -d -p 8080:80 cbom-frontend
 | `POST` | `/api/upload/raw` | Raw JSON body (CBOM document) | Same as above |
 | `GET` | `/api/cbom/list` | — | `{ success, cboms: [{ id, component, assetCount, timestamp }] }` |
 | `GET` | `/api/cbom/:id` | — | `{ success, cbom, readinessScore, compliance }` |
+
+> **Note:** `POST /api/upload` also persists the uploaded CBOM to the `cbom_uploads` database table (fire-and-forget) so that uploads are available on the Dashboard welcome page.
+
+### CBOM Uploads (Persisted)
+
+Uploaded CBOMs are persisted in a separate `cbom_uploads` table and surfaced on the Dashboard welcome page.
+
+| Method | Endpoint | Body | Response |
+|--------|----------|------|----------|
+| `GET` | `/api/cbom-uploads` | — | `{ success, data: [{ id, fileName, componentName, format, specVersion, totalAssets, quantumSafe, notQuantumSafe, conditional, unknown, uploadDate }] }` |
+| `GET` | `/api/cbom-uploads/:id` | — | `{ success, data: { ...fields, cbomFile (base64), cbomFileType } }` |
+| `DELETE` | `/api/cbom-uploads/:id` | — | `{ success, message }` |
+
+The list endpoint excludes the BLOB column (`cbomFile`) for performance. The single-record endpoint returns the CBOM file as a **base64-encoded** string.
 
 ### Network Scanning
 
@@ -826,7 +848,7 @@ digicert ONE
    │  ├─ Endpoints           — Network TLS endpoints (from Network Scanner)
    │  ├─ Software            — Signing artifacts (from DigiCert STM)
    │  ├─ Devices             — IoT / OT devices (from DigiCert DTM)
-   │  └─ CBOM Imports        — CycloneDX CBOM files (from CI/CD)
+   │  └─ BOM Imports         — CycloneDX BOM files (CBOM + SBOM + xBOM from CI/CD)
    ├─ Network Scanner        — Live TLS endpoint scanner
    ├─ Tracking               — Remediation ticket tracking (JIRA / GitHub / ServiceNow)
    ├─ Policies               — Crypto policy management (NIST SP 800-57 presets)
@@ -841,6 +863,30 @@ Additional sidebar sections (below the main nav):
 - **Document Trust** — Document-signing PQC migration
 
 The Discovery parent item is **auto-expandable** — clicking it reveals 6 child navigation items and navigates to the first child. When any child page is active, the parent stays highlighted and expanded.
+
+### Dashboard Welcome Page
+
+When no CBOM is loaded, the Dashboard shows a **welcome page** with:
+
+| Section | Description |
+|---------|-------------|
+| **Welcome banner** | Title, description, and guidance to get started |
+| **Quick actions** | Upload a CBOM, scan a repository, or load sample data |
+| **Uploaded CBOMs** | Table of previously uploaded CBOMs (persisted in the `cbom_uploads` DB table) |
+
+The **Uploaded CBOMs** table shows:
+
+| Column | Description |
+|--------|-------------|
+| **Component** | Top-level component name from the CBOM |
+| **File Name** | Original uploaded file name |
+| **Upload Date** | When the file was uploaded |
+| **Crypto Assets** | Total cryptographic asset count |
+| **Quantum-safe** | Count of quantum-safe assets (green badge) |
+| **Not Safe** | Count of not-quantum-safe assets (red badge) |
+| **Download** | Download the original CBOM JSON file |
+
+Each row has a download button that fetches the CBOM file via `GET /api/cbom-uploads/:id`, decodes the base64 BLOB, and triggers a browser download.
 
 ---
 
@@ -935,6 +981,8 @@ Each integration type has unique import scope options that reflect the actual da
 | Certificates | Certificates referenced in the CBOM |
 | Keys | Key material and parameters in the CBOM |
 | Dependencies | Crypto library dependencies and versions |
+| SBOM (optional) | Full SBOM JSON stored as BLOB — fetched from pipeline artifacts when `includeSbom` is enabled |
+| xBOM (optional) | Full xBOM JSON stored as BLOB — fetched from pipeline artifacts when `includeXbom` is enabled |
 
 ### Integration Card States
 
@@ -992,7 +1040,7 @@ When no data has been imported, each discovery page shows an **EmptyState** comp
 | **Endpoints** | Network Scanner | Hostname, IP, Port, TLS Version, Cipher Suite, Key Agreement, Quantum Safe | Network endpoints — TLS config, cipher suites, key-agreement protocols |
 | **Software** | DigiCert STM | Name, Version, Vendor, Signing Algorithm, Key Length, Hash, Quantum Safe | Software releases — signing algorithm and PQC migration status |
 | **Devices** | DigiCert DTM | Device Name, Type, Manufacturer, Firmware, Cert Algorithm, Key Length, Enrollment | IoT devices — firmware crypto, certificate enrollment, key-strength audit |
-| **CBOM Imports** | CBOM File Import | Component Name, Type, Algorithm, Version, Quantum Safe, Spec Version | CycloneDX CBOM contents — crypto component inventory and PQC breakdown |
+| **BOM Imports** | CBOM File Import | Component Name, Type, Algorithm, Version, Quantum Safe, Spec Version, BOMs (CBOM/SBOM/xBOM) | CycloneDX BOM contents — crypto component inventory, PQC breakdown, and multi-BOM availability indicators |
 
 ### Integration → Discovery Data Flow
 
@@ -1011,7 +1059,7 @@ Each integration type feeds into its corresponding Discovery page:
 - **Network TLS Scanner** → Endpoints page
 - **DigiCert STM** → Software page
 - **DigiCert DTM** → Devices page
-- **CBOM File Import** → CBOM Imports page
+- **CBOM File Import** → BOM Imports page (with xBOM Analysis sub-tab)
 
 ### Policy Violations in Discovery Tabs
 
@@ -1024,6 +1072,36 @@ The evaluation is asset-type-aware:
 - **Certificates** — `certificate` and `cbom-component` rules apply
 - **Endpoints** — `endpoint` and `cbom-component` rules apply
 - **Devices** — `device`, `certificate`, and `cbom-component` rules apply (devices carry certificate info)
+
+### Export CSV
+
+All five Discovery tabs support **Export to CSV** via the toolbar Export button. Clicking Export generates a date-stamped CSV file containing all rows currently in the table. The export uses a shared utility (`exportTableToCSV`) in `frontend/src/pages/discovery/utils/exportCsv.ts` that:
+
+- Accepts a generic row array, column definitions, and a filename prefix
+- Generates a CSV with headers from column labels
+- Downloads the file as `<prefix>_YYYY-MM-DD.csv`
+
+### Actions Dropdown (BOM Imports)
+
+The **BOM Imports** tab Actions column uses a compact **dropdown menu** (triggered by a vertical ellipsis icon) instead of inline download buttons. The dropdown shows up to three color-coded items:
+
+| Item | Color | Shown When |
+|------|-------|------------|
+| **Download CBOM** | Purple | CBOM file exists |
+| **Download SBOM** | Blue | SBOM file exists |
+| **Download xBOM** | Amber | xBOM file exists |
+
+Clicking the icon opens the dropdown; clicking outside or selecting an item closes it.
+
+### AI Migration Suggestions in Discovery Tabs
+
+The **Certificates**, **Endpoints**, and **Devices** tabs each include an **AI Fix** button on rows that are not quantum-safe. Clicking the button calls `POST /api/ai-suggest` with the row's algorithm details and opens an inline expandable panel showing:
+
+- **Loading state** — spinner with "Generating AI migration suggestion…"
+- **Error state** — error message with retry option
+- **Success state** — replacement algorithm, migration steps, estimated effort, and code snippet
+
+Each expanded AI suggestion panel includes a **close button** (✕ icon) to dismiss the panel without scrolling.
 
 ### Sync Button UX
 
@@ -1094,29 +1172,41 @@ Fetches CBOM artifacts from **GitHub Actions workflow runs**, extracts the JSON,
 |-----|----------|-------------|
 | `githubRepo` | Yes | Repository in `owner/repo` format |
 | `githubToken` | Yes | GitHub PAT with `actions:read` scope |
-| `artifactName` | No | Artifact name to look for (default: `cbom-report`) |
-| `workflowFile` | No | Filter to a specific workflow file (e.g. `cbom.yml`) |
+| `artifactName` | No | CBOM artifact name to look for (default: `cbom-report`) |
+| `workflowFile` | No | Filter to a specific workflow file (e.g. `pipeline.yml`) |
 | `branch` | No | Filter to a specific branch |
+| `includeSbom` | No | `"true"` to also download the SBOM artifact from the same workflow run |
+| `includeXbom` | No | `"true"` to also download the xBOM artifact from the same workflow run |
+| `sbomArtifactName` | No | SBOM artifact name (default: matches any artifact containing `sbom`) |
+| `xbomArtifactName` | No | xBOM artifact name (default: matches any artifact containing `xbom`) |
 
 #### Sync Flow
 
 ```
-1. List workflow runs  →  GET /repos/{owner}/{repo}/actions/runs
-2. Filter successful   →  conclusion === 'success'
-3. List artifacts      →  GET /repos/{owner}/{repo}/actions/runs/{id}/artifacts
-4. Match artifact name →  artifact.name === 'cbom-report'
-5. Download ZIP        →  GET {archive_download_url} (follows 302 redirect)
-6. Extract JSON        →  Unzip → find *.json → parse CycloneDX
-7. Analyse CBOM        →  Count crypto components, quantum-safe breakdown
-8. Store records       →  Bulk insert into cbom_imports table
+1.  List workflow runs  →  GET /repos/{owner}/{repo}/actions/runs
+2.  Filter successful   →  conclusion === 'success'
+3.  List artifacts      →  GET /repos/{owner}/{repo}/actions/runs/{id}/artifacts
+4.  Match CBOM artifact →  artifact.name contains 'cbom-report'
+5.  Download CBOM ZIP   →  GET {archive_download_url} (follows 302 redirect)
+6.  Extract CBOM JSON   →  Unzip → find *.json → parse CycloneDX
+7.  Match SBOM artifact →  artifact.name contains 'sbom' (if available)
+8.  Download SBOM ZIP   →  Same ZIP extraction flow
+9.  Match xBOM artifact →  artifact.name contains 'xbom' (if available)
+10. Download xBOM ZIP   →  Same ZIP extraction flow
+11. Analyse CBOM        →  Count crypto components, quantum-safe breakdown
+12. Store record        →  Insert into cbom_imports (cbomFile + sbomFile + xbomFile BLOBs)
+13. Load xBOM store     →  Populate in-memory xBOM store from newly imported xBOM files
 ```
 
 #### Features
 
+- **Multi-BOM sync** — downloads CBOM, SBOM, and xBOM artifacts from the same workflow run and stores all three as BLOBs in a single `cbom_imports` record
 - **Incremental sync** — only fetches runs completed after the integration's `lastSync` timestamp
+- **Per-record insert** — inserts each import record individually to avoid MariaDB `max_allowed_packet` limits with large BLOB payloads
 - **ZIP extraction** — handles GitHub's artifact ZIP format using Central Directory parsing for reliable size info
 - **Redirect handling** — follows 302 redirect to Azure Blob storage without leaking the auth header
 - **Per-CBOM analysis** — counts total components, crypto components, quantum-safe vs. not-safe
+- **xBOM auto-loading** — after sync, any imported xBOM files are automatically loaded into the in-memory xBOM store so they appear in the xBOM Analysis tab
 
 ### Network TLS Connector
 
@@ -1398,7 +1488,24 @@ DB_DIALECT=mariadb
 
 ### Schema Auto-Sync
 
-On startup, the backend calls `sequelize.sync({ alter: true })` in development mode, which automatically creates or updates tables to match the Sequelize model definitions. No manual migration step is needed for development.
+On startup, the backend calls `sequelize.sync({ alter: true })`, which automatically creates or updates tables to match the Sequelize model definitions. No manual migration step is needed for development.
+
+The backend also attempts to increase MariaDB's `max_allowed_packet` to **64 MB** (`SET GLOBAL max_allowed_packet = 67108864`) to accommodate large BOM BLOB inserts. This requires `SUPER` privilege; if unavailable, a warning is logged but the server continues.
+
+### CbomImport BLOB Columns
+
+The `cbom_imports` table stores up to three BOM files per import record as BLOBs:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `cbomFile` | `BLOB` | The raw CBOM JSON (CycloneDX) |
+| `cbomFileType` | `STRING` | MIME type (typically `application/json`) |
+| `sbomFile` | `BLOB` | The raw SBOM JSON from Trivy (if available) |
+| `sbomFileType` | `STRING` | MIME type |
+| `xbomFile` | `BLOB` | The merged xBOM JSON (if available) |
+| `xbomFileType` | `STRING` | MIME type |
+
+List endpoints (`GET /api/cbom-imports`) exclude the BLOB columns for performance. The single-record endpoint (`GET /api/cbom-imports/:id`) returns all three files as **base64-encoded** strings.
 
 ### Sequelize Configuration
 
@@ -1436,8 +1543,29 @@ pool: {
 | `CryptoPolicy` | `crypto_policies` | Cryptographic compliance policies with JSON-serialised rules |
 | `Ticket` | `tickets` | Remediation tickets created via JIRA, GitHub, or ServiceNow |
 | `TicketConnector` | `ticket_connectors` | JIRA / GitHub / ServiceNow connector credentials and defaults |
+| `CbomUpload` | `cbom_uploads` | CBOMs uploaded via the CBOM Analyzer page (persisted for Dashboard welcome page) |
 
 > All five discovery tables and `sync_logs` have an `integration_id` foreign key referencing `integrations.id` with `ON DELETE CASCADE` — deleting an integration removes all its discovered data and sync history.
+
+#### CbomUpload Table Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `file_name` | `VARCHAR(255)` | Original uploaded file name |
+| `component_name` | `VARCHAR(255)` | Top-level component name from the CBOM |
+| `format` | `VARCHAR(50)` | BOM format (e.g., `CycloneDX`) |
+| `spec_version` | `VARCHAR(20)` | Spec version (e.g., `1.6`) |
+| `total_assets` | `INTEGER` | Total cryptographic assets count |
+| `quantum_safe` | `INTEGER` | Count of quantum-safe assets |
+| `not_quantum_safe` | `INTEGER` | Count of not-quantum-safe assets |
+| `conditional` | `INTEGER` | Count of conditionally safe assets |
+| `unknown` | `INTEGER` | Count of unknown-safety assets |
+| `upload_date` | `DATE` | Upload timestamp |
+| `cbom_file` | `BLOB` | Raw CBOM JSON file |
+| `cbom_file_type` | `VARCHAR(100)` | MIME type (typically `application/json`) |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
 
 #### Crypto Policy Table Schema
 
@@ -1604,6 +1732,12 @@ pool: {
 | `status` | `ENUM` | `Processed`, `Processing`, `Failed`, `Partial` |
 | `source` | `VARCHAR(100)` | Data source identifier |
 | `application_name` | `VARCHAR(255)` | Application name (nullable) |
+| `cbom_file` | `BLOB` | Raw CBOM JSON content (CycloneDX) |
+| `cbom_file_type` | `VARCHAR(100)` | MIME type of the CBOM file (e.g. `application/json`) |
+| `sbom_file` | `BLOB` | Raw SBOM JSON from Trivy (nullable) |
+| `sbom_file_type` | `VARCHAR(100)` | MIME type of the SBOM file |
+| `xbom_file` | `BLOB` | Merged xBOM JSON (nullable) |
+| `xbom_file_type` | `VARCHAR(100)` | MIME type of the xBOM file |
 | `created_at` | `DATETIME` | Auto-managed by Sequelize |
 | `updated_at` | `DATETIME` | Auto-managed by Sequelize |
 
@@ -1751,6 +1885,7 @@ Every discovery resource (`certificates`, `endpoints`, `software`, `devices`, `c
 | Software | `/api/software` | `Software` | Software (STM) |
 | Devices | `/api/devices` | `Device` | Devices (DTM) |
 | CBOM Imports | `/api/cbom-imports` | `CbomImport` | CBOM Imports |
+| CBOM Uploads | `/api/cbom-uploads` | `CbomUpload` | Dashboard Welcome Page |
 
 ### Response Format
 
@@ -2040,9 +2175,10 @@ When a sync runs (either from a cron tick or a manual trigger), the `SyncExecuto
 2. **Load Integration** — fetches the integration from DB and validates it exists + is enabled
 3. **Lookup Connector** — resolves the `templateType` → connector via `CONNECTOR_REGISTRY`
 4. **Fetch Data** — calls the connector's `fetch()` function, passing integration config
-5. **Full Refresh** — deletes all existing records for this integration, then bulk-inserts the new data
-6. **Update Integration** — sets `lastSync`, `lastSyncItems`, `lastSyncErrors`, and calculates `nextSync`
-7. **Finalise SyncLog** — updates the log with `completedAt`, `durationMs`, item counts, and final status
+5. **Persist Data** — for `CbomImport` records (which carry large BLOB fields), inserts records one-by-one to avoid MariaDB `max_allowed_packet` limits; other models use `bulkCreate`. If the connector signals `meta.incremental`, existing records are kept (append-only); otherwise a full refresh deletes → re-inserts.
+6. **Load xBOM Store** — if the connector model is `CbomImport`, calls `loadXBOMsFromImports()` to populate the in-memory xBOM store with any newly imported xBOM files
+7. **Update Integration** — sets `lastSync`, `lastSyncItems`, `lastSyncErrors`, and calculates `nextSync`
+8. **Finalise SyncLog** — updates the log with `completedAt`, `durationMs`, item counts, and final status
 
 ### Scheduler Lifecycle
 
@@ -2061,8 +2197,9 @@ When a sync runs (either from a cron tick or a manual trigger), the `SyncExecuto
 ```
 backend/src/services/
 ├── connectors.ts      — 6 connector functions + CONNECTOR_REGISTRY
-├── syncExecutor.ts    — executeSyncForIntegration() — 7-step lifecycle
+├── syncExecutor.ts    — executeSyncForIntegration() — 8-step lifecycle
 ├── syncScheduler.ts   — cron job management (node-cron)
+├── xbomDbLoader.ts    — loads xBOM files from cbom_imports into in-memory xbomStore
 └── index.ts           — barrel re-exports
 ```
 
@@ -2204,6 +2341,8 @@ frontend/src/store/
     ├── softwareApi.ts       — Software CRUD (8 hooks)
     ├── devicesApi.ts        — Devices CRUD (8 hooks)
     ├── cbomImportsApi.ts    — CBOM Imports CRUD (8 hooks)
+    ├── cbomUploadsApi.ts    — CBOM Uploads (3 hooks)
+    ├── xbomApi.ts           — xBOM CRUD (6 hooks)
     ├── syncLogsApi.ts       — Sync Logs (4 hooks)
     ├── schedulerApi.ts      — Scheduler status & control (3 hooks)
     ├── policiesApi.ts       — Policies CRUD (6 hooks)
@@ -2237,6 +2376,29 @@ Each of the five discovery API slices generates 8 hooks following the same patte
 | **Software** | `useGetSoftwareListQuery()` | `useGetSoftwareByIntegrationQuery(id)` | `useGetSoftwareQuery(id)` | `useCreateSoftwareMutation()` | `useBulkCreateSoftwareMutation()` | `useUpdateSoftwareMutation()` | `useDeleteSoftwareMutation()` | `useDeleteSoftwareByIntegrationMutation()` |
 | **Devices** | `useGetDevicesQuery()` | `useGetDevicesByIntegrationQuery(id)` | `useGetDeviceQuery(id)` | `useCreateDeviceMutation()` | `useBulkCreateDevicesMutation()` | `useUpdateDeviceMutation()` | `useDeleteDeviceMutation()` | `useDeleteDevicesByIntegrationMutation()` |
 | **CBOM Imports** | `useGetCbomImportsQuery()` | `useGetCbomImportsByIntegrationQuery(id)` | `useGetCbomImportQuery(id)` | `useCreateCbomImportMutation()` | `useBulkCreateCbomImportsMutation()` | `useUpdateCbomImportMutation()` | `useDeleteCbomImportMutation()` | `useDeleteCbomImportsByIntegrationMutation()` |
+
+### xBOM API Hooks
+
+The `xbomApi` slice provides hooks for managing the in-memory xBOM store:
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useGetXBOMStatusQuery()` | Query | Check Trivy availability and xBOM service health |
+| `useGenerateXBOMMutation()` | Mutation | Generate an xBOM by scanning a local repo |
+| `useMergeXBOMMutation()` | Mutation | Merge pre-existing SBOM + CBOM documents |
+| `useGetXBOMListQuery()` | Query | List all stored xBOMs (summary metadata) |
+| `useGetXBOMQuery(id)` | Query | Retrieve a specific xBOM with analytics |
+| `useDeleteXBOMMutation()` | Mutation | Delete a stored xBOM |
+
+### CBOM Uploads API Hooks
+
+The `cbomUploadsApi` slice provides hooks for managing CBOMs uploaded via the CBOM Analyzer page:
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useGetCbomUploadsQuery()` | Query | List all uploaded CBOMs (excludes BLOB) |
+| `useGetCbomUploadQuery(id)` | Query | Fetch a single upload with base64-encoded CBOM file |
+| `useDeleteCbomUploadMutation()` | Mutation | Delete an uploaded CBOM |
 
 ### Sync Logs API Hooks
 
@@ -2317,7 +2479,7 @@ RTK Query uses **tags** for automatic cache invalidation across all 9 API slices
 - Mutations (create, bulk create, update, delete) **invalidate** both the specific tag and the list tag
 - This means any list query auto-refetches after any mutation — no manual refetch needed
 
-**Tag types:** `Integration`, `Certificate`, `Endpoint`, `Software`, `Device`, `CbomImport`, `SyncLog`, `Scheduler`, `Policy`, `Ticket`, `TicketConnector`
+**Tag types:** `Integration`, `Certificate`, `Endpoint`, `Software`, `Device`, `CbomImport`, `CbomUpload`, `SyncLog`, `Scheduler`, `Policy`, `Ticket`, `TicketConnector`
 
 ### Usage in Components
 
@@ -2772,6 +2934,16 @@ Each crypto asset in the dashboard has an **AI Suggested Fix** column powered by
 - Step-by-step migration instructions
 - Estimated effort level
 
+### Availability
+
+AI Suggested Fix is available in:
+- **CBOM Analyzer dashboard** — AI Suggested Fix column in the asset table
+- **Discovery → Certificates** — AI Fix button on non-quantum-safe rows
+- **Discovery → Endpoints** — AI Fix button on non-quantum-safe rows
+- **Discovery → Devices** — AI Fix button on non-quantum-safe rows
+
+In the Discovery tabs, clicking the AI Fix button expands an inline panel below the row with the migration suggestion. Each panel includes a **close button** (✕) to dismiss it.
+
 ### Requirements
 
 Set your AWS Bedrock credentials in `.env`:
@@ -3123,9 +3295,13 @@ Download the xBOM as a JSON file (`Content-Disposition: attachment`).
 
 Delete a stored xBOM.
 
-### 17.5 Frontend Page
+### 17.5 Frontend Pages
 
-The **xBOM** page is accessible from the sidebar under **Tools → xBOM** and provides:
+xBOMs are accessible from **two locations** in the UI:
+
+#### A. Tools → xBOM Page
+
+The standalone xBOM page provides:
 
 | View | Description |
 |------|-------------|
@@ -3134,7 +3310,25 @@ The **xBOM** page is accessible from the sidebar under **Tools → xBOM** and pr
 | **Merge form** | Paste or upload existing SBOM + CBOM JSON files to merge |
 | **Stored xBOMs list** | Table of previously generated xBOMs with view/delete actions |
 
-Clicking an xBOM opens the **Detail View** with five tabs:
+#### B. Discovery → BOM Imports → xBOM Analysis Tab
+
+The **BOM Imports** page includes an **xBOM Analysis** sub-tab that shows all stored xBOMs (including those automatically imported from GitHub Actions pipeline artifacts). This tab provides:
+
+| Feature | Description |
+|---------|-------------|
+| **Stored xBOMs table** | Component name, timestamp, software component count, crypto asset count, vulnerability count, cross-reference count |
+| **Inline detail view** | Click any xBOM row to expand an inline detail panel (no page navigation) |
+| **Delete** | Remove individual xBOMs from the store |
+| **Pagination** | Paginated table with configurable page size |
+
+The xBOM list is populated from:
+1. **GitHub Actions sync** — xBOM artifacts imported via the CBOM File Import connector are automatically loaded into the in-memory store
+2. **Manual generation** — xBOMs created via the Tools → xBOM page
+3. **Server startup** — previously stored xBOMs are loaded from the DB on boot via `xbomDbLoader`
+
+#### Detail View Tabs
+
+Clicking an xBOM (in either page) opens the **Detail View** with five tabs:
 
 | Tab | Content |
 |-----|---------|
@@ -3157,33 +3351,46 @@ import {
 } from './store/api';
 ```
 
-### 17.7 GitHub Actions Workflow
+### 17.7 Unified Pipeline (`.github/workflows/pipeline.yml`)
 
-The `.github/workflows/xbom.yml` workflow automates xBOM generation in CI:
+The unified pipeline automates CBOM, SBOM, and xBOM generation in CI. All three scans run as separate jobs, and the xBOM merge job combines SBOM + CBOM into a unified xBOM artifact.
 
 ```yaml
-name: xBOM (Unified SBOM + CBOM)
+name: Pipeline
 on:
   push:
-    branches: [main, master, develop]
+    branches: [main, master, develop, X-bom]
   pull_request:
     branches: [main, master]
+  release:
+    types: [created]
   workflow_dispatch:
-    inputs:
-      scan-path: { default: '.' }
-      trivy-severity: { default: 'CRITICAL,HIGH,MEDIUM,LOW' }
 ```
 
-**Steps:**
-1. **Checkout** — clone repository
-2. **Trivy SBOM** — `aquasecurity/trivy-action` → `sbom.json`
-3. **CBOM Scan** — CBOM Analyser action → `cbom.json`
-4. **Merge** — `actions/github-script` merges both into `xbom.json` with cross-references and analytics
-5. **Job Summary** — tables showing component counts, quantum readiness, vulnerability breakdown
-6. **Upload Artifacts** — `xbom.json`, `sbom.json`, `cbom.json` (90-day retention)
+**Jobs & Artifacts:**
 
-**Workflow outputs:**
+| Job | Produces | Description |
+|-----|----------|-------------|
+| `cbom-scan` | `cbom-report` | Runs CBOM Analyser action → `cbom-report.json` |
+| `sbom-scan` | `sbom-report` | Runs Trivy SBOM scan → `sbom.json` |
+| `xbom-merge` | `xbom-report` | Merges SBOM + CBOM → `xbom.json` with cross-references and analytics |
+| `build-backend` | — | Builds backend Docker image |
+| `build-frontend` | — | Builds frontend Docker image |
+| `deploy` | — | Deploys to production (on release) |
+
+**xBOM merge step details:**
+1. **Downloads** both `sbom-report` and `cbom-report` artifacts
+2. **Merges** software components, crypto assets, dependencies, vulnerabilities
+3. **Builds cross-references** by matching CBOM third-party library PURLs against SBOM component PURLs
+4. **Computes analytics** — quantum readiness score, vulnerability breakdown, component counts
+5. **Writes** `xbom.json` and uploads as `xbom-report` artifact
+
+**Key outputs:**
 `total-components`, `total-crypto-assets`, `total-vulnerabilities`, `total-cross-references`, `readiness-score`, `quantum-safe`, `not-quantum-safe`, `vuln-critical`, `vuln-high`
+
+#### Auto-Sync to BOM Imports
+
+When a **CBOM File Import** integration is configured with `includeSbom: "true"` and `includeXbom: "true"`, the GitHub connector automatically downloads all three artifacts from each workflow run and stores them as BLOBs in the `cbom_imports` table. The imported xBOM files are then loaded into the in-memory xBOM store, making them immediately visible in the **BOM Imports → xBOM Analysis** tab.
 
 ### 17.8 Trivy Integration
 
@@ -3198,7 +3405,22 @@ The backend Trivy scanner (`backend/src/services/trivyScanner.ts`) wraps the Tri
 
 If Trivy is not installed, the xBOM API gracefully degrades — SBOM generation is unavailable but CBOM-only mode and manual merge still work.
 
-### 17.9 File Reference
+### 17.9 xBOM DB Loader
+
+The `xbomDbLoader` service (`backend/src/services/xbomDbLoader.ts`) bridges the gap between DB-persisted xBOM files and the in-memory `xbomStore` used by the xBOM API endpoints.
+
+**When it runs:**
+- **Server startup** — restores previously imported xBOMs from DB into the store
+- **After sync** — called by `syncExecutor` after creating new `CbomImport` records
+
+**How it works:**
+1. Queries `cbom_imports` for all records where `xbomFile IS NOT NULL`
+2. Parses each xBOM BLOB as JSON
+3. Validates `bomFormat === 'CycloneDX'`
+4. Uses the `serialNumber` (or `cbom-import:<id>`) as the store key
+5. Skips entries already present in the store (idempotent)
+
+### 17.10 File Reference
 
 | File | Purpose |
 |------|---------|
@@ -3206,11 +3428,20 @@ If Trivy is not installed, the xBOM API gracefully degrades — SBOM generation 
 | `backend/src/types/xbom.types.ts` | Unified xBOM type definitions |
 | `backend/src/services/trivyScanner.ts` | Trivy CLI integration |
 | `backend/src/services/xbomMergeService.ts` | SBOM + CBOM → xBOM merge with cross-references |
+| `backend/src/services/xbomDbLoader.ts` | Loads xBOM files from DB into in-memory `xbomStore` |
 | `backend/src/routes/xbomRoutes.ts` | 7 REST API endpoints |
-| `.github/workflows/xbom.yml` | CI workflow for automated xBOM generation |
+| `backend/src/services/githubCbomConnector.ts` | GitHub Actions connector — fetches CBOM, SBOM, and xBOM artifacts |
+| `.github/workflows/pipeline.yml` | Unified CI pipeline — CBOM scan, SBOM scan, xBOM merge |
 | `frontend/src/pages/XBOMPage.tsx` | xBOM list, generate, merge, and detail views |
 | `frontend/src/pages/XBOMPage.module.scss` | Styles for xBOM page |
+| `frontend/src/pages/discovery/tabs/CbomImportsTab.tsx` | BOM Imports tab — includes xBOM Analysis sub-tab with inline detail view |
+| `frontend/src/components/bom-panels/BomDownloadButtons.tsx` | Download buttons with labeled BOM type (CBOM / SBOM / xBOM) |
 | `frontend/src/store/api/xbomApi.ts` | RTK Query API slice with 6 hooks |
+| `backend/src/models/CbomUpload.ts` | Sequelize model for `cbom_uploads` table (persisted CBOM uploads) |
+| `backend/src/routes/cbomUploadRoutes.ts` | CRUD routes for uploaded CBOMs (`GET`, `GET /:id`, `DELETE /:id`) |
+| `frontend/src/store/api/cbomUploadsApi.ts` | RTK Query API slice for CBOM uploads (3 hooks) |
+| `frontend/src/pages/discovery/utils/exportCsv.ts` | Generic CSV export utility for Discovery tab tables |
+| `frontend/src/pages/discovery/components/shared.module.scss` | Shared Discovery tab styles — includes AI close button (`.aiCloseBtn`) |
 
 ---
 

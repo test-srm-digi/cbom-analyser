@@ -5,11 +5,12 @@ interface Props {
   search: string;
   setSearch: (v: string) => void;
   placeholder: string;
+  onExport?: () => void;
   onReset?: () => void;
   resetLoading?: boolean;
 }
 
-export default function Toolbar({ search, setSearch, placeholder, onReset, resetLoading }: Props) {
+export default function Toolbar({ search, setSearch, placeholder, onExport, onReset, resetLoading }: Props) {
   return (
     <div className={s.toolbar}>
       <div className={s.searchBar}>
@@ -21,7 +22,7 @@ export default function Toolbar({ search, setSearch, placeholder, onReset, reset
           placeholder={placeholder}
         />
       </div>
-      <button className={s.exportBtn}>
+      <button className={s.exportBtn} onClick={onExport}>
         <Download className={s.exportIcon} />
         Export
       </button>

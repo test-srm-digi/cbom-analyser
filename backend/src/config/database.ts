@@ -25,6 +25,13 @@ export async function initDatabase(): Promise<void> {
     await sequelize.authenticate();
     console.log('  ✓ MariaDB connected (dcone-quantum-gaurd)');
 
+    // Increase max_allowed_packet for large BOM BLOB inserts (64 MB)
+    try {
+      await sequelize.query("SET GLOBAL max_allowed_packet = 67108864");
+    } catch (e) {
+      console.warn('  ⚠ Could not SET GLOBAL max_allowed_packet (need SUPER privilege)');
+    }
+
     // Sync models — alter:true adds/modifies columns to match model definitions
     await sequelize.sync({ alter: true });
     console.log('  ✓ Database models synced');

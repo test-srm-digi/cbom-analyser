@@ -20,7 +20,7 @@ const router = Router();
 /* ── GET /api/cbom-imports ────────────────────────────────── */
 router.get('/cbom-imports', async (_req: Request, res: Response) => {
   try {
-    const rows = await CbomImport.findAll({ order: [['created_at', 'DESC']], attributes: { exclude: ['cbomFile'] } });
+    const rows = await CbomImport.findAll({ order: [['created_at', 'DESC']], attributes: { exclude: ['cbomFile', 'sbomFile', 'xbomFile'] } });
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error fetching CBOM imports:', error);
@@ -34,7 +34,7 @@ router.get('/cbom-imports/integration/:integId', async (req: Request, res: Respo
     const rows = await CbomImport.findAll({
       where: { integrationId: req.params.integId },
       order: [['created_at', 'DESC']],
-      attributes: { exclude: ['cbomFile'] },
+      attributes: { exclude: ['cbomFile', 'sbomFile', 'xbomFile'] },
     });
     res.json({ success: true, data: rows });
   } catch (error) {
@@ -49,10 +49,16 @@ router.get('/cbom-imports/:id', async (req: Request, res: Response) => {
     const row = await CbomImport.findByPk(req.params.id);
     if (!row) return res.status(404).json({ success: false, message: 'CBOM import not found' });
 
-    // Serialize BLOB as base64 for JSON transport
+    // Serialize BLOBs as base64 for JSON transport
     const plain = row.toJSON() as unknown as Record<string, unknown>;
     if (row.cbomFile) {
       plain.cbomFile = (row.cbomFile as Buffer).toString('base64');
+    }
+    if (row.sbomFile) {
+      plain.sbomFile = (row.sbomFile as Buffer).toString('base64');
+    }
+    if (row.xbomFile) {
+      plain.xbomFile = (row.xbomFile as Buffer).toString('base64');
     }
 
     res.json({ success: true, data: plain });

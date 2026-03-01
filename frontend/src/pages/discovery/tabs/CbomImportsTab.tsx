@@ -1,23 +1,16 @@
-import { useMemo, useState, useCallback } from 'react';
-import { ShieldAlert, ShieldCheck, TrendingUp as TrendUp, TrendingDown, Loader2, X, BarChart3, AlertTriangle, TrendingUp, Clock, GitBranch, FileText, ArrowUpRight, ShieldX, Download, Layers, ChevronLeft } from 'lucide-react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { ShieldAlert, ShieldCheck, TrendingUp as TrendUp, TrendingDown, Loader2, X, BarChart3, AlertTriangle, TrendingUp, Clock, GitBranch, FileText, ArrowUpRight, ShieldX, Download, Layers, MoreVertical } from 'lucide-react';
 import { StatCards, Toolbar, AiBanner, DataTable, CbomStatusBadge, ProgressBar, EmptyState, PolicyViolationCell } from '../components';
 import type { IntegrationStep } from '../components';
 import { CBOM_IMPORTS } from '../data';
-import { useGetCbomImportsQuery, useBulkCreateCbomImportsMutation, useDeleteAllCbomImportsMutation, useGetPoliciesQuery, useGetXBOMListQuery, useGetXBOMQuery, useDeleteXBOMMutation } from '../../../store/api';
+import { useGetCbomImportsQuery, useBulkCreateCbomImportsMutation, useDeleteAllCbomImportsMutation, useGetPoliciesQuery, useGetXBOMListQuery, useDeleteXBOMMutation } from '../../../store/api';
 import type { DiscoveryCbomImport, StatCardConfig } from '../types';
 import type { XBOMListItem } from '../../../types';
 import { evaluatePolicies } from '../../policies';
 import type { CbomPolicyResult } from '../../policies';
 import { parseCbomJson } from '../../../utils/cbomParser';
 import Pagination from '../../../components/Pagination';
-import {
-  SoftwarePanel,
-  VulnerabilityPanel,
-  CrossRefPanel,
-  CryptoAnalysisPanel,
-  BomOverviewPanel,
-  BomDownloadButtons,
-} from '../../../components/bom-panels';
+import { exportTableToCSV } from '../utils/exportCsv';
 import s from '../components/shared.module.scss';
 
 interface ProjectInsight {
@@ -42,6 +35,7 @@ interface Props {
   onViewRepo?: (name: string) => void;
   onGoToIntegrations?: () => void;
   onGoToXBOM?: () => void;
+  onViewXBOM?: (id: string) => void;
 }
 
 const STEPS: IntegrationStep[] = [
@@ -51,12 +45,26 @@ const STEPS: IntegrationStep[] = [
   { step: 4, title: 'Review imported data', description: 'Component counts, crypto algorithms, PQC readiness scores, and processing status will appear here after import.' },
 ];
 
-export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRepo, onGoToIntegrations, onGoToXBOM }: Props) {
+export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRepo, onGoToIntegrations, onGoToXBOM, onViewXBOM }: Props) {
   const { data: apiData = [], isLoading } = useGetCbomImportsQuery();
   const [bulkCreate, { isLoading: isSampleLoading }] = useBulkCreateCbomImportsMutation();
   const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllCbomImportsMutation();
   const [insight, setInsight] = useState<InsightState>({ loading: false });
   const [activeSubTab, setActiveSubTab] = useState<'imports' | 'repositories' | 'xbom-analysis'>('imports');
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!openDropdownId) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenDropdownId(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openDropdownId]);
   const [repoPage, setRepoPage] = useState(1);
   const [repoPageSize, setRepoPageSize] = useState(25);
   const data = apiData;
@@ -247,10 +255,9 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
     return filteredRepos.slice(start, start + repoPageSize);
   }, [filteredRepos, repoPage, repoPageSize]);
 
-  /* ── xBOM list & detail state ────────────── */
+  /* ── xBOM list state ────────────────────── */
   const { data: xbomList = [], isLoading: xbomLoading } = useGetXBOMListQuery();
   const [deleteXBOM] = useDeleteXBOMMutation();
-  const [xbomDetailId, setXbomDetailId] = useState<string | null>(null);
   const [xbomListPage, setXbomListPage] = useState(1);
   const [xbomListPageSize, setXbomListPageSize] = useState(25);
 
@@ -271,21 +278,26 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const downloadCbom = (cb: DiscoveryCbomImport, e: React.MouseEvent) => {
+  const downloadBom = async (importId: string, bomType: 'cbom' | 'sbom' | 'xbom', filename: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!cb.cbomFile) return;
     try {
-      const raw = atob(cb.cbomFile);
+      const res = await fetch(`/api/cbom-imports/${importId}`);
+      if (!res.ok) return;
+      const record = await res.json();
+      const fieldMap = { cbom: 'cbomFile', sbom: 'sbomFile', xbom: 'xbomFile' } as const;
+      const base64 = record[fieldMap[bomType]];
+      if (!base64) return;
+      const raw = atob(base64);
       const blob = new Blob([raw], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = cb.fileName;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch { /* ignore decode errors */ }
+    } catch { /* ignore */ }
   };
 
   const columns = [
@@ -319,25 +331,61 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
         />
       );
     }},
-    { key: 'status',          label: 'Status',            render: (cb: DiscoveryCbomImport) => <CbomStatusBadge status={cb.status} /> },
     { key: 'importDate',      label: 'Imported',          render: (cb: DiscoveryCbomImport) => formatDate(cb.importDate) },
-    { key: 'download',        label: 'Download',           sortable: false, headerStyle: { width: 72, textAlign: 'center' as const }, render: (cb: DiscoveryCbomImport) => cb.cbomFile ? (
-      <button
-        onClick={(e) => downloadCbom(cb, e)}
-        title="Download CBOM file"
-        style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-          padding: '4px 10px', border: '1px solid var(--dc1-border)', borderRadius: 4,
-          background: 'var(--dc1-bg-card, #fff)', cursor: 'pointer', color: 'var(--dc1-text-muted)',
-          fontSize: 11, fontWeight: 500,
-          transition: 'all 0.12s',
-        }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--dc1-bg-hover, #f1f5f9)'; (e.currentTarget as HTMLElement).style.color = 'var(--dc1-primary, #6d28d9)'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--dc1-bg-card, #fff)'; (e.currentTarget as HTMLElement).style.color = 'var(--dc1-text-muted)'; }}
-      >
-        <Download size={13} />
-      </button>
-    ) : <span style={{ color: '#cbd5e1', fontSize: 11 }}>—</span> },
+    { key: 'download',        label: 'Actions',            sortable: false, headerStyle: { width: 80, textAlign: 'center' as const }, render: (cb: DiscoveryCbomImport) => {
+      const baseName = (cb.fileName ?? 'bom').replace(/\.[^.]+$/, '');
+      const hasCbom = !!cb.cbomFile || !!cb.cbomFileType;
+      const hasSbom = !!cb.sbomFile || !!cb.sbomFileType;
+      const hasXbom = !!cb.xbomFile || !!cb.xbomFileType;
+      if (!hasCbom && !hasSbom && !hasXbom) return <span style={{ color: '#cbd5e1', fontSize: 11 }}>—</span>;
+      const isOpen = openDropdownId === cb.id;
+      const items: { label: string; type: 'cbom' | 'sbom' | 'xbom'; color: string; hoverBg: string }[] = [];
+      if (hasCbom) items.push({ label: 'Download CBOM', type: 'cbom', color: 'var(--dc1-primary, #6d28d9)', hoverBg: 'var(--dc1-primary-soft, #ede9fe)' });
+      if (hasSbom) items.push({ label: 'Download SBOM', type: 'sbom', color: '#2563eb', hoverBg: '#dbeafe' });
+      if (hasXbom) items.push({ label: 'Download xBOM', type: 'xbom', color: '#d97706', hoverBg: '#fef3c7' });
+      return (
+        <div style={{ position: 'relative', display: 'inline-block' }} ref={isOpen ? dropdownRef : undefined}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setOpenDropdownId(isOpen ? null : cb.id); }}
+            style={{
+              background: isOpen ? 'var(--dc1-primary-soft, #ede9fe)' : 'none',
+              border: '1px solid var(--dc1-border)', borderRadius: 6,
+              cursor: 'pointer', padding: '5px 8px', display: 'inline-flex', alignItems: 'center',
+              color: 'var(--dc1-text-muted)', transition: 'all 0.12s',
+            }}
+            title="Download"
+          >
+            <Download size={14} />
+          </button>
+          {isOpen && (
+            <div style={{
+              position: 'absolute', right: 0, top: '100%', marginTop: 4,
+              background: 'var(--dc1-bg-card, #fff)', border: '1px solid var(--dc1-border)',
+              borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+              zIndex: 50, minWidth: 160, padding: '4px 0',
+            }}>
+              {items.map((item) => (
+                <button
+                  key={item.type}
+                  onClick={(e) => { downloadBom(cb.id, item.type, `${baseName}-${item.type}.json`, e); setOpenDropdownId(null); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                    padding: '8px 14px', border: 'none', background: 'none',
+                    cursor: 'pointer', fontSize: 12, fontWeight: 500, color: item.color,
+                    textAlign: 'left', transition: 'background 0.1s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = item.hoverBg; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
+                >
+                  <Download size={13} />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    } },
   ];
 
   if (isLoading) return null;
@@ -471,6 +519,19 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
         search={search}
         setSearch={setSearch}
         placeholder={activeSubTab === 'imports' ? 'Search by application name, file name, format, or spec version...' : 'Search by repository name...'}
+        onExport={() => exportTableToCSV(filtered as unknown as Record<string, unknown>[], [
+          { key: 'applicationName', label: 'Application' },
+          { key: 'fileName', label: 'File Name' },
+          { key: 'format', label: 'Format' },
+          { key: 'specVersion', label: 'Spec Version' },
+          { key: 'totalComponents', label: 'Total Components' },
+          { key: 'cryptoComponents', label: 'Crypto Components' },
+          { key: 'quantumSafeComponents', label: 'Quantum-safe' },
+          { key: 'nonQuantumSafeComponents', label: 'Non Quantum-safe' },
+          { key: 'status', label: 'Status' },
+          { key: 'importDate', label: 'Import Date' },
+          { key: 'source', label: 'Source' },
+        ], 'cbom-imports')}
         onReset={isSampleData ? () => deleteAll() : undefined}
         resetLoading={isSampleData ? isResetLoading : undefined}
       />
@@ -503,7 +564,7 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
             <span className={s.subTabCount}>{xbomList.length}</span>
           </button>
         </div>
-        {onGoToXBOM && (
+        {/* {onGoToXBOM && (
           <button
             onClick={onGoToXBOM}
             title="Go to xBOM generator & stored xBOMs"
@@ -520,7 +581,7 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
             <ArrowUpRight size={14} />
             xBOM Generator
           </button>
-        )}
+        )} */}
       </div>
 
       {/* ── Tab: All Imports ─────────────────────────────────── */}
@@ -636,9 +697,7 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
 
       {/* ── Tab: xBOM Analysis ───────────────────────────────── */}
       {activeSubTab === 'xbom-analysis' && (
-        xbomDetailId
-          ? <XBOMInlineDetail id={xbomDetailId} onBack={() => setXbomDetailId(null)} />
-          : (
+
             <div className={s.tableCard}>
               <h3 className={s.tableTitle}>Stored xBOMs ({xbomList.length})</h3>
               {xbomLoading ? (
@@ -665,7 +724,7 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
                     </thead>
                     <tbody>
                       {pagedXboms.map((item: XBOMListItem) => (
-                        <tr key={item.id} style={{ cursor: 'pointer' }} onClick={() => setXbomDetailId(item.id)}>
+                        <tr key={item.id} style={{ cursor: 'pointer' }} onClick={() => onViewXBOM?.(item.id)}>
                           <td>
                             <span style={{ fontWeight: 600, color: 'var(--dc1-primary, #0063e5)' }}>{item.component}</span>
                             {item.repository?.url && (
@@ -704,95 +763,8 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
                 </>
               )}
             </div>
-          )
       )}
     </>
   );
 }
 
-/* ================================================================== */
-/*  xBOM Inline Detail View                                            */
-/* ================================================================== */
-
-type DetailTab = 'overview' | 'software' | 'crypto' | 'vulnerabilities' | 'cross-references';
-
-function fmtDateLong(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  } catch { return iso; }
-}
-
-function XBOMInlineDetail({ id, onBack }: { id: string; onBack: () => void }) {
-  const { data, isLoading, error } = useGetXBOMQuery(id);
-  const [tab, setTab] = useState<DetailTab>('overview');
-
-  if (isLoading) return <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Loading…</div>;
-  if (error || !data?.xbom) return (
-    <div style={{ textAlign: 'center', padding: 40 }}>
-      <p style={{ color: '#dc2626', fontWeight: 500 }}>Failed to load xBOM</p>
-      <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--dc1-primary)', fontWeight: 500 }}>← Back to list</button>
-    </div>
-  );
-
-  const xbom = data.xbom;
-  const analytics = data.analytics;
-  const componentName = xbom.metadata?.component?.name ?? 'xBOM';
-
-  const tabDef: { key: DetailTab; label: string; count?: number }[] = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'software', label: 'Software', count: xbom.components?.length },
-    { key: 'crypto', label: 'Crypto Assets', count: xbom.cryptoAssets?.length },
-    { key: 'vulnerabilities', label: 'Vulnerabilities', count: xbom.vulnerabilities?.length },
-    { key: 'cross-references', label: 'Cross-References', count: xbom.crossReferences?.length },
-  ];
-
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div>
-          <button
-            onClick={onBack}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--dc1-primary, #0063e5)', fontWeight: 500, fontSize: 13, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}
-          >
-            <ChevronLeft size={14} /> Back to xBOM list
-          </button>
-          <h3 style={{ margin: '8px 0 4px', fontSize: 18 }}>{componentName}</h3>
-          <div style={{ fontSize: 12, color: '#64748b', display: 'flex', gap: 16 }}>
-            <span>Format: {xbom.bomFormat} {xbom.specVersion}</span>
-            <span>Generated: {fmtDateLong(xbom.metadata?.timestamp)}</span>
-            {xbom.metadata?.repository?.url && <span>Repo: {xbom.metadata.repository.url}</span>}
-          </div>
-        </div>
-        <BomDownloadButtons
-          compact
-          items={[
-            { label: 'xBOM', filename: `${componentName}-xbom.json`, data: xbom },
-            { label: 'SBOM', filename: `${componentName}-sbom.json`, data: xbom.components?.length ? { bomFormat: 'CycloneDX', specVersion: xbom.specVersion, components: xbom.components } : null },
-            { label: 'CBOM', filename: `${componentName}-cbom.json`, data: xbom.cryptoAssets?.length ? { bomFormat: 'CycloneDX', specVersion: xbom.specVersion, cryptoAssets: xbom.cryptoAssets } : null },
-          ]}
-        />
-      </div>
-
-      {/* Tabs */}
-      <div className="dc1-tabs-bar" style={{ marginBottom: 16 }}>
-        {tabDef.map(t => (
-          <button key={t.key} className={`dc1-tab-btn ${tab === t.key ? 'dc1-tab-active' : ''}`} onClick={() => setTab(t.key)}>
-            {t.label}
-            {t.count !== undefined && (
-              <span style={{ marginLeft: 6, fontSize: 11, background: '#f1f5f9', color: '#475569', borderRadius: 10, padding: '1px 7px', fontWeight: 600 }}>
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      {tab === 'overview' && <BomOverviewPanel xbom={xbom} analytics={analytics} />}
-      {tab === 'software' && <SoftwarePanel components={xbom.components ?? []} />}
-      {tab === 'crypto' && <CryptoAnalysisPanel assets={xbom.cryptoAssets ?? []} />}
-      {tab === 'vulnerabilities' && <VulnerabilityPanel vulns={xbom.vulnerabilities ?? []} summary={analytics?.vulnerabilitySummary} />}
-      {tab === 'cross-references' && <CrossRefPanel refs={xbom.crossReferences ?? []} components={xbom.components} cryptoAssets={xbom.cryptoAssets} />}
-    </div>
-  );
-}

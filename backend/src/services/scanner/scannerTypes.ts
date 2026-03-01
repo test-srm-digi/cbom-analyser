@@ -36,6 +36,7 @@ export const SCANNABLE_EXTENSIONS: Record<string, string[]> = {
   csharp:     ['.cs'],
   go:         ['.go'],
   php:        ['.php'],
+  rust:       ['.rs'],
 };
 
 /** All scannable file extensions as a flat set. */

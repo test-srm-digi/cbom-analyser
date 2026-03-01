@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Upload,
   ShieldCheck,
@@ -8,8 +8,11 @@ import {
   FileCode2,
   Clock,
   Package,
+  Download,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
-import type { CBOMDocument, QuantumReadinessScore, ComplianceSummary, CryptoAsset } from '../types';
+import type { CBOMDocument, QuantumReadinessScore, ComplianceSummary } from '../types';
 import {
   CBOMHeader,
   ReadinessScoreCard,
@@ -22,7 +25,8 @@ import {
   AssetListView,
   ThirdPartyLibrariesView,
 } from '../components';
-import { useGetCbomImportQuery } from '../store/api';
+import { useGetCbomImportQuery, useGetCbomUploadsQuery } from '../store/api';
+import type { CbomUploadItem } from '../store/api';
 import { CbomStatusBadge, ProgressBar } from './discovery/components';
 import { parseCbomJson } from '../utils/cbomParser';
 import s from './discovery/ImportHeader.module.scss';
@@ -37,6 +41,8 @@ interface Props {
   onNavigate?: (path: string) => void;
   onUpload?: () => void;
   onLoadSample?: () => void;
+  onClearCbom?: () => void;
+  onLoadCbomUpload?: (id: string) => void;
   /* Import flow (self-fetching) */
   cbomImportId?: string;
   onBack?: () => void;
@@ -49,10 +55,40 @@ export default function DashboardPage({
   onNavigate,
   onUpload,
   onLoadSample,
+  onClearCbom,
+  onLoadCbomUpload,
   cbomImportId,
   onBack,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+
+  /* ── CBOM uploads list for welcome screen ──────────── */
+  const { data: cbomUploads = [], isLoading: uploadsLoading } = useGetCbomUploadsQuery();
+  const [uploadsPage, setUploadsPage] = useState(1);
+  const uploadsPerPage = 5;
+
+  const downloadCbomUpload = useCallback(async (id: string, name: string) => {
+    try {
+      const res = await fetch(`/api/cbom-uploads/${encodeURIComponent(id)}`);
+      const json = await res.json();
+      if (!json.success || !json.data?.cbomFile) return;
+      const raw = atob(json.data.cbomFile);
+      const blob = new Blob([raw], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(name || 'cbom').replace(/[^a-zA-Z0-9_-]/g, '_')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch { /* ignore */ }
+  }, []);
+
+  const fmtDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
 
   /* ── Import-mode data fetching ─────────────────────── */
   const isImportMode = !!cbomImportId;
@@ -160,6 +196,94 @@ export default function DashboardPage({
               <p>Explore the dashboard with a pre-built sample dataset from the Keycloak open-source project</p>
             </button>
           </div>
+
+          {/* ── Uploaded CBOMs ──────────────────────────────── */}
+          {!uploadsLoading && cbomUploads.length > 0 && (() => {
+            const totalPages = Math.ceil(cbomUploads.length / uploadsPerPage);
+            const page = Math.min(uploadsPage, totalPages);
+            const start = (page - 1) * uploadsPerPage;
+            const pageItems = cbomUploads.slice(start, start + uploadsPerPage);
+            return (
+            <div className="dc1-card" style={{ marginTop: 32, width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <h3 className="dc1-card-section-title" style={{ margin: 0 }}>Uploaded CBOMs</h3>
+                <span style={{ fontSize: 12, color: 'var(--dc1-text-muted)' }}>{cbomUploads.length} total</span>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--dc1-border)', textAlign: 'left' }}>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Component</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>File Name</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Upload Date</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Crypto Assets</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quantum-safe</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Not Safe</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageItems.map((item: CbomUploadItem) => (
+                    <tr
+                      key={item.id}
+                      style={{ borderBottom: '1px solid var(--dc1-border)', cursor: 'pointer', transition: 'background 0.15s' }}
+                      onClick={() => onLoadCbomUpload?.(item.id)}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--dc1-bg-hover, rgba(0,0,0,0.02))')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = '')}
+                    >
+                      <td style={{ padding: '10px 10px', fontWeight: 500 }}>{item.componentName || '—'}</td>
+                      <td style={{ padding: '10px 10px', color: 'var(--dc1-text-muted)' }}>{item.fileName}</td>
+                      <td style={{ padding: '10px 10px', color: 'var(--dc1-text-muted)' }}>{fmtDate(item.uploadDate)}</td>
+                      <td style={{ padding: '10px 10px' }}>{item.totalAssets}</td>
+                      <td style={{ padding: '10px 10px', color: 'var(--dc1-safe)' }}>{item.quantumSafe}</td>
+                      <td style={{ padding: '10px 10px', color: item.notQuantumSafe > 0 ? 'var(--dc1-danger)' : undefined }}>{item.notQuantumSafe}</td>
+                      <td style={{ padding: '10px 10px', textAlign: 'center' }}>
+                        <button
+                          title="Download CBOM"
+                          onClick={(e) => { e.stopPropagation(); downloadCbomUpload(item.id, item.componentName || item.fileName); }}
+                          style={{
+                            background: 'none', border: '1px solid var(--dc1-border)', borderRadius: 6,
+                            cursor: 'pointer', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: 4,
+                            fontSize: 12, color: 'var(--dc1-text-muted)',
+                          }}
+                        >
+                          <Download size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {/* ── Pagination ──────────────────────────── */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 12, fontSize: 13 }}>
+                  <button
+                    disabled={page <= 1}
+                    onClick={() => setUploadsPage((p) => Math.max(1, p - 1))}
+                    style={{
+                      background: 'none', border: '1px solid var(--dc1-border)', borderRadius: 6,
+                      cursor: page <= 1 ? 'default' : 'pointer', padding: '4px 8px', display: 'inline-flex', alignItems: 'center',
+                      opacity: page <= 1 ? 0.4 : 1, color: 'var(--dc1-text-muted)',
+                    }}
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span style={{ color: 'var(--dc1-text-muted)' }}>Page {page} of {totalPages}</span>
+                  <button
+                    disabled={page >= totalPages}
+                    onClick={() => setUploadsPage((p) => Math.min(totalPages, p + 1))}
+                    style={{
+                      background: 'none', border: '1px solid var(--dc1-border)', borderRadius: 6,
+                      cursor: page >= totalPages ? 'default' : 'pointer', padding: '4px 8px', display: 'inline-flex', alignItems: 'center',
+                      opacity: page >= totalPages ? 0.4 : 1, color: 'var(--dc1-text-muted)',
+                    }}
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+            );
+          })()}
         </div>
       </div>
     );
@@ -219,9 +343,27 @@ export default function DashboardPage({
       {/* ── Upload-mode: standard page header + CBOMHeader */}
       {!isImportMode && (
         <>
-          <div className="dc1-page-header">
-            <h1 className="dc1-page-title">CBOM Analyzer</h1>
-            <p className="dc1-page-subtitle">Cryptographic inventory overview from your CBOM analysis</p>
+          <div className="dc1-page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div>
+              <h1 className="dc1-page-title">CBOM Analyzer</h1>
+              <p className="dc1-page-subtitle">Cryptographic inventory overview from your CBOM analysis</p>
+            </div>
+            {onClearCbom && (
+              <button
+                onClick={onClearCbom}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  background: 'none', border: '1px solid var(--dc1-border)', borderRadius: 8,
+                  padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 500,
+                  color: 'var(--dc1-text-secondary)', transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--dc1-blue)'; e.currentTarget.style.color = 'var(--dc1-blue)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--dc1-border)'; e.currentTarget.style.color = 'var(--dc1-text-secondary)'; }}
+              >
+                <ArrowLeft size={15} />
+                Back
+              </button>
+            )}
           </div>
 
           <div className="dc1-card" style={{ marginBottom: 16 }}>

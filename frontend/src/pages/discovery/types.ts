@@ -130,6 +130,12 @@ export interface DiscoveryCbomImport {
   cbomFile?: string;
   /** MIME type of the stored file: application/json or application/zip */
   cbomFileType?: string;
+  /** Base64-encoded SBOM file — only present on single-item GET */
+  sbomFile?: string;
+  sbomFileType?: string;
+  /** Base64-encoded xBOM file — only present on single-item GET */
+  xbomFile?: string;
+  xbomFileType?: string;
 }
 
 // ── Stat card config ─────────────────────────────────────────

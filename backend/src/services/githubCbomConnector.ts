@@ -313,7 +313,7 @@ export async function fetchCbomImportsFromGitHub(
       };
     }
 
-    /* ── 2. For each run, find the CBOM artifact ───────────── */
+    /* ── 2. For each run, find BOM artifacts (CBOM + SBOM + xBOM) ── */
     for (const run of runs) {
       try {
         const artifactsResponse = await githubFetch<ArtifactsResponse>(
@@ -327,7 +327,7 @@ export async function fetchCbomImportsFromGitHub(
 
         if (!cbomArtifact) continue;
 
-        /* ── 3. Download & extract the CBOM ────────────────── */
+        /* ── 3a. Download & extract the CBOM ───────────────── */
         const zipBuffer = await downloadArtifactZip(cbomArtifact.archive_download_url, githubToken);
         const cbomContent = await extractJsonFromZip(zipBuffer);
 
@@ -336,10 +336,38 @@ export async function fetchCbomImportsFromGitHub(
           continue;
         }
 
+        /* ── 3b. Look for SBOM artifact (sbom-report) ──────── */
+        let sbomContent: string | null = null;
+        const sbomArtifact = artifactsResponse.artifacts.find(
+          (a) => !a.expired && a.name.toLowerCase().includes('sbom'),
+        );
+        if (sbomArtifact) {
+          try {
+            const sbomZip = await downloadArtifactZip(sbomArtifact.archive_download_url, githubToken);
+            sbomContent = await extractJsonFromZip(sbomZip);
+          } catch (sbomErr) {
+            errors.push(`Run #${run.id}: failed to download SBOM artifact: ${(sbomErr as Error).message}`);
+          }
+        }
+
+        /* ── 3c. Look for xBOM artifact (xbom-report) ──────── */
+        let xbomContent: string | null = null;
+        const xbomArtifact = artifactsResponse.artifacts.find(
+          (a) => !a.expired && a.name.toLowerCase().includes('xbom'),
+        );
+        if (xbomArtifact) {
+          try {
+            const xbomZip = await downloadArtifactZip(xbomArtifact.archive_download_url, githubToken);
+            xbomContent = await extractJsonFromZip(xbomZip);
+          } catch (xbomErr) {
+            errors.push(`Run #${run.id}: failed to download xBOM artifact: ${(xbomErr as Error).message}`);
+          }
+        }
+
         /* ── 4. Analyze and build the import record ────────── */
         const analysis = analyzeCbom(cbomContent, cbomArtifact.name);
 
-        data.push({
+        const record: Record<string, unknown> = {
           id: uuidv4(),
           integrationId,
           fileName: `${cbomArtifact.name}-run-${run.id}.json`,
@@ -356,7 +384,21 @@ export async function fetchCbomImportsFromGitHub(
           applicationName: analysis.applicationName,
           cbomFile: Buffer.from(cbomContent, 'utf-8'),
           cbomFileType: 'application/json',
-        });
+        };
+
+        // Attach SBOM file if found
+        if (sbomContent) {
+          record.sbomFile = Buffer.from(sbomContent, 'utf-8');
+          record.sbomFileType = 'application/json';
+        }
+
+        // Attach xBOM file if found
+        if (xbomContent) {
+          record.xbomFile = Buffer.from(xbomContent, 'utf-8');
+          record.xbomFileType = 'application/json';
+        }
+
+        data.push(record);
       } catch (err) {
         errors.push(`Run #${run.id}: ${(err as Error).message}`);
       }
