@@ -33,6 +33,7 @@ export function useIntegrations() {
 
   /* ── Local UI state ─────────────────────────────────────── */
   const [showCatalog, setShowCatalog] = useState(false);
+  const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
   const [configPanel, setConfigPanel] = useState<ConfigPanelState | null>(null);
   const [configValues, setConfigValues] = useState<Record<string, string>>({});
   const [configScope, setConfigScope] = useState<ImportScope[]>([]);
@@ -142,12 +143,14 @@ export function useIntegrations() {
 
   /* ── Trigger manual sync → API ──────────────────────────── */
   const triggerSync = useCallback(async (id: string) => {
+    setSyncingIds((prev) => new Set(prev).add(id));
     try {
       await syncIntegrationMut(id).unwrap();
       // Refetch after sync completes server-side (simulated 3s)
-      setTimeout(() => refetch(), 3500);
+      setTimeout(() => { refetch(); setSyncingIds((prev) => { const next = new Set(prev); next.delete(id); return next; }); }, 3500);
     } catch (err) {
       console.error('Failed to trigger sync:', err);
+      setSyncingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
     }
   }, [syncIntegrationMut, refetch]);
 
@@ -160,6 +163,7 @@ export function useIntegrations() {
     integrations,
     isLoading,
     showCatalog,
+    syncingIds,
     configPanel,
     configValues,
     configScope,

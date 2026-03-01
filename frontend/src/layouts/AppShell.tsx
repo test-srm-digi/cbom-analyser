@@ -96,7 +96,7 @@ const mainNavItems: NavItem[] = [
         icon: faShieldCheckLight,
       },
       { id: "discovery-endpoints", label: "Endpoints", icon: faWifi },
-      { id: "discovery-software", label: "Software", icon: faBox },
+      // { id: "discovery-software", label: "Software", icon: faBox },
       { id: "discovery-devices", label: "Devices", icon: faMicrochip },
       { id: "discovery-cbom-imports", label: "CBOM Imports", icon: faFileCode },
     ],
@@ -112,7 +112,7 @@ const mainNavItems: NavItem[] = [
     ],
   },
   { id: "policies", label: "Policies", icon: faShieldHalved },
-  { id: "settings", label: "Settings", icon: faGear },
+  // { id: "settings", label: "Settings", icon: faGear },
 ];
 
 interface SidebarSection {

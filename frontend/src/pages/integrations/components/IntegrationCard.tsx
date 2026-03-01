@@ -17,6 +17,7 @@ import s from './IntegrationCard.module.scss';
 
 interface IntegrationCardProps {
   integration: Integration;
+  syncing?: boolean;
   onEdit: (integration: Integration) => void;
   onDelete: (id: string) => void;
   onToggle: (id: string) => void;
@@ -25,6 +26,7 @@ interface IntegrationCardProps {
 
 export default function IntegrationCard({
   integration: intg,
+  syncing = false,
   onEdit,
   onDelete,
   onToggle,
@@ -129,10 +131,10 @@ export default function IntegrationCard({
           <button
             className={s.iconBtn}
             onClick={() => onSync(intg.id)}
-            disabled={!intg.enabled || intg.status === 'testing'}
+            disabled={!intg.enabled || syncing || intg.status === 'testing'}
             title="Sync Now"
           >
-            <RefreshCw size={14} className={intg.status === 'testing' ? s.spin : ''} />
+            <RefreshCw size={14} className={syncing || intg.status === 'testing' ? s.spin : ''} />
           </button>
           <button className={s.iconBtn} onClick={() => onEdit(intg)} title="Configure">
             <Settings size={14} />

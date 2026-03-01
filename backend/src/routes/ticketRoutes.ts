@@ -70,6 +70,7 @@ router.post('/tickets', async (req: Request, res: Response) => {
         const projectKey = body.project?.split(' - ')[0]?.replace(/^.*?([A-Z][A-Z0-9]+).*$/, '$1') || cfg.projectKey || 'CRYPTO';
         const issueType = body.issueType || cfg.defaultIssueType || 'Bug';
         const assigneeId = body.assignee || cfg.defaultAssignee || undefined;
+        const assigneeName = body.assigneeName; // display name from frontend
         const labels = Array.isArray(body.labels) ? body.labels : cfg.defaultLabels || [];
 
         if (cfg.email && cfg.apiToken && projectKey) {
@@ -87,6 +88,8 @@ router.post('/tickets', async (req: Request, res: Response) => {
             body.ticketId = result.key;
             body.externalUrl = result.url;
             body.status = 'To Do';
+            // Store display name instead of accountId
+            if (assigneeName) body.assignee = assigneeName;
           } else {
             // Store locally even if JIRA fails — record the error
             console.warn('JIRA issue creation failed:', result.error);

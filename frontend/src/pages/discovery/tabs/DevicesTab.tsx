@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Eye, ExternalLink, Ticket } from 'lucide-react';
-import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, DeviceStatusBadge, EmptyState } from '../components';
+import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, DeviceStatusBadge, EmptyState, PolicyViolationCell } from '../components';
 import type { IntegrationStep } from '../components';
 import { DEVICES } from '../data';
-import { useGetDevicesQuery, useBulkCreateDevicesMutation, useDeleteAllDevicesMutation } from '../../../store/api';
+import { useGetDevicesQuery, useBulkCreateDevicesMutation, useDeleteAllDevicesMutation, useGetPoliciesQuery } from '../../../store/api';
 import type { DiscoveryDevice, StatCardConfig } from '../types';
+import { evaluateSingleDevicePolicies } from '../../policies';
+import type { CbomPolicyResult } from '../../policies';
 import { CreateTicketModal } from '../../tracking';
 import type { TicketContext } from '../../tracking';
 import { useCreateTicketMutation } from '../../../store/api/trackingApi';
@@ -42,6 +44,29 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
   const violations = data.filter((d) => !d.quantumSafe).length;
   const weakKeys   = data.filter((d) => d.keyLength === '1024 bits').length;
 
+  /* ── Policy evaluation per device ──────────────────── */
+  const { data: dbPolicies = [] } = useGetPoliciesQuery();
+
+  const policyResultsMap = useMemo<Map<string, CbomPolicyResult>>(() => {
+    const map = new Map<string, CbomPolicyResult>();
+    for (const dev of data) {
+      map.set(dev.id, evaluateSingleDevicePolicies(dbPolicies, dev));
+    }
+    return map;
+  }, [data, dbPolicies]);
+
+  const totalPolicyViolations = useMemo(() => {
+    let count = 0;
+    for (const r of policyResultsMap.values()) count += r.totalViolations;
+    return count;
+  }, [policyResultsMap]);
+
+  const devicesWithViolations = useMemo(() => {
+    let count = 0;
+    for (const r of policyResultsMap.values()) if (r.totalViolations > 0) count++;
+    return count;
+  }, [policyResultsMap]);
+
   const filtered = useMemo(() => {
     if (!search) return data;
     const q = search.toLowerCase();
@@ -58,6 +83,7 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
     { title: 'Total Devices',     value: total,      sub: 'Managed by DigiCert Device Trust Manager',                       variant: 'default' },
     { title: 'Quantum-ready',     value: qsSafe,     sub: `${qsSafe} of ${total} devices with PQC certificates/firmware`,   variant: 'success' },
     { title: 'Vulnerable Devices', value: violations, sub: `Includes ${weakKeys} devices with 1024-bit keys`,               variant: 'danger' },
+    { title: 'Policy Violations', value: totalPolicyViolations, sub: `${devicesWithViolations} of ${total} devices have policy violations`, variant: totalPolicyViolations > 0 ? 'danger' : 'success' },
   ];
 
   const columns = [
@@ -69,6 +95,25 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
     { key: 'keyLength',       label: 'Key Length',          render: (d: DiscoveryDevice) => d.keyLength },
     { key: 'enrollmentStatus', label: 'Status',             render: (d: DiscoveryDevice) => <DeviceStatusBadge status={d.enrollmentStatus} /> },
     { key: 'quantumSafe',     label: 'Quantum-safe',       render: (d: DiscoveryDevice) => <QsBadge safe={d.quantumSafe} />, sortable: false },
+    { key: 'policiesViolated', label: 'Policies Violated', sortable: false, render: (d: DiscoveryDevice) => {
+      const result = policyResultsMap.get(d.id);
+      return (
+        <PolicyViolationCell
+          result={result}
+          enableAi
+          aiContext={{
+            type: 'device',
+            deviceName: d.deviceName,
+            deviceType: d.deviceType,
+            manufacturer: d.manufacturer,
+            certAlgorithm: d.certAlgorithm,
+            keyLength: d.keyLength,
+            quantumSafe: d.quantumSafe,
+            violatedPolicies: result?.violatedPolicies?.map((p) => p.policyName) ?? [],
+          }}
+        />
+      );
+    }},
     { key: 'source',          label: 'Source',              render: (d: DiscoveryDevice) => <span className={s.sourceLink}>{d.source}</span> },
     {
       key: 'actions',

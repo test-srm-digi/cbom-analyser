@@ -18,6 +18,7 @@ export default function IntegrationsPage() {
   const {
     integrations,
     showCatalog,
+    syncingIds,
     configPanel,
     configValues,
     configScope,
@@ -44,6 +45,7 @@ export default function IntegrationsPage() {
   const [selectedType, setSelectedType] = useState<string | null>(
     INTEGRATION_CATALOG.length > 0 ? INTEGRATION_CATALOG[0].type : null,
   );
+  const [catalogFilter, setCatalogFilter] = useState<string | null>(null);
 
   const handleTypeSelect = (type: string) => {
     setSelectedType((prev) => (prev === type ? null : type));
@@ -60,7 +62,7 @@ export default function IntegrationsPage() {
   return (
     <div className={s.page}>
       {/* Header */}
-      <PageHeader onAddClick={() => setShowCatalog(true)} />
+      <PageHeader onAddClick={() => { setCatalogFilter(null); setShowCatalog(true); }} />
 
       {/* Stats */}
       <StatsRow
@@ -78,7 +80,7 @@ export default function IntegrationsPage() {
 
       {/* Empty state — workflow guide */}
       {integrations.length === 0 && !showCatalog && (
-        <EmptyState onAddClick={() => setShowCatalog(true)} />
+        <EmptyState onAddClick={() => { setCatalogFilter(null); setShowCatalog(true); }} />
       )}
 
       {/* Active integrations grid */}
@@ -104,6 +106,7 @@ export default function IntegrationsPage() {
               <IntegrationCard
                 key={intg.id}
                 integration={intg}
+                syncing={syncingIds.has(intg.id)}
                 onEdit={openEditConfig}
                 onDelete={deleteIntegration}
                 onToggle={toggleEnabled}
@@ -115,7 +118,7 @@ export default function IntegrationsPage() {
                 No active integrations of this type.
               </div>
             )}
-            <AddCard onClick={() => setShowCatalog(true)} />
+            <AddCard onClick={() => { setCatalogFilter(selectedType); setShowCatalog(true); }} />
           </div>
         </div>
       )}
@@ -126,6 +129,7 @@ export default function IntegrationsPage() {
       {/* Catalog overlay */}
       {showCatalog && (
         <CatalogOverlay
+          filterType={catalogFilter}
           onSelect={openNewConfig}
           onClose={() => setShowCatalog(false)}
         />

@@ -123,8 +123,21 @@ export default function CreateTicketModal({ open, onClose, context, onSubmit, al
       const prio = sev === 'Critical' ? 'Critical' : sev === 'High' ? 'High' : 'Medium';
       setPriority(prio);
       setTitle(`${sev} Risk: Non-quantum-safe ${context.entityType.toLowerCase()} for ${context.entityName}`);
+      // Build location as a clickable GitHub link when repo + branch are available
+      let locationNote = '';
+      if (context.details.location) {
+        const loc = context.details.location;
+        if (context.githubRepo && context.githubBranch) {
+          const [filePath, lineNum] = loc.split(':');
+          const lineAnchor = lineNum ? `#L${lineNum}` : '';
+          const fileUrl = `https://github.com/${context.githubRepo}/blob/${context.githubBranch}/${filePath}${lineAnchor}`;
+          locationNote = `\nLocation: [${loc}](${fileUrl})`;
+        } else {
+          locationNote = `\nLocation: ${loc}`;
+        }
+      }
       const branchNote = context.githubBranch ? `\nBranch: ${context.githubBranch}` : '';
-      setDescription(context.problemStatement + branchNote);
+      setDescription(context.problemStatement + locationNote + branchNote);
       setAiSuggestion(context.aiSuggestion || null);
       setSelectedType(null);
 
@@ -246,6 +259,9 @@ export default function CreateTicketModal({ open, onClose, context, onSubmit, al
       entityType: context.entityType,
       entityName: context.entityName,
       assignee: assignee || undefined,
+      assigneeName: selectedType === 'JIRA' && assignee
+        ? resolveAssigneeName(assignee, jiraUsers)
+        : undefined,
       labels,
     };
     if (selectedType === 'JIRA') {

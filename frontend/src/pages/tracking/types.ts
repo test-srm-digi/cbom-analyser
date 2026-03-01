@@ -36,6 +36,8 @@ export interface CreateTicketPayload {
   entityType: EntityType;
   entityName: string;
   assignee?: string;
+  /** Display name for the assignee (used for JIRA where assignee is an accountId) */
+  assigneeName?: string;
   labels?: string[];
   // JIRA-specific
   project?: string;

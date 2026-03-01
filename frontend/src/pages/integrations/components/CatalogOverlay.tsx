@@ -5,11 +5,17 @@ import { categoryIcon } from '../utils';
 import s from './CatalogOverlay.module.scss';
 
 interface CatalogOverlayProps {
+  /** When set, show only this integration type in the catalog */
+  filterType?: string | null;
   onSelect: (template: IntegrationTemplate) => void;
   onClose: () => void;
 }
 
-export default function CatalogOverlay({ onSelect, onClose }: CatalogOverlayProps) {
+export default function CatalogOverlay({ filterType, onSelect, onClose }: CatalogOverlayProps) {
+  const visibleCatalog = filterType
+    ? INTEGRATION_CATALOG.filter((t) => t.type === filterType)
+    : INTEGRATION_CATALOG;
+
   return (
     <div className={s.overlay} onClick={onClose}>
       <div className={s.panel} onClick={(e) => e.stopPropagation()}>
@@ -19,7 +25,7 @@ export default function CatalogOverlay({ onSelect, onClose }: CatalogOverlayProp
           <button className={s.closeBtn} onClick={onClose}><X size={18} /></button>
         </div>
         <div className={s.grid}>
-          {INTEGRATION_CATALOG.map((tmpl) => (
+          {visibleCatalog.map((tmpl) => (
             <button key={tmpl.type} className={s.card} onClick={() => onSelect(tmpl)}>
               <div className={s.cardIcon}>{categoryIcon(tmpl.category)}</div>
               <div className={s.cardText}>

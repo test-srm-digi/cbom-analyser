@@ -14,7 +14,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import type { CryptoAsset } from '../../types';
-import type { DiscoveryCertificate, DiscoveryEndpoint } from '../../pages/discovery/types';
+import type { DiscoveryCertificate, DiscoveryEndpoint, DiscoveryDevice } from '../../pages/discovery/types';
 import type { CryptoPolicy, PolicyRule, RuleCondition } from './types';
 
 /* ── Per-rule evaluation result ──────────────────────────── */
@@ -321,26 +321,36 @@ function evaluatePolicyWithPrereqs<T>(
    CryptoAsset Evaluation (CBOM Imports)
    ═══════════════════════════════════════════════════════════════ */
 
-function cryptoRuleApplies(rule: PolicyRule, _asset?: CryptoAsset): boolean {
-  if (rule.asset === 'cbom-component') return true;
-  const a = rule.asset;
-  return a === 'certificate' || a === 'endpoint' || a === 'software';
+/**
+ * For CBOM evaluation only `cbom-component` rules are applicable.
+ * Certificate/endpoint/software-scoped rules belong to their own
+ * evaluators and should not produce spurious "passed" entries here.
+ */
+function cryptoRuleApplies(rule: PolicyRule): boolean {
+  return rule.asset === 'cbom-component';
 }
 
 /**
  * Evaluate all active policies against a set of crypto assets
  * parsed from a CBOM import.
+ *
+ * Only policies that have at least one `cbom-component` rule are
+ * considered — certificate-only or endpoint-only policies (e.g.
+ * "TLS 1.3 Requirement", "Minimum RSA Key Size") are skipped
+ * because they are not applicable to code-level CBOM data.
  */
 export function evaluatePolicies(
   policies: CryptoPolicy[],
   assets: CryptoAsset[],
 ): CbomPolicyResult {
   const activePolicies = policies.filter((p) => p.status === 'active');
+  // Only keep policies with at least one CBOM-applicable rule
+  const relevant = activePolicies.filter((p) => p.rules.some(cryptoRuleApplies));
 
-  const evaluations = activePolicies.map((p) =>
+  const evaluations = relevant.map((p) =>
     evaluatePolicyWithPrereqs(
       p, assets, extractCryptoField,
-      (r) => cryptoRuleApplies(r),
+      cryptoRuleApplies,
       (a) => a.name,
       (a) => a.id,
     ),
@@ -433,6 +443,62 @@ export function evaluateSingleEndpointPolicies(
   ep: DiscoveryEndpoint,
 ): CbomPolicyResult {
   return evaluateEndpointPolicies(policies, [ep]);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Device Evaluation
+   ─────────────────────────────────────────────────────────────
+   Evaluates DiscoveryDevice[] against active policies.
+   Rules with asset='device', 'certificate', or 'cbom-component'
+   are applied — devices carry certificate info (algorithm, key
+   length) so certificate-scoped rules are relevant.
+   ═══════════════════════════════════════════════════════════════ */
+
+function extractDeviceField(dev: DiscoveryDevice, field: string): string | undefined {
+  switch (field) {
+    case 'keyAlgorithm':
+      return dev.certAlgorithm;
+    case 'keyLength': {
+      // Device keyLength is stored as e.g. "2048 bits" — extract numeric part
+      const m = dev.keyLength?.match(/(\d+)/);
+      return m ? m[1] : undefined;
+    }
+    case 'quantumSafe':
+      return dev.quantumSafe ? 'true' : 'false';
+    default:
+      return undefined;
+  }
+}
+
+function deviceRuleApplies(rule: PolicyRule): boolean {
+  return rule.asset === 'device' || rule.asset === 'certificate' || rule.asset === 'cbom-component';
+}
+
+export function evaluateDevicePolicies(
+  policies: CryptoPolicy[],
+  devices: DiscoveryDevice[],
+): CbomPolicyResult {
+  const active = policies.filter((p) => p.status === 'active');
+  const relevant = active.filter((p) => p.rules.some(deviceRuleApplies));
+  const evals = relevant.map((p) =>
+    evaluatePolicyWithPrereqs(
+      p, devices, extractDeviceField, deviceRuleApplies,
+      (d) => d.deviceName,
+      (d) => d.id,
+    ),
+  );
+  return {
+    totalViolations: evals.filter((e) => e.violated).length,
+    violatedPolicies: evals.filter((e) => e.violated),
+    passedPolicies: evals.filter((e) => !e.violated),
+  };
+}
+
+export function evaluateSingleDevicePolicies(
+  policies: CryptoPolicy[],
+  dev: DiscoveryDevice,
+): CbomPolicyResult {
+  return evaluateDevicePolicies(policies, [dev]);
 }
 
 /* ═══════════════════════════════════════════════════════════════
