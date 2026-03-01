@@ -134,3 +134,15 @@ export {
 } from './trackingApi';
 
 export type { TicketConnector, CreateConnectorRequest, UpdateConnectorRequest } from './trackingApi';
+
+export {
+  xbomApi,
+  useGetXBOMStatusQuery,
+  useGenerateXBOMMutation,
+  useMergeXBOMMutation,
+  useGetXBOMListQuery,
+  useGetXBOMQuery,
+  useDeleteXBOMMutation,
+} from './xbomApi';
+
+export type { XBOMGenerateRequest, XBOMMergeRequest } from './xbomApi';

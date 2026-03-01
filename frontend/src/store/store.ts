@@ -12,6 +12,7 @@ import { syncLogsApi } from './api/syncLogsApi';
 import { schedulerApi } from './api/schedulerApi';
 import { policiesApi } from './api/policiesApi';
 import { trackingApi } from './api/trackingApi';
+import { xbomApi } from './api/xbomApi';
 
 export const store = configureStore({
   reducer: {
@@ -25,6 +26,7 @@ export const store = configureStore({
     [schedulerApi.reducerPath]: schedulerApi.reducer,
     [policiesApi.reducerPath]: policiesApi.reducer,
     [trackingApi.reducerPath]: trackingApi.reducer,
+    [xbomApi.reducerPath]: xbomApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -37,7 +39,8 @@ export const store = configureStore({
       .concat(syncLogsApi.middleware)
       .concat(schedulerApi.middleware)
       .concat(policiesApi.middleware)
-      .concat(trackingApi.middleware),
+      .concat(trackingApi.middleware)
+      .concat(xbomApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

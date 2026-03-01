@@ -57,7 +57,8 @@ export type NavPage =
   /* Other products */
   | "private-ca"
   | "device-trust"
-  | "document-trust";
+  | "document-trust"
+  | "xbom";
 
 interface Props {
   activePage: NavPage;
@@ -82,6 +83,7 @@ const mainNavItems: NavItem[] = [
     children: [
       { id: "dashboard", label: "CBOM Analyzer", icon: faGrid2 },
       { id: "network", label: "Network Scanner", icon: faBullseyeArrow },
+      { id: "xbom" as NavPage, label: "xBOM", icon: faTableCells },
     ],
   },
   // { id: 'violations', label: 'Violations', icon: faTriangleExclamation },

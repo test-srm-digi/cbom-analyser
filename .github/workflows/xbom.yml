@@ -1,0 +1,333 @@
+# xBOM Generator — Unified SBOM + CBOM GitHub Actions Workflow
+#
+# This workflow generates a unified xBOM (Extended Bill of Materials) by:
+# 1. Running Trivy to generate an SBOM (software components + CVEs)
+# 2. Running the CBOM Analyser to generate a CBOM (cryptographic assets)
+# 3. Merging both into a single xBOM with cross-references
+#
+# Usage in your repository:
+#   - Copy this file to .github/workflows/xbom.yml
+#   - Or reference it as a reusable workflow
+#
+# Outputs:
+#   - xbom.json    — unified xBOM (CycloneDX-compatible)
+#   - sbom.json    — Trivy SBOM (CycloneDX)
+#   - cbom.json    — CBOM Analyser CBOM
+#   - GitHub Step Summary with combined report
+
+name: xBOM — Unified SBOM + CBOM
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      scan-path:
+        description: 'Path within the repository to scan'
+        required: false
+        default: '.'
+      fail-on-vulnerable:
+        description: 'Fail if non-quantum-safe crypto is found'
+        required: false
+        default: 'false'
+      trivy-severity:
+        description: 'Trivy severity filter (e.g. CRITICAL,HIGH)'
+        required: false
+        default: ''
+      exclude-patterns:
+        description: 'Comma-separated glob patterns to exclude from CBOM scan'
+        required: false
+        default: 'default'
+
+permissions:
+  contents: read
+  security-events: write   # For uploading SARIF
+  actions: read
+
+jobs:
+  xbom:
+    name: Generate xBOM
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout ──
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Step 1: Trivy SBOM ──
+      - name: Run Trivy (SBOM + Vulnerabilities)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: ${{ github.event.inputs.scan-path || '.' }}
+          format: 'cyclonedx'
+          output: 'sbom.json'
+          severity: ${{ github.event.inputs.trivy-severity || 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL' }}
+          scanners: 'vuln,license'
+
+      # ── Step 2: CBOM Analyser ──
+      - name: Run CBOM Analyser (Cryptographic Assets)
+        uses: ./                              # Uses the action from THIS repository
+        id: cbom
+        with:
+          output-format: json
+          output-file: cbom-report.json
+          scan-path: ${{ github.event.inputs.scan-path || '.' }}
+          exclude-patterns: ${{ github.event.inputs.exclude-patterns || 'default' }}
+          fail-on-vulnerable: 'false'         # Don't fail here — we check combined results later
+          quantum-safe-threshold: '0'
+
+      # ── Step 3: Merge into xBOM ──
+      - name: Merge SBOM + CBOM → xBOM
+        uses: actions/github-script@v7
+        id: merge
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Read both BOMs
+            const sbom = JSON.parse(fs.readFileSync('sbom.json', 'utf-8'));
+            const cbomRaw = JSON.parse(fs.readFileSync('cbom.json', 'utf-8'));
+
+            // The CBOM scanner wraps in { bomFormat, components, cryptoAssets, ... }
+            // Normalise: if cbomRaw has a top-level 'cbom' key, unwrap it
+            const cbom = cbomRaw.cbom || cbomRaw;
+
+            // ── Merge logic ──
+            const crypto = require('crypto');
+            const serialNumber = `urn:uuid:${crypto.randomUUID()}`;
+
+            // Build tools list
+            const tools = [];
+            // Trivy tools
+            if (sbom.metadata?.tools) {
+              const sbomTools = Array.isArray(sbom.metadata.tools)
+                ? sbom.metadata.tools
+                : (sbom.metadata.tools.components || []);
+              tools.push(...sbomTools.map(t => ({
+                vendor: t.vendor || 'Aqua Security',
+                name: t.name,
+                version: t.version || 'unknown'
+              })));
+            }
+            // CBOM tools
+            if (cbom.metadata?.tools) {
+              const cbomTools = Array.isArray(cbom.metadata.tools)
+                ? cbom.metadata.tools
+                : (cbom.metadata.tools.services || []).map(s => ({
+                    vendor: s.provider?.name || 'Unknown',
+                    name: s.name,
+                    version: s.version || 'unknown'
+                  }));
+              tools.push(...cbomTools);
+            }
+            tools.push({ vendor: 'QuantumGuard', name: 'xBOM Merge', version: '1.0.0' });
+
+            // Software components from SBOM
+            const components = sbom.components || [];
+
+            // Crypto assets from CBOM
+            const cryptoAssets = cbom.cryptoAssets || [];
+
+            // Also include CBOM components (the cryptographic-asset typed ones)
+            const cbomComponents = (cbom.components || []).filter(
+              c => c.type === 'cryptographic-asset'
+            );
+
+            // Merge dependencies
+            const dependencies = [
+              ...(sbom.dependencies || []),
+              ...(cbom.dependencies || [])
+            ];
+
+            // Vulnerabilities from Trivy
+            const vulnerabilities = sbom.vulnerabilities || [];
+
+            // Build cross-references
+            const crossReferences = [];
+            const thirdPartyLibs = cbom.thirdPartyLibraries || [];
+
+            for (const lib of thirdPartyLibs) {
+              const match = components.find(c => {
+                if (!c.purl) return false;
+                if (lib.groupId && lib.artifactId) {
+                  return c.purl.includes(`${lib.groupId}/${lib.artifactId}`) ||
+                         c.purl.includes(`${lib.groupId}%2F${lib.artifactId}`);
+                }
+                return c.name === lib.name;
+              });
+
+              if (match?.['bom-ref']) {
+                const cryptoRefs = cryptoAssets
+                  .filter(a => lib.cryptoAlgorithms.some(alg =>
+                    a.name.toLowerCase().includes(alg.toLowerCase())
+                  ))
+                  .map(a => a.id);
+
+                if (cryptoRefs.length > 0) {
+                  crossReferences.push({
+                    softwareRef: match['bom-ref'],
+                    cryptoRefs,
+                    linkMethod: 'dependency-manifest'
+                  });
+                }
+              }
+            }
+
+            // Assemble xBOM
+            const xbom = {
+              bomFormat: 'CycloneDX',
+              specVersion: '1.6',
+              serialNumber,
+              version: 1,
+              metadata: {
+                timestamp: new Date().toISOString(),
+                tools,
+                component: sbom.metadata?.component || cbom.metadata?.component,
+                repository: {
+                  url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}`,
+                  branch: process.env.GITHUB_REF_NAME
+                }
+              },
+              components: [...components, ...cbomComponents],
+              cryptoAssets,
+              dependencies,
+              vulnerabilities,
+              crossReferences,
+              thirdPartyLibraries: thirdPartyLibs.length > 0 ? thirdPartyLibs : undefined
+            };
+
+            // Write xBOM
+            fs.writeFileSync('xbom.json', JSON.stringify(xbom, null, 2));
+
+            // ── Compute analytics ──
+            const totalComponents = components.length;
+            const totalCrypto = cryptoAssets.length;
+            const qSafe = cryptoAssets.filter(a =>
+              a.quantumSafety === 'quantum-safe'
+            ).length;
+            const notSafe = cryptoAssets.filter(a =>
+              a.quantumSafety === 'not-quantum-safe' || a.quantumSafety === 'unknown'
+            ).length;
+            const conditional = cryptoAssets.filter(a =>
+              a.quantumSafety === 'conditional'
+            ).length;
+            const readinessScore = totalCrypto > 0
+              ? Math.round((qSafe / totalCrypto) * 100)
+              : 100;
+
+            // Vulnerability breakdown
+            const vulnCritical = vulnerabilities.filter(v =>
+              v.ratings?.some(r => r.severity === 'critical')
+            ).length;
+            const vulnHigh = vulnerabilities.filter(v =>
+              v.ratings?.some(r => r.severity === 'high') && !v.ratings?.some(r => r.severity === 'critical')
+            ).length;
+            const vulnMedium = vulnerabilities.filter(v =>
+              v.ratings?.some(r => r.severity === 'medium')
+            ).length;
+
+            // Set outputs
+            core.setOutput('total-components', totalComponents);
+            core.setOutput('total-crypto-assets', totalCrypto);
+            core.setOutput('total-vulnerabilities', vulnerabilities.length);
+            core.setOutput('total-cross-references', crossReferences.length);
+            core.setOutput('readiness-score', readinessScore);
+            core.setOutput('quantum-safe', qSafe);
+            core.setOutput('not-quantum-safe', notSafe);
+            core.setOutput('vuln-critical', vulnCritical);
+            core.setOutput('vuln-high', vulnHigh);
+
+            // Store for summary step
+            core.exportVariable('XBOM_COMPONENTS', totalComponents);
+            core.exportVariable('XBOM_CRYPTO', totalCrypto);
+            core.exportVariable('XBOM_VULNS', vulnerabilities.length);
+            core.exportVariable('XBOM_XREFS', crossReferences.length);
+            core.exportVariable('XBOM_SCORE', readinessScore);
+            core.exportVariable('XBOM_SAFE', qSafe);
+            core.exportVariable('XBOM_NOT_SAFE', notSafe);
+            core.exportVariable('XBOM_CONDITIONAL', conditional);
+            core.exportVariable('XBOM_VULN_CRITICAL', vulnCritical);
+            core.exportVariable('XBOM_VULN_HIGH', vulnHigh);
+            core.exportVariable('XBOM_VULN_MEDIUM', vulnMedium);
+
+            console.log(`✅ xBOM generated: ${totalComponents} software components, ${totalCrypto} crypto assets, ${vulnerabilities.length} CVEs, ${crossReferences.length} cross-refs`);
+
+      # ── Step 4: Job Summary ──
+      - name: Generate xBOM Summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          ## 🔐 xBOM Report — Unified SBOM + CBOM
+
+          ### Overview
+
+          | Metric | Value |
+          |--------|-------|
+          | 📦 Software Components | **${{ env.XBOM_COMPONENTS }}** |
+          | 🔑 Cryptographic Assets | **${{ env.XBOM_CRYPTO }}** |
+          | 🛡️ Vulnerabilities (CVEs) | **${{ env.XBOM_VULNS }}** |
+          | 🔗 Cross-References | **${{ env.XBOM_XREFS }}** |
+
+          ### Quantum Readiness
+
+          | Metric | Value |
+          |--------|-------|
+          | 🎯 Readiness Score | **${{ env.XBOM_SCORE }}%** |
+          | ✅ Quantum-Safe | ${{ env.XBOM_SAFE }} |
+          | ⚠️ Not Quantum-Safe | ${{ env.XBOM_NOT_SAFE }} |
+          | 🔄 Conditional | ${{ env.XBOM_CONDITIONAL }} |
+
+          ### Vulnerability Breakdown
+
+          | Severity | Count |
+          |----------|-------|
+          | 🔴 Critical | ${{ env.XBOM_VULN_CRITICAL }} |
+          | 🟠 High | ${{ env.XBOM_VULN_HIGH }} |
+          | 🟡 Medium | ${{ env.XBOM_VULN_MEDIUM }} |
+
+          ### Artifacts
+
+          | File | Description |
+          |------|-------------|
+          | `xbom.json` | Unified xBOM (SBOM + CBOM + cross-references) |
+          | `sbom.json` | Trivy SBOM (software components + CVEs) |
+          | `cbom.json` | CBOM Analyser (cryptographic assets) |
+
+          ---
+          *Generated by [xBOM Generator](https://github.com/${{ github.repository }}) using Trivy + CBOM Analyser*
+          EOF
+
+      # ── Step 5: Upload artifacts ──
+      - name: Upload xBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xbom-report
+          path: |
+            xbom.json
+            sbom.json
+            cbom.json
+          retention-days: 90
+
+      # ── Step 6: Fail check ──
+      - name: Check thresholds
+        if: github.event.inputs.fail-on-vulnerable == 'true'
+        run: |
+          NOT_SAFE=${{ env.XBOM_NOT_SAFE }}
+          if [ "$NOT_SAFE" -gt 0 ]; then
+            echo "❌ $NOT_SAFE non-quantum-safe cryptographic assets detected"
+            exit 1
+          fi
+          echo "✅ All cryptographic assets are quantum-safe"
+
+    outputs:
+      total-components: ${{ steps.merge.outputs.total-components }}
+      total-crypto-assets: ${{ steps.merge.outputs.total-crypto-assets }}
+      total-vulnerabilities: ${{ steps.merge.outputs.total-vulnerabilities }}
+      total-cross-references: ${{ steps.merge.outputs.total-cross-references }}
+      readiness-score: ${{ steps.merge.outputs.readiness-score }}
+      quantum-safe: ${{ steps.merge.outputs.quantum-safe }}
+      not-quantum-safe: ${{ steps.merge.outputs.not-quantum-safe }}
+      vuln-critical: ${{ steps.merge.outputs.vuln-critical }}
+      vuln-high: ${{ steps.merge.outputs.vuln-high }}
