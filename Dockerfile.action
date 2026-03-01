@@ -1,21 +1,24 @@
 # Dockerfile for GitHub Action
-FROM node:20-alpine
+# Use Debian-based image (not Alpine) — CodeQL and Java tools require glibc
+FROM node:20-slim
 
-# Install dependencies for scanning + Java + sonar-scanner + crypto tools
-RUN apk add --no-cache \
+# Install dependencies for scanning + Java JDK + sonar-scanner + crypto tools
+# JDK (not JRE) is needed so Maven/Gradle can compile Java projects for
+# CodeQL data-flow analysis and CryptoAnalysis typestate analysis.
+RUN apt-get update && apt-get install -y --no-install-recommends \
   bash \
   curl \
   jq \
   git \
   findutils \
   grep \
-  openjdk17-jre-headless \
+  openjdk-17-jdk-headless \
   unzip \
   openssl \
-  gcompat
+  ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 # Install sonar-scanner CLI (used when SONAR_HOST_URL + SONAR_TOKEN are set)
-# Use the generic zip (no bundled JRE) — the bundled linux JRE is glibc and won't run on Alpine
 ENV SONAR_SCANNER_VERSION=5.0.1.3006
 RUN curl -fsSL "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}.zip" \
       -o /tmp/sonar-scanner.zip && \
@@ -25,7 +28,7 @@ RUN curl -fsSL "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/
     ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner && \
     rm /tmp/sonar-scanner.zip
 
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
 WORKDIR /app

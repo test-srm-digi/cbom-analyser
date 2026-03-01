@@ -73,6 +73,7 @@ runs:
   using: 'docker'
   image: 'Dockerfile.action'
   env:
+    GITHUB_TOKEN: ${{ github.token }}
     SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
     SONAR_TOKEN: ${{ inputs.sonar-token }}
     ENABLE_CODEQL: ${{ inputs.enable-codeql }}

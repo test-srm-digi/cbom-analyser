@@ -191,8 +191,10 @@ export async function runCodeQLAnalysis(
     console.log('CodeQL: installing query pack dependencies...');
     try {
       await execAsync(`codeql pack install "${queryDir}" 2>&1`, { timeout: 120000 });
-    } catch (err) {
-      console.warn(`CodeQL pack install warning: ${(err as Error).message}`);
+      console.log('CodeQL: pack dependencies installed successfully');
+    } catch (err: any) {
+      const detail = err?.stdout || err?.stderr || err?.message || 'Unknown error';
+      console.warn(`CodeQL pack install warning: ${detail}`);
       // Continue anyway — might work with bundled packs
     }
 
@@ -219,7 +221,9 @@ export async function runCodeQLAnalysis(
           );
           dbCreated = true;
           console.log('CodeQL: database created with Maven compilation');
-        } catch { /* fall through to next attempt */ }
+        } catch (mvnErr: any) {
+          console.log(`CodeQL: Maven build failed — ${(mvnErr?.stdout || mvnErr?.message || '').slice(0, 200)}`);
+        }
       }
 
       if (!dbCreated && hasGradlew && hasGradle) {
@@ -231,7 +235,9 @@ export async function runCodeQLAnalysis(
           );
           dbCreated = true;
           console.log('CodeQL: database created with Gradle compilation');
-        } catch { /* fall through to --build-mode=none */ }
+        } catch (gradleErr: any) {
+          console.log(`CodeQL: Gradle build failed — ${(gradleErr?.stdout || gradleErr?.message || '').slice(0, 200)}`);
+        }
       }
 
       if (!dbCreated) {
@@ -243,8 +249,10 @@ export async function runCodeQLAnalysis(
             { timeout: 300000, cwd: sourceRoot },
           );
           dbCreated = true;
-        } catch (err) {
-          console.warn(`CodeQL database creation failed: ${(err as Error).message}`);
+          console.log('CodeQL: database created in source-only mode');
+        } catch (err: any) {
+          const detail = err?.stdout || err?.stderr || err?.message || 'Unknown error';
+          console.warn(`CodeQL database creation failed:\n${detail}`);
           return [];
         }
       }
@@ -273,8 +281,9 @@ export async function runCodeQLAnalysis(
         `codeql database analyze "${dbDir}" "${queryDir}" --format=sarifv2.1.0 --output="${sarifOutput}" 2>&1`,
         { timeout: 600000 },  // 10 min timeout
       );
-    } catch (err) {
-      console.warn(`CodeQL analysis failed: ${(err as Error).message}`);
+    } catch (err: any) {
+      const detail = err?.stdout || err?.stderr || err?.message || 'Unknown error';
+      console.warn(`CodeQL analysis failed:\n${detail}`);
       return [];
     }
 
