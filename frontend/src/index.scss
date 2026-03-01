@@ -614,7 +614,6 @@ body {
   min-height: calc(100vh - var(--dc1-topbar-h) - 80px);
 }
 .dc1-welcome-inner {
-  max-width: 960px;
   width: 100%;
 }
 .dc1-welcome-header {
@@ -643,7 +642,8 @@ body {
 .dc1-welcome-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 24px;
+  margin: 0px 136px;
 }
 .dc1-welcome-card {
   display: flex;
