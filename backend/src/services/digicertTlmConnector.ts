@@ -37,12 +37,28 @@ const REQUEST_TIMEOUT = 30_000; // 30 s
  * Well-known DigiCert ONE API paths for certificate listing,
  * tried in order when no explicit `apiPath` is configured.
  * On-prem clusters may only have a subset of micro-services deployed.
+ *
+ * Entries marked `method: 'POST'` use a JSON request body for
+ * pagination (`{ offset, limit }`) — this is the primary listing
+ * mechanism exposed by DigiCert ONE micro-services.
  */
-const CERTIFICATE_API_PATHS = [
-  'mpki/api/v1/certificate',          // Standard MPKI (cloud & most on-prem)
-  'em/api/v1/certificate',            // Enterprise Manager / TLM
-  'tlm/api/v1/certificate',           // Trust Lifecycle Manager (newer)
-  'certcentral/api/v1/certificate',   // CertCentral
+interface CertEndpointCandidate {
+  path: string;
+  method: 'GET' | 'POST';
+}
+
+const CERTIFICATE_API_PATHS: CertEndpointCandidate[] = [
+  // POST search endpoints (preferred — most DigiCert ONE deployments)
+  { path: 'mpki/api/v1/certificate/search',        method: 'POST' },
+  { path: 'em/api/v1/certificate/search',           method: 'POST' },
+  { path: 'tlm/api/v1/certificate/search',          method: 'POST' },
+  // GET collection endpoints (classic / CertCentral)
+  { path: 'mpki/api/v1/certificate',                method: 'GET'  },
+  { path: 'em/api/v1/certificate',                  method: 'GET'  },
+  { path: 'tlm/api/v1/certificate',                 method: 'GET'  },
+  { path: 'certcentral/api/v1/certificate',          method: 'GET'  },
+  // CertCentral v2
+  { path: 'services/v2/order/certificate',           method: 'GET'  },
 ];
 
 /** Account API endpoint used for connection / auth testing */
@@ -147,32 +163,51 @@ function digicertRequest<T>(
 
 /* ── API path auto-detection ──────────────────────────────── */
 
+interface DetectedEndpoint {
+  path: string;
+  method: 'GET' | 'POST';
+  response: DigiCertListResponse | DigiCertCertificate[];
+}
+
 /**
  * Probe multiple well-known DigiCert ONE certificate endpoints
  * and return the first that responds with valid JSON (not 503 or HTML).
+ * Tries both POST /search and GET collection endpoints.
  */
 async function detectCertificateApiPath(
   baseUrl: string,
   apiKey: string,
   accountId: string | undefined,
   rejectUnauthorized: boolean,
-): Promise<{ path: string; response: DigiCertListResponse | DigiCertCertificate[] } | null> {
-  for (const p of CERTIFICATE_API_PATHS) {
+): Promise<DetectedEndpoint | null> {
+  for (const candidate of CERTIFICATE_API_PATHS) {
     try {
-      const url = new URL(`${baseUrl}/${p}`);
-      url.searchParams.set('offset', '0');
-      url.searchParams.set('limit', '1');
+      let url: URL;
+      let resp: DigiCertListResponse | DigiCertCertificate[];
 
-      console.log(`[DigiCert TLM] Probing endpoint: ${p}`);
-      const resp = await digicertRequest<DigiCertListResponse | DigiCertCertificate[]>(
-        url.toString(), apiKey, accountId, rejectUnauthorized,
-      );
-      console.log(`[DigiCert TLM] ✓ Endpoint "${p}" responded with valid JSON`);
-      return { path: p, response: resp };
+      if (candidate.method === 'POST') {
+        url = new URL(`${baseUrl}/${candidate.path}`);
+        const body = JSON.stringify({ offset: 0, limit: 1 });
+        console.log(`[DigiCert TLM] Probing POST ${candidate.path}`);
+        resp = await digicertRequest<DigiCertListResponse | DigiCertCertificate[]>(
+          url.toString(), apiKey, accountId, rejectUnauthorized, 'POST', body,
+        );
+      } else {
+        url = new URL(`${baseUrl}/${candidate.path}`);
+        url.searchParams.set('offset', '0');
+        url.searchParams.set('limit', '1');
+        console.log(`[DigiCert TLM] Probing GET  ${candidate.path}`);
+        resp = await digicertRequest<DigiCertListResponse | DigiCertCertificate[]>(
+          url.toString(), apiKey, accountId, rejectUnauthorized,
+        );
+      }
+
+      console.log(`[DigiCert TLM] ✓ Endpoint "${candidate.path}" (${candidate.method}) responded with valid JSON`);
+      return { path: candidate.path, method: candidate.method, response: resp };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.log(`[DigiCert TLM] ✗ Endpoint "${p}" failed: ${msg.slice(0, 120)}`);
-      // Try next path
+      console.log(`[DigiCert TLM] ✗ Endpoint "${candidate.path}" (${candidate.method}) failed: ${msg.slice(0, 120)}`);
+      // Try next candidate
     }
   }
   return null;
@@ -300,19 +335,23 @@ export async function fetchCertificatesFromDigiCert(
 
   /* ── Resolve the certificate API path ────────────────────── */
   let certApiPath: string;
+  let certApiMethod: 'GET' | 'POST' = 'GET';
   if (explicitApiPath) {
     certApiPath = explicitApiPath;
-    console.log(`[DigiCert TLM] Using explicit apiPath: ${certApiPath}`);
+    // If explicit path ends with /search, use POST
+    certApiMethod = explicitApiPath.endsWith('/search') ? 'POST' : 'GET';
+    console.log(`[DigiCert TLM] Using explicit apiPath: ${certApiPath} (${certApiMethod})`);
   } else {
     // Auto-detect working endpoint
     console.log(`[DigiCert TLM] No explicit apiPath configured — auto-detecting…`);
     const detected = await detectCertificateApiPath(baseUrl, apiKey, accountId, rejectUnauthorized);
     if (detected) {
       certApiPath = detected.path;
-      console.log(`[DigiCert TLM] Auto-detected working path: ${certApiPath}`);
+      certApiMethod = detected.method;
+      console.log(`[DigiCert TLM] Auto-detected working path: ${certApiPath} (${certApiMethod})`);
     } else {
       // None of the probed paths worked — collect detailed diagnostics
-      const triedPaths = CERTIFICATE_API_PATHS.map((p) => `  • /${p}`).join('\n');
+      const triedPaths = CERTIFICATE_API_PATHS.map((c) => `  • ${c.method} /${c.path}`).join('\n');
       const errMsg =
         `No working certificate API endpoint found on ${baseUrl}. ` +
         `Tried the following paths:\n${triedPaths}\n` +
@@ -327,20 +366,26 @@ export async function fetchCertificatesFromDigiCert(
     while (hasMore && offset / PAGE_SIZE < MAX_PAGES) {
       // Build URL with pagination params
       const url = new URL(`${baseUrl}/${certApiPath}`);
-      url.searchParams.set('offset', String(offset));
-      url.searchParams.set('limit', String(PAGE_SIZE));
-      if (divisionId) {
-        url.searchParams.set('division_id', divisionId);
+      let response: DigiCertListResponse | DigiCertCertificate[];
+
+      if (certApiMethod === 'POST') {
+        // POST search: pagination in JSON body
+        const body: Record<string, unknown> = { offset, limit: PAGE_SIZE };
+        if (divisionId) body.division_id = divisionId;
+        console.log(`[DigiCert TLM] POST search page offset=${offset} limit=${PAGE_SIZE}`);
+        response = await digicertRequest<DigiCertListResponse | DigiCertCertificate[]>(
+          url.toString(), apiKey, accountId, rejectUnauthorized, 'POST', JSON.stringify(body),
+        );
+      } else {
+        // GET: pagination in query string
+        url.searchParams.set('offset', String(offset));
+        url.searchParams.set('limit', String(PAGE_SIZE));
+        if (divisionId) url.searchParams.set('division_id', divisionId);
+        console.log(`[DigiCert TLM] GET page offset=${offset} limit=${PAGE_SIZE}`);
+        response = await digicertRequest<DigiCertListResponse | DigiCertCertificate[]>(
+          url.toString(), apiKey, accountId, rejectUnauthorized,
+        );
       }
-
-      console.log(`[DigiCert TLM] Fetching page offset=${offset} limit=${PAGE_SIZE}`);
-
-      const response = await digicertRequest<DigiCertListResponse | DigiCertCertificate[]>(
-        url.toString(),
-        apiKey,
-        accountId,
-        rejectUnauthorized,
-      );
 
       // DigiCert API may return an array directly or { items: [...] }
       let certs: DigiCertCertificate[];
@@ -470,9 +515,14 @@ export async function testDigiCertConnection(
     // Test explicit path
     try {
       const url = new URL(`${baseUrl}/${explicitApiPath}`);
-      url.searchParams.set('offset', '0');
-      url.searchParams.set('limit', '1');
-      await digicertRequest<unknown>(url.toString(), apiKey, accountId, rejectUnauthorized);
+      const isSearchPath = explicitApiPath.endsWith('/search');
+      if (isSearchPath) {
+        await digicertRequest<unknown>(url.toString(), apiKey, accountId, rejectUnauthorized, 'POST', JSON.stringify({ offset: 0, limit: 1 }));
+      } else {
+        url.searchParams.set('offset', '0');
+        url.searchParams.set('limit', '1');
+        await digicertRequest<unknown>(url.toString(), apiKey, accountId, rejectUnauthorized);
+      }
       certEndpointStatus = `Certificate endpoint (${explicitApiPath}) is reachable.`;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -481,7 +531,7 @@ export async function testDigiCertConnection(
   } else {
     const detected = await detectCertificateApiPath(baseUrl, apiKey, accountId, rejectUnauthorized);
     if (detected) {
-      certEndpointStatus = `Certificate endpoint auto-detected: /${detected.path}`;
+      certEndpointStatus = `Certificate endpoint auto-detected: ${detected.method} /${detected.path}`;
     } else {
       certEndpointStatus = `⚠ No certificate API endpoint found. The MPKI service may not be running on this instance. Sync will fail until the service is available, or you can set a custom API Path.`;
     }
