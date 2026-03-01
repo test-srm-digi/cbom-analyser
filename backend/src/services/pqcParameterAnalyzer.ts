@@ -470,6 +470,564 @@ function analyzeSecretKeyFactory(context: string): PQCVerdictDetail {
   };
 }
 
+// ─── Additional Analyzers ───────────────────────────────────────────────────
+
+/**
+ * Analyze WebCrypto (crypto.subtle) to determine algorithms used.
+ */
+function analyzeWebCrypto(context: string): PQCVerdictDetail {
+  const reasons: string[] = [];
+  const params: Record<string, string | number | boolean> = {};
+
+  // Look for algorithm names in crypto.subtle calls
+  const algPatterns = [
+    /crypto\.subtle\.\w+\s*\(\s*\{\s*name\s*:\s*['"]([^'"]+)['"]/g,
+    /algorithm\s*[=:]\s*\{\s*name\s*:\s*['"]([^'"]+)['"]/g,
+    /['"](?:AES-(?:GCM|CBC|CTR|KW)|RSA-(?:OAEP|PSS)|ECDSA|ECDH|HMAC|PBKDF2|SHA-\d+|Ed25519|X25519)['"]/gi,
+  ];
+
+  const foundAlgs = new Set<string>();
+  for (const pat of algPatterns) {
+    let m;
+    while ((m = pat.exec(context)) !== null) {
+      foundAlgs.add(m[1] || m[0].replace(/['"]/g, ''));
+    }
+  }
+
+  if (foundAlgs.size > 0) {
+    const algs = [...foundAlgs];
+    params.algorithms = algs.join(', ');
+
+    const hasVulnerable = algs.some(a => {
+      const u = a.toUpperCase();
+      return u.includes('RSA') || u.includes('ECDSA') || u.includes('ECDH') || u === 'ED25519' || u === 'X25519';
+    });
+    const hasSafe = algs.some(a => {
+      const u = a.toUpperCase();
+      return u.includes('AES') || u.includes('HMAC') || u.includes('SHA');
+    });
+
+    if (hasVulnerable) {
+      reasons.push(`WebCrypto uses quantum-vulnerable algorithm(s): ${algs.filter(a => /RSA|ECDSA|ECDH|ED25519|X25519/i.test(a)).join(', ')} ✗`);
+      return {
+        verdict: PQCReadinessVerdict.NOT_PQC_READY,
+        confidence: 85,
+        reasons,
+        parameters: params,
+        recommendation: 'Replace RSA/ECDSA/ECDH in WebCrypto calls with quantum-safe alternatives when browser support is available.',
+      };
+    }
+
+    if (hasSafe) {
+      reasons.push(`WebCrypto uses quantum-safe algorithm(s): ${algs.join(', ')} ✓`);
+      return {
+        verdict: PQCReadinessVerdict.PQC_READY,
+        confidence: 80,
+        reasons,
+        parameters: params,
+        recommendation: 'No migration needed for symmetric/hash operations.',
+      };
+    }
+  }
+
+  reasons.push('WebCrypto (crypto.subtle) detected but could not determine algorithm parameters from source context.');
+  return {
+    verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+    confidence: 40,
+    reasons,
+    parameters: params,
+    recommendation: 'Audit crypto.subtle.encrypt/sign/generateKey calls for algorithm parameter.',
+  };
+}
+
+/**
+ * Analyze bcrypt password hashing.
+ */
+function analyzeBcrypt(context: string): PQCVerdictDetail {
+  const reasons: string[] = [];
+  const params: Record<string, string | number | boolean> = {};
+
+  // Extract cost/rounds parameter
+  const costMatch = context.match(
+    /(?:cost|rounds|log_?rounds|BCRYPT_COST|BCRYPT_ROUNDS|bcrypt\.hash\w*\s*\([^,]+,\s*)(\d+)/i
+  ) || context.match(
+    /gensalt\s*\(\s*(\d+)/i
+  ) || context.match(
+    /\$2[aby]?\$(\d+)\$/
+  );
+
+  if (costMatch) {
+    const cost = parseInt(costMatch[1], 10);
+    params.cost = cost;
+
+    if (cost >= 12) {
+      reasons.push(`bcrypt cost factor ${cost} ≥ 12 — adequate post-quantum margin ✓`);
+      reasons.push('bcrypt is memory-hard and not directly broken by quantum computers. Grover\'s halves effective work; cost 12 → 2^11 work with quantum, still expensive.');
+      return {
+        verdict: PQCReadinessVerdict.PQC_READY,
+        confidence: 80,
+        reasons,
+        parameters: params,
+        recommendation: 'bcrypt with cost ≥12 provides adequate post-quantum margin. Consider Argon2id for new deployments.',
+      };
+    } else {
+      reasons.push(`bcrypt cost factor ${cost} < 12 — insufficient post-quantum margin`);
+      return {
+        verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+        confidence: 60,
+        reasons,
+        parameters: params,
+        recommendation: `Increase bcrypt cost from ${cost} to ≥12. Consider migrating to Argon2id.`,
+      };
+    }
+  }
+
+  reasons.push('bcrypt detected but could not determine cost factor.');
+  reasons.push('bcrypt is not directly broken by quantum computers (symmetric-based KDF).');
+  return {
+    verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+    confidence: 50,
+    reasons,
+    parameters: params,
+    recommendation: 'Verify bcrypt cost factor is ≥12. Consider Argon2id for new deployments.',
+  };
+}
+
+/**
+ * Analyze Argon2 (i/d/id) password hashing.
+ */
+function analyzeArgon2(context: string, assetName: string): PQCVerdictDetail {
+  const reasons: string[] = [];
+  const params: Record<string, string | number | boolean> = {};
+
+  // Determine variant
+  const variant = assetName.toLowerCase().includes('argon2id') ? 'Argon2id'
+    : assetName.toLowerCase().includes('argon2d') ? 'Argon2d'
+    : assetName.toLowerCase().includes('argon2i') ? 'Argon2i'
+    : 'Argon2';
+  params.variant = variant;
+
+  // Extract memory parameter
+  const memMatch = context.match(
+    /(?:memory|memoryCost|memory_cost|MEMORY|m_cost)\s*[=:]\s*(\d+)/i
+  ) || context.match(
+    /Argon2\w*\s*\([^)]*?(\d{4,})/  // large numeric arg likely = memory in KiB
+  );
+
+  if (memMatch) {
+    const memKiB = parseInt(memMatch[1], 10);
+    params.memoryKiB = memKiB;
+    if (memKiB >= 65536) { // ≥64 MiB
+      reasons.push(`Memory parameter ${memKiB} KiB (${Math.round(memKiB / 1024)} MiB) ≥ 64 MiB ✓`);
+    } else {
+      reasons.push(`Memory parameter ${memKiB} KiB (${Math.round(memKiB / 1024)} MiB) < 64 MiB — consider increasing`);
+    }
+  }
+
+  // Extract iterations/time cost
+  const iterMatch = context.match(
+    /(?:iterations?|timeCost|time_cost|t_cost|ITERATIONS?)\s*[=:]\s*(\d+)/i
+  );
+  if (iterMatch) {
+    const iters = parseInt(iterMatch[1], 10);
+    params.iterations = iters;
+    if (iters >= 3) {
+      reasons.push(`Time cost ${iters} ≥ 3 ✓`);
+    } else {
+      reasons.push(`Time cost ${iters} < 3 — increase for better security`);
+    }
+  }
+
+  reasons.push(`${variant} is a memory-hard KDF — not directly broken by quantum computers.`);
+  reasons.push('Quantum computers cannot efficiently attack memory-hard functions (no quantum speedup for memory-bound operations).');
+
+  return {
+    verdict: PQCReadinessVerdict.PQC_READY,
+    confidence: 80,
+    reasons,
+    parameters: params,
+    recommendation: `${variant} is quantum-resistant. Ensure ≥64 MiB memory, ≥3 iterations, ≥32-byte output for post-quantum margin.`,
+  };
+}
+
+/**
+ * Analyze a generic block cipher (Twofish, Serpent, Camellia) for key size.
+ */
+function analyzeGenericBlockCipher(context: string, assetName: string): PQCVerdictDetail {
+  const reasons: string[] = [];
+  const params: Record<string, string | number | boolean> = {};
+
+  const keySizeMatch = context.match(
+    /(?:keySize|KEY_SIZE|keyLength|key_?length|key_?bits)\s*[=:]\s*(\d+)/i
+  ) || context.match(
+    new RegExp(`${assetName}[- /]?(128|192|256)`, 'i')
+  );
+
+  if (keySizeMatch) {
+    const bits = parseInt(keySizeMatch[1], 10);
+    params.keyBits = bits;
+
+    if (bits >= 256) {
+      reasons.push(`${assetName} with ${bits}-bit key — Grover's reduces to ${bits / 2}-bit effective, still quantum-safe ✓`);
+      return {
+        verdict: PQCReadinessVerdict.PQC_READY,
+        confidence: 85,
+        reasons,
+        parameters: params,
+        recommendation: `${assetName}-${bits} is quantum-safe. No migration needed.`,
+      };
+    } else {
+      reasons.push(`${assetName} with ${bits}-bit key — Grover's reduces to ${bits / 2}-bit effective`);
+      return {
+        verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+        confidence: 70,
+        reasons,
+        parameters: params,
+        recommendation: `Consider upgrading to ${assetName}-256 or AES-256 for post-quantum margin.`,
+      };
+    }
+  }
+
+  reasons.push(`${assetName} detected — symmetric cipher. Quantum-safe with 256-bit key but key size unknown.`);
+  return {
+    verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+    confidence: 50,
+    reasons,
+    parameters: params,
+    recommendation: `Verify ${assetName} uses a 256-bit key. Consider standardizing on AES-256.`,
+  };
+}
+
+/**
+ * Analyze OpenSSL EVP_* wrapper calls.
+ */
+function analyzeEVP(context: string, assetName: string): PQCVerdictDetail {
+  const reasons: string[] = [];
+  const params: Record<string, string | number | boolean> = {};
+
+  // Extract cipher/algorithm from EVP calls
+  const cipherMatch = context.match(
+    /EVP_(?:aes|des|chacha|camellia|bf|rc[24]|idea|cast5)_(\d+)_(\w+)/i
+  ) || context.match(
+    /EVP_(?:Encrypt|Decrypt|Cipher)Init(?:_ex)?\s*\([^,]*,\s*EVP_(\w+)\s*\(\)/
+  ) || context.match(
+    /EVP_get_cipherbyname\s*\(\s*["']([^"']+)["']\)/
+  );
+
+  if (cipherMatch) {
+    const cipher = cipherMatch[1] || cipherMatch[0];
+    params.cipher = cipher;
+    const upper = cipher.toUpperCase();
+
+    if (upper.includes('AES') && (upper.includes('256') || upper.includes('AES_256'))) {
+      reasons.push(`EVP uses AES-256 — quantum-safe ✓`);
+      return { verdict: PQCReadinessVerdict.PQC_READY, confidence: 90, reasons, parameters: params, recommendation: 'AES-256 is quantum-safe.' };
+    }
+    if (upper.includes('CHACHA20')) {
+      reasons.push(`EVP uses ChaCha20 — quantum-safe ✓`);
+      return { verdict: PQCReadinessVerdict.PQC_READY, confidence: 90, reasons, parameters: params, recommendation: 'ChaCha20 is quantum-safe.' };
+    }
+    if (upper.includes('DES') || upper.includes('RC4') || upper.includes('BF')) {
+      reasons.push(`EVP uses weak/broken cipher: ${cipher} ✗`);
+      return { verdict: PQCReadinessVerdict.NOT_PQC_READY, confidence: 90, reasons, parameters: params, recommendation: 'Replace with EVP_aes_256_gcm.' };
+    }
+  }
+
+  // Check for digest in EVP_Digest / EVP_Sign
+  if (assetName.toUpperCase().includes('SIGN') || assetName.toUpperCase().includes('DIGEST')) {
+    const digestMatch = context.match(/EVP_(sha\d+|md5|sha3_\d+)/i);
+    if (digestMatch) {
+      params.digest = digestMatch[1];
+    }
+  }
+
+  reasons.push(`${assetName} (OpenSSL EVP API) detected — quantum safety depends on the underlying algorithm.`);
+  return {
+    verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+    confidence: 40,
+    reasons,
+    parameters: params,
+    recommendation: 'Audit EVP_EncryptInit_ex / EVP_DigestSignInit calls for the cipher/digest algorithm parameter.',
+  };
+}
+
+/**
+ * Analyze Java KeyAgreement usage.
+ */
+function analyzeKeyAgreement(context: string): PQCVerdictDetail {
+  const reasons: string[] = [];
+  const params: Record<string, string | number | boolean> = {};
+
+  const algMatch = context.match(
+    /KeyAgreement\.getInstance\s*\(\s*['"]([^'"]+)['"]/
+  );
+
+  if (algMatch) {
+    const alg = algMatch[1];
+    params.algorithm = alg;
+    const upper = alg.toUpperCase();
+
+    if (upper.includes('DH') || upper.includes('ECDH') || upper.includes('X25519') || upper.includes('X448')) {
+      reasons.push(`KeyAgreement for "${alg}" — classical key exchange, vulnerable to Shor's algorithm ✗`);
+      return {
+        verdict: PQCReadinessVerdict.NOT_PQC_READY,
+        confidence: 95,
+        reasons,
+        parameters: params,
+        recommendation: `Replace ${alg} key agreement with ML-KEM (Kyber) or hybrid ML-KEM+ECDH.`,
+      };
+    }
+
+    if (upper.includes('ML-KEM') || upper.includes('KYBER')) {
+      reasons.push(`KeyAgreement for "${alg}" — NIST PQC standard ✓`);
+      return { verdict: PQCReadinessVerdict.PQC_READY, confidence: 95, reasons, parameters: params, recommendation: 'PQC key agreement. No action needed.' };
+    }
+  }
+
+  reasons.push('Could not determine KeyAgreement algorithm — verify manually');
+  return {
+    verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+    confidence: 40,
+    reasons,
+    parameters: params,
+    recommendation: 'Check KeyAgreement.getInstance() algorithm. DH/ECDH → vulnerable; ML-KEM → safe.',
+  };
+}
+
+/**
+ * Analyze Java KeyGenerator usage.
+ */
+function analyzeKeyGenerator(context: string): PQCVerdictDetail {
+  const reasons: string[] = [];
+  const params: Record<string, string | number | boolean> = {};
+
+  const algMatch = context.match(
+    /KeyGenerator\.getInstance\s*\(\s*['"]([^'"]+)['"]/
+  );
+
+  if (algMatch) {
+    const alg = algMatch[1];
+    params.algorithm = alg;
+    const upper = alg.toUpperCase();
+
+    if (upper === 'AES' || upper.includes('AES')) {
+      // Check key size
+      const sizeMatch = context.match(/\.init\s*\(\s*(\d+)/);
+      if (sizeMatch) {
+        const bits = parseInt(sizeMatch[1], 10);
+        params.keyBits = bits;
+        if (bits >= 256) {
+          reasons.push(`KeyGenerator for AES with ${bits}-bit key — quantum-safe ✓`);
+          return { verdict: PQCReadinessVerdict.PQC_READY, confidence: 90, reasons, parameters: params, recommendation: 'AES-256 is quantum-safe.' };
+        } else {
+          reasons.push(`KeyGenerator for AES with ${bits}-bit key — Grover's halves effective security`);
+          return { verdict: PQCReadinessVerdict.NOT_PQC_READY, confidence: 85, reasons, parameters: params, recommendation: 'Upgrade to AES-256 (KeyGenerator.init(256)).' };
+        }
+      }
+      reasons.push('KeyGenerator for AES — quantum-safe with 256-bit key, verify key size');
+      return { verdict: PQCReadinessVerdict.REVIEW_NEEDED, confidence: 60, reasons, parameters: params, recommendation: 'Verify KeyGenerator.init() uses 256-bit key size.' };
+    }
+
+    if (upper.includes('HMAC') || upper.includes('CHACHA')) {
+      reasons.push(`KeyGenerator for "${alg}" — symmetric, quantum-safe ✓`);
+      return { verdict: PQCReadinessVerdict.PQC_READY, confidence: 85, reasons, parameters: params, recommendation: 'Symmetric key generation is quantum-safe.' };
+    }
+
+    if (upper.includes('DES')) {
+      reasons.push(`KeyGenerator for "${alg}" — classically weak, not quantum-safe ✗`);
+      return { verdict: PQCReadinessVerdict.NOT_PQC_READY, confidence: 95, reasons, parameters: params, recommendation: 'Replace DES with AES-256.' };
+    }
+  }
+
+  reasons.push('Could not determine KeyGenerator algorithm — verify manually');
+  return {
+    verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+    confidence: 40,
+    reasons,
+    parameters: params,
+    recommendation: 'Check KeyGenerator.getInstance() algorithm and key size.',
+  };
+}
+
+/**
+ * Analyze generic "Hash" / "Digest" detections.
+ */
+function analyzeGenericHash(context: string, assetName: string): PQCVerdictDetail {
+  const reasons: string[] = [];
+  const params: Record<string, string | number | boolean> = {};
+
+  // Try to extract the actual hash algorithm from context
+  const hashPatterns = [
+    /MessageDigest\.getInstance\s*\(\s*['"]([^'"]+)['"]/i,
+    /(?:hash|digest|algorithm)\s*[=:]\s*['"]?(SHA-?\d+|MD5|BLAKE\d*|RIPEMD-?\d*|Whirlpool|SHA3-\d+)/i,
+    /hashlib\.\s*(sha\d+|md5|blake\d*|sha3_\d+)/i,  // Python
+    /crypto\.createHash\s*\(\s*['"]([^'"]+)['"]/i,  // Node.js
+    /Digest::(\w+)/i,  // Ruby
+    /'(sha256|sha384|sha512|sha1|md5|sha3)'/i,
+  ];
+
+  for (const pat of hashPatterns) {
+    const m = context.match(pat);
+    if (m) {
+      const hash = m[1].toUpperCase().replace(/-/g, '');
+      params.hashAlgorithm = m[1];
+
+      if (hash.includes('SHA256') || hash.includes('SHA384') || hash.includes('SHA512') ||
+          hash.includes('SHA3') || hash.includes('BLAKE')) {
+        reasons.push(`Resolved generic "${assetName}" to ${m[1]} — quantum-resistant ✓`);
+        return {
+          verdict: PQCReadinessVerdict.PQC_READY,
+          confidence: 85,
+          reasons,
+          parameters: params,
+          recommendation: `${m[1]} is quantum-resistant. No migration needed.`,
+        };
+      }
+
+      if (hash === 'MD5' || hash === 'SHA1') {
+        reasons.push(`Resolved generic "${assetName}" to ${m[1]} — classically broken ✗`);
+        return {
+          verdict: PQCReadinessVerdict.NOT_PQC_READY,
+          confidence: 90,
+          reasons,
+          parameters: params,
+          recommendation: `Replace ${m[1]} with SHA-256 or SHA-3-256.`,
+        };
+      }
+
+      reasons.push(`Resolved generic "${assetName}" to ${m[1]} — verify if quantum-safe.`);
+      return {
+        verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+        confidence: 55,
+        reasons,
+        parameters: params,
+        recommendation: `Verify ${m[1]} is quantum-resistant (SHA-256+ is safe; MD5/SHA-1 is broken).`,
+      };
+    }
+  }
+
+  reasons.push(`Generic "${assetName}" detected — could not resolve to a specific hash algorithm from source context.`);
+  reasons.push('Most modern hash functions (SHA-256, SHA-3) are quantum-resistant. MD5/SHA-1 are classically broken.');
+  return {
+    verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+    confidence: 35,
+    reasons,
+    parameters: params,
+    recommendation: 'Identify the specific hash algorithm. SHA-256+ is quantum-safe; MD5/SHA-1 should be replaced.',
+  };
+}
+
+/**
+ * Analyze generic "Cipher" detections.
+ */
+function analyzeGenericCipher(context: string): PQCVerdictDetail {
+  const reasons: string[] = [];
+  const params: Record<string, string | number | boolean> = {};
+
+  const cipherMatch = context.match(
+    /Cipher\.getInstance\s*\(\s*['"]([^'"]+)['"]/
+  ) || context.match(
+    /['"](?:AES|DES|Blowfish|ChaCha20|RC\d|Twofish|Camellia|IDEA)(?:[/_-]\w+)?['"]/i
+  );
+
+  if (cipherMatch) {
+    const cipher = cipherMatch[1] || cipherMatch[0].replace(/['"]/g, '');
+    params.cipher = cipher;
+    const upper = cipher.toUpperCase();
+
+    if (upper.includes('AES') && upper.includes('256')) {
+      reasons.push(`Cipher resolved to AES-256 — quantum-safe ✓`);
+      return { verdict: PQCReadinessVerdict.PQC_READY, confidence: 90, reasons, parameters: params, recommendation: 'AES-256 is quantum-safe.' };
+    }
+    if (upper.includes('CHACHA20')) {
+      return { verdict: PQCReadinessVerdict.PQC_READY, confidence: 90, reasons: ['ChaCha20 — quantum-safe ✓'], parameters: params, recommendation: 'ChaCha20 is quantum-safe.' };
+    }
+    if (upper.includes('DES') || upper.includes('RC4') || upper.includes('BLOWFISH')) {
+      return { verdict: PQCReadinessVerdict.NOT_PQC_READY, confidence: 85, reasons: [`Cipher "${cipher}" — weak/broken ✗`], parameters: params, recommendation: 'Replace with AES-256-GCM.' };
+    }
+  }
+
+  reasons.push('Generic "Cipher" detected — could not resolve to a specific algorithm.');
+  return {
+    verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+    confidence: 30,
+    reasons,
+    parameters: params,
+    recommendation: 'Identify the specific cipher algorithm. AES-256/ChaCha20 → safe; DES/RC4 → not safe.',
+  };
+}
+
+/**
+ * Analyze generic "KDF" detections.
+ */
+function analyzeGenericKDF(context: string): PQCVerdictDetail {
+  const reasons: string[] = [];
+  const params: Record<string, string | number | boolean> = {};
+
+  // Try to identify specific KDF
+  if (context.match(/PBKDF2|pbkdf2/)) {
+    reasons.push('Resolved generic KDF to PBKDF2 — delegating to PBKDF2 analyzer.');
+    return analyzePBKDF2(context);
+  }
+  if (context.match(/[Aa]rgon2/)) {
+    reasons.push('Resolved generic KDF to Argon2.');
+    return analyzeArgon2(context, 'Argon2');
+  }
+  if (context.match(/bcrypt/i)) {
+    reasons.push('Resolved generic KDF to bcrypt.');
+    return analyzeBcrypt(context);
+  }
+  if (context.match(/scrypt/i)) {
+    reasons.push('Resolved generic KDF to scrypt.');
+    return analyzeScrypt(context);
+  }
+  if (context.match(/HKDF|hkdf/)) {
+    reasons.push('Resolved generic KDF to HKDF — quantum-safe ✓');
+    return { verdict: PQCReadinessVerdict.PQC_READY, confidence: 85, reasons, parameters: params, recommendation: 'HKDF is quantum-resistant.' };
+  }
+
+  reasons.push('Generic KDF detected — symmetric-based KDFs are not directly quantum-vulnerable.');
+  return {
+    verdict: PQCReadinessVerdict.REVIEW_NEEDED,
+    confidence: 45,
+    reasons,
+    parameters: params,
+    recommendation: 'Identify the specific KDF. PBKDF2/Argon2/bcrypt/scrypt are not directly quantum-vulnerable with adequate parameters.',
+  };
+}
+
+/**
+ * Analyze scrypt KDF.
+ */
+function analyzeScrypt(context: string): PQCVerdictDetail {
+  const reasons: string[] = [];
+  const params: Record<string, string | number | boolean> = {};
+
+  const costMatch = context.match(
+    /(?:cost|N|scryptN|SCRYPT_N|cpuCost)\s*[=:]\s*(\d+)/i
+  ) || context.match(
+    /scrypt\s*\([^,]*,\s*[^,]*,\s*(\d+)/
+  );
+
+  if (costMatch) {
+    const N = parseInt(costMatch[1], 10);
+    params.costN = N;
+    const log2N = Math.log2(N);
+    reasons.push(`scrypt cost N=${N} (2^${log2N.toFixed(0)})`);
+  }
+
+  reasons.push('scrypt is a memory-hard KDF — not directly broken by quantum computers.');
+  reasons.push('Quantum computers cannot efficiently attack memory-hard functions.');
+
+  return {
+    verdict: PQCReadinessVerdict.PQC_READY,
+    confidence: 78,
+    reasons,
+    parameters: params,
+    recommendation: 'scrypt is quantum-resistant. Ensure sufficient cost parameters (N≥2^15, r≥8, p≥1) for post-quantum margin.',
+  };
+}
+
 // ─── Main Analyzer ──────────────────────────────────────────────────────────
 
 /**
@@ -535,12 +1093,7 @@ export function analyzeConditionalAsset(
       recommendation: 'Audit the algorithms registered/used through this provider. RSA/EC → vulnerable; AES/SHA/ML-KEM → safe.',
     };
   } else if (name === 'WEBCRYPTO') {
-    verdict = {
-      verdict: PQCReadinessVerdict.REVIEW_NEEDED,
-      confidence: 40,
-      reasons: ['WebCrypto (crypto.subtle) is a browser API wrapper — quantum safety depends on the algorithm arguments.'],
-      recommendation: 'Audit crypto.subtle.encrypt/sign/generateKey calls for algorithm parameter.',
-    };
+    verdict = analyzeWebCrypto(context);
   } else if (name === 'KEYFACTORY') {
     // Analyze similarly to KeyPairGenerator
     const algMatch = context.match(/KeyFactory\.getInstance\s*\(\s*"([^"]+)"/);
@@ -699,6 +1252,36 @@ export function analyzeConditionalAsset(
       ],
       recommendation: 'OCSP quantum safety depends on PKI migration. Plan for ML-DSA-signed OCSP responses when CA infrastructure supports it.',
     };
+  } else if (name === 'BCRYPT') {
+    verdict = analyzeBcrypt(context);
+  } else if (name.includes('ARGON2')) {
+    verdict = analyzeArgon2(context, asset.name);
+  } else if (name === 'TWOFISH' || name === 'SERPENT' || name === 'CAMELLIA') {
+    verdict = analyzeGenericBlockCipher(context, asset.name);
+  } else if (name.startsWith('EVP')) {
+    verdict = analyzeEVP(context, asset.name);
+  } else if (name === 'KEYAGREEMENT') {
+    verdict = analyzeKeyAgreement(context);
+  } else if (name === 'KEYGENERATOR') {
+    verdict = analyzeKeyGenerator(context);
+  } else if (name === 'HASH' || name === 'DIGEST') {
+    verdict = analyzeGenericHash(context, asset.name);
+  } else if (name === 'CIPHER') {
+    verdict = analyzeGenericCipher(context);
+  } else if (name === 'KDF') {
+    verdict = analyzeGenericKDF(context);
+  } else if (name === 'BLOWFISH') {
+    verdict = {
+      verdict: PQCReadinessVerdict.NOT_PQC_READY,
+      confidence: 80,
+      reasons: [
+        'Blowfish has a 64-bit block size (birthday attack risk at 2^32 blocks).',
+        'Maximum 448-bit key — Grover\'s halves effective strength. 64-bit block is the real weakness.',
+      ],
+      recommendation: 'Replace Blowfish with AES-256-GCM. Blowfish is obsolete regardless of quantum.',
+    };
+  } else if (name === 'SCRYPT' || name === 'SCRYPT') {
+    verdict = analyzeScrypt(context);
   } else {
     // Generic conditional — can't analyze further
     verdict = {

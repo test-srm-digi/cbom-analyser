@@ -163,6 +163,26 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
     notes: 'Quantum-resistant',
   },
+  'SHA3-256': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SHA-3 with 256-bit output — quantum-resistant (128-bit collision resistance with Grover\'s).',
+  },
+  'SHA3-384': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SHA-3 with 384-bit output — quantum-resistant.',
+  },
+  'SHA3-512': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SHA-3 with 512-bit output — quantum-resistant.',
+  },
+  'SHAKE128': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SHA-3 extendable output function — quantum-resistant at 128-bit security level.',
+  },
+  'SHAKE256': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SHA-3 extendable output function — quantum-resistant at 256-bit security level.',
+  },
   'HMACSHA256': {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
   },
@@ -204,7 +224,7 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     quantumSafety: QuantumSafetyStatus.UNKNOWN,
   },
 
-  // PQC algorithms – NIST approved
+  // PQC algorithms – NIST approved (and common aliases)
   'ML-KEM': {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
     notes: 'NIST FIPS 203 – Key Encapsulation Mechanism (formerly Kyber)',
@@ -213,13 +233,53 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
     notes: 'NIST FIPS 204 – Digital Signature Algorithm (formerly Dilithium)',
   },
+  'Dilithium': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Lattice-based digital signature — standardized as ML-DSA (NIST FIPS 204).',
+  },
+  'CRYSTALS-Dilithium': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'CRYSTALS-Dilithium — standardized as ML-DSA (NIST FIPS 204).',
+  },
   'SLH-DSA': {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
     notes: 'NIST FIPS 205 – Stateless Hash-Based Digital Signature (formerly SPHINCS+)',
   },
+  'SPHINCS+': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Stateless hash-based PQC signature — standardized as SLH-DSA (NIST FIPS 205).',
+  },
   'FALCON': {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
     notes: 'NIST selected PQC signature scheme',
+  },
+  'Kyber': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Lattice-based KEM — standardized as ML-KEM (NIST FIPS 203).',
+  },
+  'CRYSTALS-Kyber': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'CRYSTALS-Kyber — standardized as ML-KEM (NIST FIPS 203).',
+  },
+  'FrodoKEM': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Conservative lattice-based KEM — not NIST-selected but considered quantum-safe.',
+  },
+  'BIKE': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Code-based KEM (NIST round 4 alternate) — considered quantum-safe.',
+  },
+  'HQC': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Hamming Quasi-Cyclic KEM (NIST round 4) — considered quantum-safe.',
+  },
+  'XMSS': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'eXtended Merkle Signature Scheme (RFC 8391) — stateful hash-based signature, quantum-safe.',
+  },
+  'LMS': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Leighton-Micali Signature (RFC 8554) — stateful hash-based signature, quantum-safe.',
   },
 
   // PRNGs / CSPRNGs — Not directly quantum-vulnerable, but context-dependent
@@ -422,6 +482,154 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
     recommendedPQC: 'ML-DSA (Dilithium)',
     notes: 'Raw ECDSA signature (no hash) — quantum-vulnerable via Shor\'s algorithm.',
+  },
+
+  // ─── Additional Algorithms (resolving "unknown" classifications) ────────
+
+  // Key Derivation Functions — not directly quantum-vulnerable (symmetric-based)
+  'Argon2': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Argon2 memory-hard KDF — not directly broken by quantum computers. Grover\'s gives quadratic speedup on brute-force but memory-hardness mitigates. Use sufficient parameters (Argon2id, ≥64 MiB, ≥3 iterations).',
+  },
+  'Argon2i': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Argon2i (data-independent) KDF — not directly broken by quantum computers. Consider Argon2id for better side-channel resistance. Use ≥64 MiB memory, ≥3 iterations.',
+  },
+  'Argon2d': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Argon2d (data-dependent) KDF — not quantum-vulnerable but susceptible to side-channel attacks. Use Argon2id instead.',
+  },
+  'Argon2id': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Argon2id (hybrid) KDF — OWASP recommended password hashing. Not directly broken by quantum computers. Use ≥64 MiB memory, ≥3 iterations.',
+  },
+  'bcrypt': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'bcrypt password hashing — not directly broken by quantum computers. Grover\'s halves effective work factor; use cost ≥12 for post-quantum margin.',
+  },
+
+  // Symmetric ciphers
+  'Twofish': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Twofish block cipher (128/192/256-bit keys). Quantum-safe with 256-bit key. Grover\'s halves effective security; verify key size ≥256 bits.',
+  },
+  'Rijndael': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Rijndael is the algorithm underlying AES. Quantum-safe with 256-bit key (Grover\'s halves to 128-bit effective).',
+  },
+  'Rijndael-256': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Rijndael with 256-bit block size — quantum-safe with 256-bit key.',
+  },
+  'Serpent': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Serpent block cipher (AES finalist). Quantum-safe with 256-bit key.',
+  },
+  'Camellia': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Camellia block cipher (RFC 3713). Similar security profile to AES; quantum-safe with 256-bit key.',
+  },
+  'IDEA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'AES-256',
+    notes: 'IDEA has 128-bit key — Grover\'s reduces to 64-bit effective security. Replace with AES-256.',
+  },
+
+  // Key exchange / agreement
+  'X25519': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-KEM (Kyber)',
+    notes: 'X25519 (Curve25519 ECDH) — elliptic curve key agreement, vulnerable to Shor\'s algorithm.',
+  },
+  'X448': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-KEM (Kyber)',
+    notes: 'X448 (Curve448 ECDH) — elliptic curve key agreement, vulnerable to Shor\'s algorithm.',
+  },
+  'Ed448': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'Ed448 (Edwards curve signature) — vulnerable to Shor\'s algorithm.',
+  },
+  'KeyAgreement': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Java JCE KeyAgreement utility — not an algorithm itself. Quantum safety depends on the algorithm parameter (DH/ECDH → vulnerable, ML-KEM → safe). Check getInstance() argument.',
+  },
+  'KeyGenerator': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Java JCE KeyGenerator utility — generates symmetric keys. Quantum safety depends on the algorithm (AES-256 → safe, DES → insecure). Check getInstance() argument.',
+  },
+
+  // OpenSSL / crypto library wrappers
+  'EVP-Encrypt': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'OpenSSL EVP encryption API wrapper — not an algorithm itself. Quantum safety depends on the cipher passed to EVP_EncryptInit_ex (AES-256 → safe, DES → insecure).',
+  },
+  'EVP-Decrypt': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'OpenSSL EVP decryption API wrapper — same considerations as EVP-Encrypt.',
+  },
+  'EVP-Sign': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'OpenSSL EVP signing API wrapper — quantum safety depends on the signature algorithm (RSA/EC → vulnerable).',
+  },
+  'EVP-Digest': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'OpenSSL EVP digest API wrapper — quantum safety depends on the hash algorithm (SHA-256+ → safe, MD5/SHA-1 → broken).',
+  },
+
+  // Generic / catch-all names from various CBOM generators
+  'Hash': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Generic hash algorithm detected — quantum safety depends on the specific algorithm. SHA-256+ and SHA-3 are quantum-resistant; MD5 and SHA-1 are classically broken.',
+  },
+  'Digest': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Generic message digest — quantum safety depends on the specific hash algorithm. Review source for actual algorithm.',
+  },
+  'Cipher': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Generic cipher reference — quantum safety depends on the actual algorithm (AES-256 → safe, DES/RSA → not safe).',
+  },
+  'MAC': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Message Authentication Code — HMAC and CMAC with 256-bit keys are quantum-resistant.',
+  },
+  'KDF': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Generic Key Derivation Function — symmetric-based KDFs are not directly quantum-vulnerable. Review parameters.',
+  },
+  'HKDF': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'HMAC-based Key Derivation Function (RFC 5869) — symmetric-based, quantum-resistant.',
+  },
+  'HKDF-SHA256': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'HKDF with SHA-256 — quantum-resistant.',
+  },
+  'Poly1305': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Poly1305 MAC — symmetric-based authenticator, quantum-resistant.',
+  },
+  'SipHash': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SipHash PRF — keyed hash, quantum-resistant for authentication purposes.',
+  },
+  'BLAKE2': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'BLAKE2 hash function — quantum-resistant (≥128-bit post-quantum security).',
+  },
+  'BLAKE2b': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'BLAKE2b hash — quantum-resistant.',
+  },
+  'BLAKE2s': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'BLAKE2s hash — quantum-resistant.',
+  },
+  'BLAKE3': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'BLAKE3 hash — quantum-resistant.',
   },
 };
 
