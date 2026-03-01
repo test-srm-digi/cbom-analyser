@@ -72,7 +72,12 @@ export async function initScheduler(): Promise<void> {
 
     console.log(`  ✓ Sync scheduler ready — ${scheduled} active job(s) from ${integrations.length} integration(s)`);
   } catch (err) {
-    console.error('  ✗ Sync scheduler initialization failed:', (err as Error).message);
+    const msg = (err as Error).message || String(err);
+    if (msg.includes('ECONNREFUSED') || msg.includes('ConnectionRefused')) {
+      console.log('  ⏰ Sync scheduler skipped — database not available');
+    } else {
+      console.error('  ✗ Sync scheduler initialization failed:', msg);
+    }
   }
 }
 

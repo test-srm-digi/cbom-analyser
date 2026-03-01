@@ -31,7 +31,7 @@ import { CbomStatusBadge, ProgressBar } from './discovery/components';
 import { parseCbomJson } from '../utils/cbomParser';
 import s from './discovery/ImportHeader.module.scss';
 
-type Tab = 'overview' | 'inventory';
+type Tab = 'overview' | 'inventory' | 'libraries';
 
 interface Props {
   /* Upload / sample-data flow (props-driven) */
@@ -391,6 +391,14 @@ export default function DashboardPage({
         >
           Inventory ({totalAssets})
         </button>
+        {libraries.length > 0 && (
+          <button
+            className={`dc1-tab-btn ${activeTab === 'libraries' ? 'dc1-tab-active' : ''}`}
+            onClick={() => setActiveTab('libraries')}
+          >
+            Third-Party Libraries ({libraries.length})
+          </button>
+        )}
       </div>
 
       {activeTab === 'overview' && (
@@ -429,14 +437,11 @@ export default function DashboardPage({
       )}
 
       {activeTab === 'inventory' && (
-        <>
-          <AssetListView assets={assets} repository={cbom?.metadata?.repository} />
-          {libraries.length > 0 && (
-            <div style={{ marginTop: 20 }}>
-              <ThirdPartyLibrariesView libraries={libraries} />
-            </div>
-          )}
-        </>
+        <AssetListView assets={assets} repository={cbom?.metadata?.repository} />
+      )}
+
+      {activeTab === 'libraries' && libraries.length > 0 && (
+        <ThirdPartyLibrariesView libraries={libraries} />
       )}
     </div>
   );

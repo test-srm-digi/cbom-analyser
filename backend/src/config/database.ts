@@ -36,9 +36,14 @@ export async function initDatabase(): Promise<void> {
     await sequelize.sync({ alter: true });
     console.log('  ✓ Database models synced');
   } catch (error) {
-    console.error('  ✗ Database connection failed:', (error as Error).message);
-    console.error('    Make sure MariaDB is running and the database exists.');
-    console.error('    Create it with: CREATE DATABASE `dcone-quantum-gaurd`;');
+    const msg = (error as Error).message || String(error);
+    if (msg.includes('ECONNREFUSED') || msg.includes('ConnectionRefused')) {
+      console.warn('  ⚠ Database not available — running in scan-only mode (no persistence)');
+    } else {
+      console.error('  ✗ Database connection failed:', msg);
+      console.error('    Make sure MariaDB is running and the database exists.');
+      console.error('    Create it with: CREATE DATABASE `dcone-quantum-gaurd`;');
+    }
   }
 }
 

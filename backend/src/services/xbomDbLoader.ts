@@ -72,7 +72,13 @@ export async function loadXBOMsFromImports(): Promise<number> {
       console.log(`[xbomDbLoader] Loaded ${loaded} xBOM(s) from DB (total in store: ${xbomStore.size})`);
     }
   } catch (e) {
-    console.error('[xbomDbLoader] Failed to query CbomImport table:', e);
+    const msg = (e as Error).message || String(e);
+    // In CI / GitHub Actions the DB is not available — keep log quiet
+    if (msg.includes('ECONNREFUSED') || msg.includes('ConnectionRefused')) {
+      console.log('[xbomDbLoader] Skipped — database not available (expected in CI/Action mode)');
+    } else {
+      console.error('[xbomDbLoader] Failed to query CbomImport table:', msg);
+    }
   }
 
   return loaded;

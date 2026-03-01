@@ -565,12 +565,13 @@ The list endpoint excludes the BLOB column (`cbomFile`) for performance. The sin
 | `POST` | `/api/scan-code/regex` | `{ repoPath, excludePatterns? }` | Same (regex scanner only, no sonar) |
 | `POST` | `/api/scan-code/full` | `{ repoPath, networkHosts?, excludePatterns? }` | Same + `cbom.thirdPartyLibraries` + PQC verdicts |
 
-The **`/api/scan-code/full`** endpoint runs the complete 5-step pipeline:
-1. Code scan (sonar-cryptography or regex fallback)
-2. Dependency scan (manifest file analysis + transitive resolution)
-3. Network scan (if `networkHosts` provided)
-4. Merge all discovered crypto assets
-5. Smart PQC parameter analysis on conditional assets
+The **`/api/scan-code/full`** endpoint runs the complete 6-step pipeline:
+1. Code scan (sonar-cryptography or regex fallback) — 8 languages, 1 000+ patterns
+2. Configuration & artifact scan (PEM certs, java.security, openssl.cnf, TLS configs)
+3. Dependency scan (manifest file analysis + transitive resolution)
+4. Network scan (if `networkHosts` provided)
+5. Merge all discovered crypto assets
+6. Smart PQC parameter analysis on conditional assets
 
 ### AI Suggestions
 
@@ -709,12 +710,20 @@ curl -X POST http://localhost:3001/api/scan-code \
 |------|------|
 | Zero setup — works out of the box | Pattern-based, may miss uncommon crypto APIs |
 | Fast — scans 500 files in seconds | Doesn't analyze dependencies/transitive crypto |
-| Covers 7 language ecosystems (Java, Python, JS/TS, C/C++, C#/.NET, Go, PHP) | No bytecode analysis |
+| Covers 8 language ecosystems (Java, Python, JS/TS, C/C++, C#/.NET, Go, PHP, Rust) | No bytecode analysis |
+| 1 000+ patterns including deep BouncyCastle, PQC algorithms, npm packages | |
+| Scans config/artifact files (PEM certs, java.security, openssl.cnf, TLS configs) | |
 
-### Approach 2: IBM sonar-cryptography (Most Accurate for Java)
+### Approach 2: PQCA sonar-cryptography / Hyperion (Most Accurate for Java)
 
-Uses SonarQube with IBM's cryptography plugin for deep static analysis.
-Generates CycloneDX 1.7 CBOM with precise algorithm detection, key sizes, and OIDs.
+Uses SonarQube with the **sonar-cryptography** plugin (formerly IBM, now part of the [PQCA CBOM Kit](https://github.com/IBM/cbomkit)) for deep AST-based static analysis.
+The plugin’s detection engine (**Hyperion**) performs multi-stage analysis: AST parsing → detection rules → INode mapping → OID enrichment → CycloneDX 1.7 CBOM generation with precise algorithm detection, key sizes, and OIDs.
+
+> **Related PQCA CBOM Kit components:**
+> - **cbomkit-theia** — Go CLI for filesystem/container scanning (certificates, secrets, java.security, openssl.cnf, problematic CAs). Inspired our built-in config/artifact scanner.
+> - **cbomkit-lib** — Standalone Java library for programmatic CBOM generation.
+> - **cbomkit** — Full application with REST API, WebSocket scanning, and compliance evaluation.
+> - **cbomkit-action** — GitHub Action wrapping cbomkit-lib in a Docker container.
 
 > **GitHub Actions:** You can also enable sonar-cryptography in the GitHub
 > Action by setting the `sonar-host-url` and `sonar-token` inputs — see
@@ -791,7 +800,8 @@ curl -X POST http://localhost:3001/api/scan-code/full \
 ```
 
 This produces a CBOM that includes:
-- All crypto assets from source code (sonar or regex)
+- All crypto assets from source code (sonar or regex) — 8 languages, 1 000+ patterns
+- Crypto configuration & artifact detections (PEM certificates/keys, java.security, openssl.cnf, nginx/apache TLS config, SSH config, Spring/ASP.NET settings)
 - Third-party crypto libraries discovered from manifest files (`pom.xml`, `package.json`, `requirements.txt`, `go.mod`, etc.)
 - Known algorithms provided by each library (dependency graph with `provides` field)
 - Network TLS scan results (if `networkHosts` specified)
@@ -822,10 +832,10 @@ curl -X POST http://localhost:3001/api/scan-network/merge/urn:uuid:YOUR-CBOM-ID 
 
 | Approach | Setup | Speed | Accuracy | Languages | Deps | PQC Verdicts | Runtime Crypto |
 |----------|-------|-------|----------|-----------|------|-------------|----------------|
-| **Regex Scanner** | None | Fast | Medium | Java, Python, JS/TS, C/C++, C#/.NET, Go, PHP | No | No | No |
-| **sonar-cryptography** | High | Slow | Very High | Java, Python, Go | No | No | No |
+| **Regex Scanner** | None | Fast | Medium | Java, Python, JS/TS, C/C++, C#/.NET, Go, PHP, Rust + config files | No | No | No |
+| **PQCA sonar-cryptography** | High | Slow | Very High | Java, Python, Go | No | No | No |
 | **Network TLS Scanner** | None | Fast | High (TLS) | N/A | No | No | Yes |
-| **Full Pipeline** | Low–High | Medium | Highest | All | Yes | Yes | Yes |
+| **Full Pipeline** | Low–High | Medium | Highest | All (8 languages + config/artifacts) | Yes | Yes | Yes |
 
 ---
 
@@ -2520,17 +2530,19 @@ The regex scanner includes two advanced analysis capabilities that go beyond sim
 
 ### Supported Languages & Libraries
 
-The built-in regex scanner ships with **~700 patterns** covering 7 language ecosystems:
+The built-in regex scanner ships with **1 000+ patterns** covering 8 language ecosystems plus configuration/artifact files:
 
 | Language | File Extensions | Libraries / APIs Covered |
 |----------|----------------|-------------------------|
-| **Java** | `.java` | JCE (`MessageDigest`, `Cipher`, `Signature`, `KeyPairGenerator`, `Mac`, `KeyAgreement`, `SecretKeyFactory`), `SSLContext`, `X509Certificate`, `SecureRandom`, BouncyCastle provider |
-| **Python** | `.py` | `hashlib`, PyCrypto/PyCryptodome, `cryptography.hazmat` (ciphers, hashes, KDF, RSA, EC, Ed25519/Ed448, X25519/X448, DH, X.509, Fernet), PyNaCl, `ssl`, `secrets`, `bcrypt`, `argon2`, `scrypt` |
-| **JavaScript / TypeScript** | `.js`, `.ts`, `.jsx`, `.tsx` | Node.js `crypto` (createHash, createCipher, createSign, ECDH, HKDF, scrypt, pbkdf2, generateKeyPair), WebCrypto (`crypto.subtle`), TLS (`createSecureContext`, `https`), npm packages (`bcrypt`, `jsonwebtoken`, `jose`, `tweetnacl`, `libsodium-wrappers`, `argon2`) |
+| **Java** | `.java` | JCE (`MessageDigest`, `Cipher`, `Signature`, `KeyPairGenerator`, `Mac`, `KeyAgreement`, `SecretKeyFactory`), `SSLContext`, `X509Certificate`, `SecureRandom`, KeyStore/TrustManagerFactory/KeyManagerFactory, GCMParameterSpec/IvParameterSpec/PBEKeySpec/DHParameterSpec/ECGenParameterSpec, **BouncyCastle deep** — low-level engines (AESEngine, RSAEngine, DESedeEngine, BlowfishEngine, TwofishEngine, CamelliaEngine, SerpentEngine, CAST5, IDEA, RC4, ChaCha, Salsa20, SM4, ARIA), AEAD (GCM, CCM, EAX, OCB, ChaCha20Poly1305), block cipher modes (CBC, CTR, CFB, OFB), digests (SHA-256/384/512, SHA-1, SHA-3, MD5, RIPEMD-160, Blake2b/s, SM3, Whirlpool), MACs (HMac, CMac, GMac, Poly1305, SipHash), signers (RSADigestSigner, PSSSigner, ECDSASigner, Ed25519/448Signer, SM2Signer, DSADigestSigner), key generators (RSA/EC/Ed25519/Ed448/X25519/X448), KDF (PKCS5S2, HKDF, SCrypt, Argon2), **PQC** — ML-KEM/Kyber, ML-DSA/Dilithium, SLH-DSA/SPHINCS+, Falcon, XMSS/LMS/HSS, FrodoKEM, BIKE, HQC, CMCE, NTRU; key size extraction |
+| **Python** | `.py` | `hashlib`, PyCrypto/PyCryptodome, `cryptography.hazmat` — cipher algorithms (AES, TripleDES, ChaCha20, Camellia, SM4), modes (CBC, GCM, CTR, CFB, OFB, XTS), RSA padding (OAEP, PSS, PKCS1v15), ECDH, named curves (P-256/384/521), MultiFernet, serialization, SHAKE-128/256, KDF (HKDF, PBKDF2, scrypt), RSA/EC/Ed25519/Ed448/X25519/X448/DH, X.509, Fernet; PyNaCl, `ssl`, `secrets`, `bcrypt`, `argon2`, `scrypt`, paramiko (SSH), PyJWT/jose, key size extraction; **PQC** — liboqs-python (`oqs.KeyEncapsulation`, `oqs.Signature`), pqcrypto package, ML-KEM/Kyber, ML-DSA/Dilithium, SLH-DSA/SPHINCS+, Falcon, FrodoKEM, BIKE, HQC, NTRU |
+| **JavaScript / TypeScript** | `.js`, `.ts`, `.jsx`, `.tsx` | Node.js `crypto` (createHash, createCipher, createSign, ECDH, HKDF, scrypt, pbkdf2, generateKeyPair, createSecretKey, createPrivateKey, createPublicKey, sign, verify, generatePrime, X509Certificate, diffieHellman, getRandomValues), WebCrypto (`crypto.subtle`), TLS (`createSecureContext`, `https`); **npm packages** — crypto-js (AES, DES, 3DES, SHA-*, MD5, HMAC, PBKDF2, Rabbit, RC4), node-forge (cipher, md, pki, tls, hmac), elliptic (EC/EdDSA with curve extraction), @noble/hashes, @noble/curves, @noble/ed25519, @noble/secp256k1, node-rsa, openpgp, ssh2, bcrypt, jsonwebtoken, jose, tweetnacl, libsodium-wrappers, argon2; **PQC** — crystals-kyber, pqc, liboqs |
 | **C / C++** | `.c`, `.cpp`, `.cxx`, `.cc`, `.h`, `.hpp`, `.hxx` | OpenSSL EVP + legacy APIs, libsodium, Botan (including PQC: Dilithium, Kyber, SPHINCS+), Crypto++, Windows CNG/BCrypt, wolfSSL, mbedTLS, GnuTLS |
 | **C# / .NET** | `.cs` | `System.Security.Cryptography` (Create, Managed, CNG, CSP variants), HMAC, `Rfc2898DeriveBytes`, HKDF, `X509Certificate2`, `SslStream`, DPAPI, ASP.NET Core Data Protection, BouncyCastle .NET |
-| **Go** | `.go` | `crypto/*` stdlib (`sha256`, `aes`, `rsa`, `ecdsa`, `ecdh`, `ed25519`, `hmac`, `tls`, `x509`, `rand`, `elliptic`, `cipher`), `golang.org/x/crypto` (`chacha20poly1305`, `argon2`, `bcrypt`, `scrypt`, `nacl`, `hkdf`, `pbkdf2`, `sha3`, `blake2b/s`, `ssh`, `curve25519`) |
+| **Go** | `.go` | `crypto/*` stdlib (`sha256`, `aes`, `rsa`, `ecdsa`, `ecdh`, `ed25519`, `hmac`, `tls`, `x509`, `rand`, `elliptic`, `cipher`), `golang.org/x/crypto` (`chacha20poly1305`, `argon2`, `bcrypt`, `scrypt`, `nacl`, `hkdf`, `pbkdf2`, `sha3`, `blake2b/s`, `ssh`, `curve25519`, `twofish`, `blowfish`, `cast5`, `tea`, `xtea`, `xts`, `poly1305`, `openpgp`, `acme`), **CIRCL PQC** (`kem/kyber`, `kem/mlkem`, `sign/dilithium`, `sign/mldsa`, `sign/ed448`, `kem/frodo`, `hpke`, `sign/sphincs`), liboqs-go (`oqs.KeyEncapsulation`, `oqs.Signature`), RSA key size extraction |
 | **PHP** | `.php` | `openssl_*` (encrypt, sign, pkey, x509, pkcs), `hash`/`hash_hmac`/`hash_pbkdf2`, `password_hash` (bcrypt, argon2), `sodium_crypto_*` (secretbox, box, sign, aead, pwhash, kdf, kx), `mcrypt` (deprecated), phpseclib, Defuse PHP-Encryption |
+| **Rust** | `.rs` | **ring** (digest, HMAC, AEAD, signatures, key agreement, KDF, PRNG), **RustCrypto** ecosystem (sha2, sha3, sha1, md5, blake2/3, aes, aes-gcm, chacha20poly1305, des, cbc/ctr modes, hmac/cmac/poly1305, rsa, ed25519-dalek, p256/p384/k256, ecdsa/dsa, x25519-dalek, hkdf/pbkdf2/scrypt/argon2/bcrypt, rand), **rustls** (TLS 1.2/1.3), **openssl** crate (symm, hash, sign, pkey, rsa, ec, ssl, x509), **sodiumoxide** (secretbox, box, sign, hash, auth, aead, scalarmult, pwhash, kdf, stream, generichash, randombytes), **snow** (Noise Protocol), **orion** (aead, hash, auth, kdf, pwhash), **PQC** — pqcrypto (dilithium, sphincsplus, falcon, kyber, saber, mceliece, hqc, bike, frodo), oqs crate (ML-DSA, ML-KEM, Falcon, SLH-DSA, BIKE, HQC, FrodoKEM, ClassicMcEliece), x509/rcgen/pem/pkcs8/pkcs1, Cargo.toml dependency detection |
+| **Config / Artifacts** | `.pem`, `.crt`, `.key`, `.p12`, `.jks`, `.conf`, `.cnf`, `.security`, `.yml`, `.properties`, etc. | PEM-encoded certificates & private keys (X.509, RSA/EC/DSA/SSH/PKCS8), `java.security` (providers, disabled algorithms, keystore type, SecureRandom source), `openssl.cnf` (default_md, CipherString, MinProtocol/MaxProtocol, FIPS mode), Spring Boot `server.ssl.*`, ASP.NET `SslProtocols`, Nginx `ssl_protocols`/`ssl_ciphers`/`ssl_certificate`, Apache `SSLProtocol`/`SSLCipherSuite`, Docker/K8s TLS file refs, SSH config (`KexAlgorithms`, `Ciphers`, `MACs`) |
 
 ### Scanner Module Architecture
 
@@ -2542,17 +2554,19 @@ scanner/
 ├── scannerUtils.ts          # globToRegex, shouldExcludeFile, normaliseAlgorithmName, resolveVariableToAlgorithm
 ├── contextScanners.ts       # scanWebCryptoContext, scanX509Context, scanNearbyContext
 └── patterns/
-    ├── index.ts             # Re-exports all patterns + combined allCryptoPatterns array
-    ├── javaPatterns.ts      # ~43 Java/JCE patterns
-    ├── pythonPatterns.ts    # ~60 Python patterns
-    ├── jsPatterns.ts        # ~40 JavaScript/TypeScript patterns
+    ├── index.ts             # Re-exports all patterns + combined allCryptoPatterns & allConfigPatterns arrays
+    ├── javaPatterns.ts      # ~140 Java/JCE + deep BouncyCastle + PQC patterns
+    ├── pythonPatterns.ts    # ~115 Python patterns (hazmat, PQC, paramiko, PyJWT)
+    ├── jsPatterns.ts        # ~95 JavaScript/TypeScript patterns (crypto-js, node-forge, @noble, PQC)
     ├── cppPatterns.ts       # ~170 C/C++ patterns
     ├── csharpPatterns.ts    # ~100 C#/.NET patterns
-    ├── goPatterns.ts        # ~130 Go patterns
-    └── phpPatterns.ts       # ~130 PHP patterns
+    ├── goPatterns.ts        # ~165 Go patterns (x/crypto, CIRCL PQC, liboqs-go)
+    ├── phpPatterns.ts       # ~130 PHP patterns
+    ├── rustPatterns.ts      # ~170 Rust patterns (ring, RustCrypto, rustls, sodiumoxide, PQC)
+    └── configPatterns.ts    # ~60 config/artifact patterns (PEM, java.security, openssl.cnf, TLS)
 ```
 
-Each pattern file exports a `CryptoPattern[]` array. The `allCryptoPatterns` combined array is used by `scannerAggregator.ts` to drive the scan loop.
+Each pattern file exports a `CryptoPattern[]` array. The `allCryptoPatterns` combined array is used by `scannerAggregator.ts` to drive the source code scan loop, while the separate `allConfigPatterns` array drives the configuration/artifact file scan phase.
 
 ### Variable-Argument Resolution
 
@@ -2601,7 +2615,33 @@ For certain crypto patterns whose security depends on **how they're used**, the 
 | **X.509 Certificate** | `X509Certificate`, `X509TrustManager` | Nearby `getInstance()` calls, signature algorithms |
 | **BouncyCastle Provider** | `new BouncyCastleProvider()`, `PROVIDER_NAME` | Nearby algorithm instantiations |
 
+Additionally, the scanner performs **cross-file enrichment** for BouncyCastle-Provider assets: when a `BouncyCastleProvider` is detected via provider registration but no specific algorithm is found nearby, the scanner searches all other detected assets for BouncyCastle-specific low-level engine classes (e.g., `AESEngine`, `GCMBlockCipher`, `SHA256Digest`) and enriches the provider asset description with a summary of algorithms found elsewhere in the project.
+
 This helps reviewers understand the **full cryptographic picture** around certificate and provider usage, even when the X.509 or provider reference itself doesn't name a specific algorithm.
+
+### Configuration & Artifact File Scanning
+
+Inspired by [cbomkit-theia](https://github.com/IBM/cbomkit)'s plugin architecture, the scanner includes a dedicated **configuration/artifact file scanning phase** that detects cryptographic settings in non-source-code files.
+
+**How it works:**
+
+1. After the source code scan completes, the scanner searches for configuration files by name and extension
+2. Target files include: `java.security`, `openssl.cnf`, `application.properties`, `appsettings.json`, `nginx.conf`, `httpd.conf`, `sshd_config`, `Cargo.toml`, `go.sum`, plus files with extensions `.pem`, `.crt`, `.key`, `.p12`, `.jks`, `.cnf`, `.conf`, `.security`, etc.
+3. Each file is scanned against `allConfigPatterns` (~60 dedicated patterns)
+4. Binary files (DER certificates, JKS keystores) are automatically skipped
+5. Detected items are added to the CBOM as first-class crypto assets with file location and description
+
+**Detected configuration categories:**
+
+| Category | What's Detected | Example Files |
+|----------|----------------|---------------|
+| **PEM Certificates & Keys** | X.509 certs, RSA/EC/DSA/PKCS8 private keys, public keys, CSRs, CRLs | `*.pem`, `*.crt`, `*.key` |
+| **Java Security** | Security providers, disabled algorithms (TLS/certpath/JAR), keystore type, SecureRandom source | `java.security` |
+| **OpenSSL Config** | Default digest/bits, cipher strings, min/max protocol, curves, FIPS mode | `openssl.cnf` |
+| **Application Config** | TLS/SSL settings in application frameworks | `application.properties`, `application.yml`, `appsettings.json` |
+| **Web Server TLS** | Protocol versions, cipher suites, certificate paths | `nginx.conf`, `httpd.conf`, `ssl.conf` |
+| **SSH** | Key exchange algorithms, ciphers, MACs, host key algorithms | `sshd_config`, `ssh_config` |
+| **Container/Orchestration** | TLS file references, certificate mounts | `Dockerfile`, `docker-compose.yml`, K8s manifests |
 
 ---
 
