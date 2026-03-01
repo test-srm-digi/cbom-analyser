@@ -921,7 +921,39 @@ export function classifyAlgorithm(algorithmName: string): AlgorithmProfile {
  * note that actual algorithms are classified separately.
  */
 export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
-  const profile = classifyAlgorithm(asset.name);
+  // ── Normalize bare-number algorithm names ──
+  // sonar-cryptography sometimes extracts key sizes as algorithm names (e.g. "3072"
+  // from `rsaKeyGen.initialize(3072)`). Rename these to something meaningful.
+  let normalizedAsset = asset;
+  if (/^\d{3,5}$/.test(asset.name)) {
+    const keySize = parseInt(asset.name, 10);
+    const functions = asset.cryptoProperties?.algorithmProperties?.cryptoFunctions ?? [];
+    const hasKeygen = functions.some((f: string) => f.toLowerCase() === 'keygen');
+    // Infer algorithm from context: key size + keygen → likely RSA key generation
+    let inferredName: string;
+    if (keySize >= 1024 && keySize <= 16384 && (keySize & (keySize - 1)) === 0 || [3072, 7680, 15360].includes(keySize)) {
+      // Common RSA key sizes: 1024, 2048, 3072, 4096, 7680, 8192, 15360, 16384
+      inferredName = `RSA-${keySize}`;
+    } else if (keySize >= 128 && keySize <= 521) {
+      // Likely EC curve size (P-256 = 256, P-384 = 384, P-521 = 521) or symmetric key
+      if (keySize === 256 || keySize === 384 || keySize === 521) {
+        inferredName = `EC-${keySize}`;
+      } else {
+        inferredName = `AES-${keySize}`;
+      }
+    } else {
+      inferredName = `RSA-${keySize}`;
+    }
+    normalizedAsset = {
+      ...asset,
+      name: inferredName,
+      description: asset.description
+        ? asset.description
+        : `Key size ${keySize}-bit detected${hasKeygen ? ' in key generation' : ''}. Originally reported as bare number "${asset.name}".`,
+    };
+  }
+
+  const profile = classifyAlgorithm(normalizedAsset.name);
 
   // ── Phase 1C: BC-Provider / JCE-Registration / Library reclassification ──
   if (profile.isInformational) {
@@ -931,38 +963,38 @@ export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
       verdict: PQCReadinessVerdict.REVIEW_NEEDED,
       confidence: 10,
       reasons: [
-        `${asset.name} is informational — this is a provider/framework/library registration, not an algorithm.`,
+        `${normalizedAsset.name} is informational — this is a provider/framework/library registration, not an algorithm.`,
         'The actual cryptographic algorithms used through this provider are detected and classified as separate findings.',
         ...(profile.notes ? [profile.notes] : []),
-        ...(asset.description ? [`\u{1F50D} ${asset.description}`] : []),
+        ...(normalizedAsset.description ? [`\u{1F50D} ${normalizedAsset.description}`] : []),
       ],
       recommendation: 'No direct action needed. Review the individual algorithm classifications that use this provider/library.',
     };
 
     return {
-      ...asset,
+      ...normalizedAsset,
       quantumSafety: QuantumSafetyStatus.CONDITIONAL,
       pqcVerdict,
       complianceStatus: ComplianceStatus.COMPLIANT,  // Informational entries are not compliance violations
-      description: asset.description
-        ? (asset.description.startsWith('[INFORMATIONAL]')
-          ? asset.description
-          : `[INFORMATIONAL] ${asset.description}`)
-        : `[INFORMATIONAL] ${asset.name} — provider/library reference, not an algorithm. See individual algorithm findings.`,
+      description: normalizedAsset.description
+        ? (normalizedAsset.description.startsWith('[INFORMATIONAL]')
+          ? normalizedAsset.description
+          : `[INFORMATIONAL] ${normalizedAsset.description}`)
+        : `[INFORMATIONAL] ${normalizedAsset.name} — provider/library reference, not an algorithm. See individual algorithm findings.`,
     };
   }
 
   // Build a pqcVerdict for definitively classified assets so the frontend always has verdict data
-  let pqcVerdict = asset.pqcVerdict;
+  let pqcVerdict = normalizedAsset.pqcVerdict;
   if (!pqcVerdict && profile.quantumSafety !== QuantumSafetyStatus.UNKNOWN) {
     if (profile.quantumSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE) {
       pqcVerdict = {
         verdict: PQCReadinessVerdict.NOT_PQC_READY,
         confidence: 95,
         reasons: [
-          `${asset.name} is classified as not quantum-safe.`,
+          `${normalizedAsset.name} is classified as not quantum-safe.`,
           ...(profile.notes ? [profile.notes] : []),
-          ...(asset.description ? [`\u{1F50D} ${asset.description}`] : []),
+          ...(normalizedAsset.description ? [`\u{1F50D} ${normalizedAsset.description}`] : []),
         ],
         recommendation: profile.recommendedPQC
           ? `Replace with ${profile.recommendedPQC}.`
@@ -973,9 +1005,9 @@ export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
         verdict: PQCReadinessVerdict.PQC_READY,
         confidence: 95,
         reasons: [
-          `${asset.name} is classified as quantum-safe.`,
+          `${normalizedAsset.name} is classified as quantum-safe.`,
           ...(profile.notes ? [profile.notes] : []),
-          ...(asset.description ? [`\u{1F50D} ${asset.description}`] : []),
+          ...(normalizedAsset.description ? [`\u{1F50D} ${normalizedAsset.description}`] : []),
         ],
         recommendation: 'No migration needed.',
       };
@@ -984,9 +1016,9 @@ export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
         verdict: PQCReadinessVerdict.REVIEW_NEEDED,
         confidence: 40,
         reasons: [
-          `${asset.name} quantum safety is conditional on configuration/parameters.`,
+          `${normalizedAsset.name} quantum safety is conditional on configuration/parameters.`,
           ...(profile.notes ? [profile.notes] : []),
-          ...(asset.description ? [`\u{1F50D} ${asset.description}`] : []),
+          ...(normalizedAsset.description ? [`\u{1F50D} ${normalizedAsset.description}`] : []),
         ],
         recommendation: profile.recommendedPQC
           ? `Consider ${profile.recommendedPQC} if current parameters are insufficient.`
@@ -998,14 +1030,14 @@ export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
   // Respect quantumSafety if it was already promoted/demoted by the parameter
   // analyzer (i.e. not UNKNOWN and different from the DB's generic classification).
   const effectiveSafety =
-    asset.quantumSafety !== QuantumSafetyStatus.UNKNOWN &&
-    asset.quantumSafety !== QuantumSafetyStatus.CONDITIONAL &&
-    asset.quantumSafety !== profile.quantumSafety
-      ? asset.quantumSafety
+    normalizedAsset.quantumSafety !== QuantumSafetyStatus.UNKNOWN &&
+    normalizedAsset.quantumSafety !== QuantumSafetyStatus.CONDITIONAL &&
+    normalizedAsset.quantumSafety !== profile.quantumSafety
+      ? normalizedAsset.quantumSafety
       : profile.quantumSafety;
 
   return {
-    ...asset,
+    ...normalizedAsset,
     quantumSafety: effectiveSafety,
     recommendedPQC: profile.recommendedPQC,
     pqcVerdict,

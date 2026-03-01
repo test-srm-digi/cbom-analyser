@@ -128,6 +128,8 @@ export interface XBOMGenerateRequest {
   sbomJson?: string;
   /** Skip CBOM scan if CBOM JSON is supplied directly */
   cbomJson?: string;
+  /** External tool configuration (CodeQL, cbomkit-theia, CryptoAnalysis) */
+  externalTools?: import('./cbom.types').ExternalToolOptions;
 }
 
 export interface XBOMResponse {
