@@ -639,6 +639,235 @@ const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
     notes: 'BLAKE3 hash — quantum-resistant.',
   },
+
+  // ─── Key sizes detected as standalone algorithm names ─────────────────
+  // sonar-cryptography sometimes extracts bare key-size numbers (e.g. "3072")
+  // when parsing KeyPairGenerator.initialize(3072) or similar calls.
+  '3072': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-KEM (Kyber)',
+    notes: 'RSA-3072 key size — quantum-vulnerable via Shor\'s algorithm. Detected as bare key-size number from KeyPairGenerator or similar API.',
+  },
+  '2048': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-KEM (Kyber)',
+    notes: 'RSA-2048 key size — quantum-vulnerable via Shor\'s algorithm.',
+  },
+  '4096': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-KEM (Kyber-1024)',
+    notes: 'RSA-4096 key size — quantum-vulnerable via Shor\'s algorithm.',
+  },
+  '1024': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-KEM (Kyber)',
+    notes: 'RSA-1024 key size — classically weak and quantum-vulnerable.',
+  },
+  'RSA-3072': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-KEM (Kyber)',
+    notes: 'RSA with 3072-bit key — quantum-vulnerable via Shor\'s algorithm.',
+  },
+
+  // ─── NIST named curves ────────────────────────────────────────────────
+  'P-256': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium) / ML-KEM (Kyber)',
+    notes: 'NIST P-256 curve (secp256r1) — ECDSA/ECDH on this curve is vulnerable to Shor\'s algorithm.',
+  },
+  'P-384': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium) / ML-KEM (Kyber)',
+    notes: 'NIST P-384 curve (secp384r1) — ECDSA/ECDH on this curve is vulnerable to Shor\'s algorithm.',
+  },
+  'P-521': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium) / ML-KEM (Kyber)',
+    notes: 'NIST P-521 curve (secp521r1) — ECDSA/ECDH on this curve is vulnerable to Shor\'s algorithm.',
+  },
+  'secp256r1': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium) / ML-KEM (Kyber)',
+    notes: 'secp256r1 (NIST P-256) — vulnerable to Shor\'s algorithm.',
+  },
+  'secp384r1': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium) / ML-KEM (Kyber)',
+    notes: 'secp384r1 (NIST P-384) — vulnerable to Shor\'s algorithm.',
+  },
+  'secp521r1': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium) / ML-KEM (Kyber)',
+    notes: 'secp521r1 (NIST P-521) — vulnerable to Shor\'s algorithm.',
+  },
+  'prime256v1': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium) / ML-KEM (Kyber)',
+    notes: 'prime256v1 (alias for NIST P-256/secp256r1) — vulnerable to Shor\'s algorithm.',
+  },
+
+  // ─── Crypto library references (informational, not algorithms) ────────
+  'ring': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Crypto library or key ring reference — not a specific algorithm. May refer to the Rust "ring" library or Java GPG key ring infrastructure. Quantum safety depends on the actual algorithms used.',
+    isInformational: true,
+  },
+  'node-forge': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'node-forge JavaScript crypto library — not an algorithm itself. Provides RSA, AES, HMAC and other implementations. Quantum safety depends on which algorithms are used through it.',
+    isInformational: true,
+  },
+  'crypto-js': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'CryptoJS JavaScript library — not an algorithm itself. Quantum safety depends on which algorithms are used.',
+    isInformational: true,
+  },
+  'openssl': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'OpenSSL library reference — not an algorithm itself. Quantum safety depends on the algorithms and protocols configured.',
+    isInformational: true,
+  },
+
+  // ─── Key/certificate storage formats ──────────────────────────────────
+  'PKCS12': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'PKCS#12 key/certificate container format — not an algorithm. Quantum safety depends on the key types and algorithms stored inside (RSA/EC → vulnerable, PQC → safe).',
+  },
+  'PKCS#12': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'PKCS#12 key/certificate container format — not an algorithm. Quantum safety depends on the key types stored inside.',
+  },
+  'PKCS1': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-KEM (Kyber) / ML-DSA (Dilithium)',
+    notes: 'PKCS#1 is an RSA-specific standard — quantum-vulnerable via Shor\'s algorithm.',
+  },
+  'PKCS8': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'PKCS#8 private key format — quantum safety depends on the key type (RSA/EC → vulnerable, PQC → safe).',
+  },
+  'JKS': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Java KeyStore format — quantum safety depends on the key types stored (RSA/EC → vulnerable, PQC → safe).',
+  },
+  'JCEKS': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Java CE KeyStore format — quantum safety depends on the key types stored.',
+  },
+  'PEM': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'PEM encoding format — quantum safety depends on the key/certificate type encoded.',
+  },
+
+  // ─── Password-Based Encryption ────────────────────────────────────────
+  'PBE': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Password-Based Encryption — symmetric-derived, not directly broken by quantum computers. Grover\'s halves effective key-derivation work factor. Review underlying cipher and iteration count.',
+  },
+  'PBEWithMD5AndDES': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'PBKDF2-HMAC-SHA256 + AES-256',
+    notes: 'PBE with MD5 and DES — classically broken (both MD5 and DES are insecure). Replace immediately.',
+  },
+  'PBEWithSHA1AndDESede': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'PBKDF2-HMAC-SHA256 + AES-256',
+    notes: 'PBE with SHA-1 and 3DES — SHA-1 is classically broken and 3DES is deprecated. Replace with modern alternatives.',
+  },
+  'PBEWithSHA1AndRC2_40': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'PBKDF2-HMAC-SHA256 + AES-256',
+    notes: 'PBE with SHA-1 and RC2-40 — extremely weak (40-bit key). Replace immediately.',
+  },
+  'PBEWithHmacSHA256AndAES_256': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'PBE with HMAC-SHA256 and AES-256 — strong configuration. Not directly quantum-vulnerable.',
+  },
+
+  // ─── Additional signature algorithm formats ───────────────────────────
+  'SHA1withRSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'SHA-1 with RSA signature — doubly insecure: SHA-1 is classically broken AND RSA is quantum-vulnerable.',
+  },
+  'SHA256withRSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'SHA-256 with RSA signature — quantum-vulnerable via Shor\'s algorithm on RSA.',
+  },
+  'SHA384withRSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'SHA-384 with RSA signature — quantum-vulnerable via Shor\'s algorithm on RSA.',
+  },
+  'SHA512withRSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'SHA-512 with RSA signature — quantum-vulnerable via Shor\'s algorithm on RSA.',
+  },
+  'SHA224withRSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'SHA-224 with RSA signature — quantum-vulnerable.',
+  },
+  'SHA256WithRSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'SHA-256 with RSA signature — quantum-vulnerable via Shor\'s algorithm.',
+  },
+  'SHA1withECDSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'SHA-1 with ECDSA — doubly insecure: SHA-1 is classically broken AND ECDSA is quantum-vulnerable.',
+  },
+  'SHA224withECDSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'SHA-224 with ECDSA — quantum-vulnerable.',
+  },
+  'SHA256withECDSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'SHA-256 with ECDSA — quantum-vulnerable via Shor\'s algorithm on ECDSA.',
+  },
+  'SHA384withECDSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'SHA-384 with ECDSA — quantum-vulnerable.',
+  },
+  'SHA512withECDSA': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'ML-DSA (Dilithium)',
+    notes: 'SHA-512 with ECDSA — quantum-vulnerable.',
+  },
+
+  // ─── ML-DSA parameter sets (NIST FIPS 204) ───────────────────────────
+  'ML-DSA-44': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'ML-DSA-44 (NIST security level 2) — post-quantum digital signature.',
+  },
+  'ML-DSA-65': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'ML-DSA-65 (NIST security level 3) — post-quantum digital signature.',
+  },
+  'ML-DSA-87': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'ML-DSA-87 (NIST security level 5) — post-quantum digital signature.',
+  },
+
+  // ─── ML-KEM parameter sets (NIST FIPS 203) ───────────────────────────
+  'ML-KEM-512': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'ML-KEM-512 (NIST security level 1) — post-quantum key encapsulation.',
+  },
+  'ML-KEM-768': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'ML-KEM-768 (NIST security level 3) — post-quantum key encapsulation.',
+  },
+  'ML-KEM-1024': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'ML-KEM-1024 (NIST security level 5) — post-quantum key encapsulation.',
+  },
 };
 
 // ─── Risk Engine Functions ───────────────────────────────────────────────────
@@ -694,18 +923,20 @@ export function classifyAlgorithm(algorithmName: string): AlgorithmProfile {
 export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
   const profile = classifyAlgorithm(asset.name);
 
-  // ── Phase 1C: BC-Provider / JCE-Registration reclassification ──
+  // ── Phase 1C: BC-Provider / JCE-Registration / Library reclassification ──
   if (profile.isInformational) {
-    const pqcVerdict = asset.pqcVerdict ?? {
+    // Always override pqcVerdict for informational assets — force low confidence (10)
+    // to prevent scanner-generated confidence: 40 from inflating their importance.
+    const pqcVerdict = {
       verdict: PQCReadinessVerdict.REVIEW_NEEDED,
       confidence: 10,
       reasons: [
-        `${asset.name} is informational — this is a provider/framework registration, not an algorithm.`,
+        `${asset.name} is informational — this is a provider/framework/library registration, not an algorithm.`,
         'The actual cryptographic algorithms used through this provider are detected and classified as separate findings.',
         ...(profile.notes ? [profile.notes] : []),
         ...(asset.description ? [`\u{1F50D} ${asset.description}`] : []),
       ],
-      recommendation: 'No direct action needed. Review the individual algorithm classifications that use this provider.',
+      recommendation: 'No direct action needed. Review the individual algorithm classifications that use this provider/library.',
     };
 
     return {
@@ -714,8 +945,10 @@ export function enrichAssetWithPQCData(asset: CryptoAsset): CryptoAsset {
       pqcVerdict,
       complianceStatus: ComplianceStatus.COMPLIANT,  // Informational entries are not compliance violations
       description: asset.description
-        ? `[INFORMATIONAL] ${asset.description}`
-        : `[INFORMATIONAL] ${asset.name} — provider registration, not an algorithm. See individual algorithm findings.`,
+        ? (asset.description.startsWith('[INFORMATIONAL]')
+          ? asset.description
+          : `[INFORMATIONAL] ${asset.description}`)
+        : `[INFORMATIONAL] ${asset.name} — provider/library reference, not an algorithm. See individual algorithm findings.`,
     };
   }
 
@@ -820,21 +1053,26 @@ export function syncQuantumSafetyWithVerdict(assets: CryptoAsset[]): CryptoAsset
  * Calculate the Quantum Readiness Score for a set of crypto assets.
  * Score is 0-100 where 100 = all assets are quantum-safe.
  *
+ * Informational assets (provider/library registrations) are excluded from
+ * the score calculation since they don't represent actual algorithms.
+ *
  * If assets have a pqcVerdict, that verdict is used for more precise scoring:
  *   PQC_READY     → 1.0  (not just the flat 0.75 for conditional)
  *   NOT_PQC_READY → 0.0
  *   REVIEW_NEEDED → 0.5
  */
 export function calculateReadinessScore(assets: CryptoAsset[]): QuantumReadinessScore {
-  const total = assets.length;
+  // Filter out informational assets for scoring (they are not actionable)
+  const actionableAssets = filterInformationalAssets(assets);
+  const total = actionableAssets.length;
   if (total === 0) {
     return { score: 100, totalAssets: 0, quantumSafe: 0, notQuantumSafe: 0, conditional: 0, unknown: 0 };
   }
 
-  const quantumSafe = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.QUANTUM_SAFE).length;
-  const notQuantumSafe = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE).length;
-  const conditional = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.CONDITIONAL).length;
-  const unknown = assets.filter(a => a.quantumSafety === QuantumSafetyStatus.UNKNOWN).length;
+  const quantumSafe = actionableAssets.filter(a => a.quantumSafety === QuantumSafetyStatus.QUANTUM_SAFE).length;
+  const notQuantumSafe = actionableAssets.filter(a => a.quantumSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE).length;
+  const conditional = actionableAssets.filter(a => a.quantumSafety === QuantumSafetyStatus.CONDITIONAL).length;
+  const unknown = actionableAssets.filter(a => a.quantumSafety === QuantumSafetyStatus.UNKNOWN).length;
 
   // Verdict-aware scoring
   let weightedSum = quantumSafe; // safe = 1.0 each
@@ -842,7 +1080,7 @@ export function calculateReadinessScore(assets: CryptoAsset[]): QuantumReadiness
   weightedSum += unknown * 0.5;
 
   // Conditional assets: use their pqcVerdict if available for precise scoring
-  for (const asset of assets) {
+  for (const asset of actionableAssets) {
     if (asset.quantumSafety === QuantumSafetyStatus.CONDITIONAL) {
       if (asset.pqcVerdict) {
         switch (asset.pqcVerdict.verdict) {
@@ -869,11 +1107,13 @@ export function calculateReadinessScore(assets: CryptoAsset[]): QuantumReadiness
 
 /**
  * Check compliance against NIST PQC policy.
+ * Informational assets are excluded from compliance checking.
  */
 export function checkNISTPQCCompliance(assets: CryptoAsset[]): ComplianceSummary {
-  const compliantAssets = assets.filter(a => a.complianceStatus === ComplianceStatus.COMPLIANT).length;
-  const nonCompliantAssets = assets.filter(a => a.complianceStatus === ComplianceStatus.NOT_COMPLIANT).length;
-  const unknownAssets = assets.filter(a =>
+  const actionable = filterInformationalAssets(assets);
+  const compliantAssets = actionable.filter(a => a.complianceStatus === ComplianceStatus.COMPLIANT).length;
+  const nonCompliantAssets = actionable.filter(a => a.complianceStatus === ComplianceStatus.NOT_COMPLIANT).length;
+  const unknownAssets = actionable.filter(a =>
     a.complianceStatus === ComplianceStatus.UNKNOWN || !a.complianceStatus
   ).length;
 
@@ -881,7 +1121,7 @@ export function checkNISTPQCCompliance(assets: CryptoAsset[]): ComplianceSummary
     isCompliant: nonCompliantAssets === 0,
     policy: 'NIST Post-Quantum Cryptography',
     source: 'Basic Local Compliance Service',
-    totalAssets: assets.length,
+    totalAssets: actionable.length,
     compliantAssets,
     nonCompliantAssets,
     unknownAssets,

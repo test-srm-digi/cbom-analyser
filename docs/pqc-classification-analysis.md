@@ -231,6 +231,7 @@ These assets **cannot** be automatically resolved to quantum-safe or not-quantum
 **Current mitigation:**
 - Dependency-sourced X.509: Classified `NOT_PQC_READY` at 70% confidence (most deployed certs use RSA/ECDSA)
 - Source-code X.509: Parameter analyzer searches for `SHA256withRSA`, `ML-DSA`, etc. in surrounding context
+- **Certificate file parsing (Phase 1A) ✅**: The `certificateFileScanner.ts` now parses `.pem`, `.crt`, `.cer`, `.der` files in the repository, extracting actual signature algorithms and public key types. This resolves X.509 conditionals where certificate files exist in the repo.
 
 **What would fix it:**
 - **Runtime certificate inspection** (not static analysis) — examine actual cert chains
@@ -246,9 +247,13 @@ These assets **cannot** be automatically resolved to quantum-safe or not-quantum
 - A single `Security.addProvider(new BouncyCastleProvider())` registration makes ALL BouncyCastle algorithms available — the scanner detects the registration, not the usage.
 - Which algorithms are actually **used** through the provider requires tracing `Cipher.getInstance()`, `Signature.getInstance()`, etc. calls — these are detected separately.
 
-**Current mitigation:** `REVIEW_NEEDED` at 40% confidence. Points user to audit registered algorithms.
+**Current mitigation:** These detections are now marked as **informational** via the `isInformational` flag in `pqcRiskEngine.ts` (Phase 1C ✅). Informational assets receive:
+- Confidence: **10** (minimal)
+- PQC status: **COMPLIANT**
+- Name prefix: **[INFORMATIONAL]**
+- Excluded from risk scoring and conditional/unknown counts
 
-**What would fix it:** These detections are actually **informational** — they flag that BouncyCastle is present. The actual algorithm usages are captured by separate detections (RSA, AES, etc.). Consider filtering these from the asset count entirely.
+Use `isInformationalAsset()` or `filterInformationalAssets()` to identify/remove them from reports.
 
 ### 3. WebCrypto (Browser API Wrapper)
 
@@ -263,7 +268,7 @@ These assets **cannot** be automatically resolved to quantum-safe or not-quantum
   ```
 - When the algorithm **is** a string literal, the new analyzer can resolve it.
 
-**Current mitigation:** New `analyzeWebCrypto()` analyzer extracts algorithm from `crypto.subtle.*({name: 'AES-GCM'...})` patterns. Falls back to `REVIEW_NEEDED` if argument is dynamic.
+**Current mitigation:** New `analyzeWebCrypto()` analyzer extracts algorithm from `crypto.subtle.*({name: 'AES-GCM'...})` patterns. Enhanced 7-strategy variable resolution (Phase 1B ✅) in `scannerUtils.ts` can now resolve many dynamic arguments through backward search, class constants, ternary expressions, enum/switch-case, method parameter tracing, string concatenation, and cross-file imports. Falls back to `REVIEW_NEEDED` if argument is still dynamic after all strategies.
 
 ### 4. MessageDigest (Java Digest Wrapper)
 
@@ -337,8 +342,10 @@ The [PQCA CBOM Kit](https://github.com/PQCA/cbomkit) provides complementary tool
 
 ### For Development
 
-1. **AST Integration**: Consider integrating with SonarQube's sonar-cryptography for languages where regex-based detection is insufficient.
+1. **External Tool Integration ✅**: CodeQL, cbomkit-theia, and CryptoAnalysis integrations are implemented in `externalToolIntegration.ts`. Install any of these tools on the system to get enhanced detection with data flow analysis.
 
-2. **Certificate Runtime Scanner**: Extend the network scanner to inspect certificate chains in trust stores (JKS, PKCS12) from the repository, not just live endpoints.
+2. **Certificate File Scanning ✅**: The `certificateFileScanner.ts` parses certificate files in repositories. For keystores (`.jks`, `.p12`), detection is present but deep parsing requires passwords.
 
-3. **Confidence Thresholds**: The parameter analyzer uses conservative thresholds (≥70% for PQC_READY, ≥50% for NOT_PQC_READY). These can be tuned based on organizational risk appetite.
+3. **AST Integration**: Consider running SonarQube's sonar-cryptography in parallel for languages where regex-based detection is insufficient.
+
+4. **Confidence Thresholds**: The parameter analyzer uses conservative thresholds (≥70% for PQC_READY, ≥50% for NOT_PQC_READY). These can be tuned based on organizational risk appetite.
