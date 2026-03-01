@@ -477,3 +477,135 @@
   border-color: var(--dc1-primary, #0063e5);
   background: rgba(0, 99, 229, 0.06);
 }
+
+/* ── GitHub Actions workflow snippet ────── */
+
+.workflowSection {
+  margin-top: 20px;
+  border-top: 1px solid var(--dc1-border, #e2e8f0);
+  padding-top: 16px;
+}
+
+.workflowHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.workflowTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dc1-text, #1e293b);
+}
+
+.workflowSubtext {
+  font-size: 12px;
+  color: var(--dc1-text-muted, #64748b);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.yamlCodeWrap {
+  border: 1px solid var(--dc1-border, #e2e8f0);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1e1e2e;
+  margin-top: 8px;
+}
+
+.yamlCodeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: #2a2a3e;
+  border-bottom: 1px solid #3a3a50;
+}
+
+.yamlCodeFilename {
+  font-family: 'SFMono-Regular', 'Menlo', 'Monaco', monospace;
+  font-size: 11px;
+  color: #a0a0c0;
+  font-weight: 500;
+}
+
+.yamlCopyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid #4a4a60;
+  background: transparent;
+  color: #d0d0e8;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.yamlCopyBtn:hover {
+  background: #3a3a50;
+  border-color: #6a6a80;
+}
+
+.yamlCodeBlock {
+  padding: 14px 16px;
+  margin: 0;
+  overflow-x: auto;
+  max-height: 340px;
+  overflow-y: auto;
+  font-family: 'SFMono-Regular', 'Menlo', 'Monaco', monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #cdd6f4;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.yamlCodeBlock code {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+.yamlCodeBlock::-webkit-scrollbar { width: 6px; height: 6px; }
+.yamlCodeBlock::-webkit-scrollbar-track { background: transparent; }
+.yamlCodeBlock::-webkit-scrollbar-thumb { background: #4a4a60; border-radius: 3px; }
+
+.workflowLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--dc1-primary, #0063e5);
+  text-decoration: none;
+  margin-top: 8px;
+}
+
+.workflowLink:hover {
+  text-decoration: underline;
+}
+
+.orDivider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--dc1-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.orDivider::before,
+.orDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--dc1-border, #e2e8f0);
+}

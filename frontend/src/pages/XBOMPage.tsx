@@ -162,15 +162,156 @@ function GenerateOrMerge() {
   );
 }
 
+/* ── xBOM workflow YAML generator ────────── */
+function generateXBOMWorkflowYaml(opts: {
+  branches: string;
+  scanPath: string;
+  specVersion: string;
+  excludePatterns: string;
+  failOnVulnerable: boolean;
+  trivySeverity: string;
+}): string {
+  const branchList = opts.branches.split(',').map(b => b.trim()).filter(Boolean).join(', ');
+  return `# xBOM Generator — Unified SBOM + CBOM
+# Copy this file to .github/workflows/xbom.yml in your repository
+
+name: xBOM — Unified SBOM + CBOM
+
+on:
+  push:
+    branches: [${branchList}]
+  pull_request:
+    branches: [${branchList}]
+  workflow_dispatch:
+    inputs:
+      scan-path:
+        description: 'Path to scan'
+        default: '${opts.scanPath}'
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  xbom:
+    name: Generate xBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Step 1: Trivy SBOM
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Run Trivy (SBOM + Vulnerabilities)
+        run: |
+          trivy fs \\
+            --format cyclonedx \\
+            --output sbom.json \\
+            --severity "${opts.trivySeverity}" \\
+            --scanners vuln,license \\
+            "\${{ github.event.inputs.scan-path || '${opts.scanPath}' }}"
+
+      # Step 2: CBOM Analyser
+      - name: Run CBOM Analyser
+        uses: annanay-sharma/cbom-analyser@main
+        with:
+          output-format: json
+          output-file: cbom-report.json
+          scan-path: \${{ github.event.inputs.scan-path || '${opts.scanPath}' }}
+          exclude-patterns: '${opts.excludePatterns}'
+          fail-on-vulnerable: 'false'
+
+      # Step 3: Merge → xBOM
+      - name: Merge SBOM + CBOM → xBOM
+        uses: actions/github-script@v7
+        id: merge
+        with:
+          script: |
+            const fs = require('fs');
+            const crypto = require('crypto');
+            const sbom = JSON.parse(fs.readFileSync('sbom.json', 'utf-8'));
+            const cbomRaw = JSON.parse(fs.readFileSync('cbom-report.json', 'utf-8'));
+            const cbom = cbomRaw.cbom || cbomRaw;
+
+            const xbom = {
+              bomFormat: 'CycloneDX',
+              specVersion: '${opts.specVersion}',
+              serialNumber: \`urn:uuid:\$\{crypto.randomUUID()\}\`,
+              version: 1,
+              metadata: {
+                timestamp: new Date().toISOString(),
+                tools: [{ vendor: 'QuantumGuard', name: 'xBOM Merge', version: '1.0.0' }],
+                repository: {
+                  url: \`\$\{process.env.GITHUB_SERVER_URL\}/\$\{process.env.GITHUB_REPOSITORY\}\`,
+                  branch: process.env.GITHUB_REF_NAME
+                }
+              },
+              components: sbom.components || [],
+              cryptoAssets: cbom.cryptoAssets || [],
+              dependencies: [...(sbom.dependencies || []), ...(cbom.dependencies || [])],
+              vulnerabilities: sbom.vulnerabilities || [],
+              crossReferences: []
+            };
+
+            fs.writeFileSync('xbom.json', JSON.stringify(xbom, null, 2));
+            core.setOutput('total-components', xbom.components.length);
+            core.setOutput('total-crypto-assets', xbom.cryptoAssets.length);
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xbom-report
+          path: |
+            xbom.json
+            sbom.json
+            cbom-report.json
+          retention-days: 90${opts.failOnVulnerable ? `
+
+      - name: Check quantum safety
+        run: |
+          NOT_SAFE=$(cat xbom.json | python3 -c "import json,sys; d=json.load(sys.stdin); print(sum(1 for a in d.get('cryptoAssets',[]) if a.get('quantumSafety')!='quantum-safe'))")
+          if [ "$NOT_SAFE" -gt 0 ]; then
+            echo "❌ $NOT_SAFE non-quantum-safe cryptographic assets detected"
+            exit 1
+          fi` : ''}
+`;
+}
+
 function GenerateForm() {
   const [generateXBOM, { isLoading }] = useGenerateXBOMMutation();
   const [repoPath, setRepoPath] = useState('');
   const [branch, setBranch] = useState('');
   const [mode, setMode] = useState<'full' | 'sbom-only' | 'cbom-only'>('full');
   const [specVersion, setSpecVersion] = useState<'1.6' | '1.7'>('1.6');
-  const [repoUrl, setRepoUrl] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  /* ── GitHub Actions workflow snippet ── */
+  const [showWorkflow, setShowWorkflow] = useState(false);
+  const [wfBranches, setWfBranches] = useState('main');
+  const [wfScanPath, setWfScanPath] = useState('.');
+  const [wfExclude, setWfExclude] = useState('default');
+  const [wfFailOnVuln, setWfFailOnVuln] = useState(false);
+  const [wfSeverity, setWfSeverity] = useState('UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL');
+  const [copied, setCopied] = useState(false);
+
+  const workflowYaml = generateXBOMWorkflowYaml({
+    branches: wfBranches,
+    scanPath: wfScanPath,
+    specVersion,
+    excludePatterns: wfExclude,
+    failOnVulnerable: wfFailOnVuln,
+    trivySeverity: wfSeverity,
+  });
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(workflowYaml).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const handleSubmit = async () => {
     if (!repoPath.trim()) { setError('Repository / directory path is required'); return; }
@@ -181,13 +322,11 @@ function GenerateForm() {
         repoPath: repoPath.trim(),
         mode,
         specVersion,
-        repoUrl: repoUrl.trim() || undefined,
         branch: branch.trim() || undefined,
       }).unwrap();
       if (res.success) {
         setSuccess(`xBOM generated — ${res.analytics?.totalSoftwareComponents ?? 0} software components, ${res.analytics?.totalCryptoAssets ?? 0} crypto assets, ${res.analytics?.totalCrossReferences ?? 0} cross-references`);
         setRepoPath('');
-        setRepoUrl('');
         setBranch('');
       } else {
         setError(res.error || res.message || 'Generation failed');
@@ -199,9 +338,74 @@ function GenerateForm() {
 
   return (
     <div style={{ padding: '0 4px' }}>
+      {/* ── GitHub Actions Integration ── */}
+      <div className={s.workflowSection} style={{ borderTop: 'none', paddingTop: 0 }}>
+        <div className={s.workflowHeader} onClick={() => setShowWorkflow(!showWorkflow)}>
+          <span style={{ fontSize: 14, transition: 'transform 0.15s', transform: showWorkflow ? 'rotate(90deg)' : 'rotate(0)' }}>▶</span>
+          <span className={s.workflowTitle}>GitHub Actions Integration</span>
+          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: 'var(--dc1-bg-muted, #f1f5f9)', color: 'var(--dc1-text-muted)' }}>Recommended</span>
+        </div>
+        <p className={s.workflowSubtext}>
+          Add the xBOM workflow to your GitHub repository to automatically generate unified SBOM + CBOM reports on every push. Copy the YAML below into <code>.github/workflows/xbom.yml</code>.
+        </p>
+
+        {showWorkflow && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div className={s.formRow}>
+                <label>Branches</label>
+                <input value={wfBranches} onChange={(e) => setWfBranches(e.target.value)} placeholder="main, develop" />
+              </div>
+              <div className={s.formRow}>
+                <label>Scan Path</label>
+                <input value={wfScanPath} onChange={(e) => setWfScanPath(e.target.value)} placeholder="." />
+              </div>
+              <div className={s.formRow}>
+                <label>Exclude Patterns</label>
+                <input value={wfExclude} onChange={(e) => setWfExclude(e.target.value)} placeholder="default" />
+              </div>
+              <div className={s.formRow}>
+                <label>Trivy Severity Filter</label>
+                <input value={wfSeverity} onChange={(e) => setWfSeverity(e.target.value)} placeholder="CRITICAL,HIGH" />
+              </div>
+              <div className={s.formRow}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="checkbox" checked={wfFailOnVuln} onChange={(e) => setWfFailOnVuln(e.target.checked)} style={{ width: 'auto' }} />
+                  Fail if non-quantum-safe crypto detected
+                </label>
+              </div>
+            </div>
+
+            <div className={s.yamlCodeWrap}>
+              <div className={s.yamlCodeHeader}>
+                <span className={s.yamlCodeFilename}>.github/workflows/xbom.yml</span>
+                <button type="button" className={s.yamlCopyBtn} onClick={handleCopy}>
+                  {copied ? '✓ Copied!' : '⧉ Copy workflow'}
+                </button>
+              </div>
+              <pre className={s.yamlCodeBlock}><code>{workflowYaml}</code></pre>
+            </div>
+
+            <a
+              className={s.workflowLink}
+              href="https://github.com/annanay-sharma/cbom-analyser/blob/main/.github/workflows/xbom.yml"
+              target="_blank" rel="noreferrer"
+            >
+              View full reference workflow →
+            </a>
+          </>
+        )}
+      </div>
+
+      {/* ── OR divider ── */}
+      <div className={s.orDivider}>
+        <span>or scan locally</span>
+      </div>
+
+      {/* ── Local scan form ── */}
       <p style={{ fontSize: 13, color: 'var(--dc1-text-muted)', marginBottom: 16 }}>
-        Scan a local repository or directory. Trivy generates the SBOM (software dependencies + CVEs)
-        and the CBOM Analyser scans for cryptographic usage. Both are merged into a unified xBOM.
+        Scan a local directory on this server. Trivy generates the SBOM (if installed)
+        and the CBOM Analyser scans for cryptographic usage.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -230,11 +434,6 @@ function GenerateForm() {
             <option value="1.6">CycloneDX 1.6</option>
             <option value="1.7">CycloneDX 1.7</option>
           </select>
-        </div>
-
-        <div className={s.formRow} style={{ gridColumn: '1 / -1' }}>
-          <label>Repository URL (optional — adds metadata to the xBOM)</label>
-          <input placeholder="https://github.com/owner/repo" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} />
         </div>
       </div>
 
