@@ -142,17 +142,26 @@ if [ -f "$FULL_SCAN_PATH/pom.xml" ] || [ -f "$FULL_SCAN_PATH/build.gradle" ] || 
   echo -e "${YELLOW}📦 Java project detected — attempting compilation for deep analysis...${NC}"
   if [ -f "$FULL_SCAN_PATH/mvnw" ]; then
     chmod +x "$FULL_SCAN_PATH/mvnw" 2>/dev/null
-    if (cd "$FULL_SCAN_PATH" && ./mvnw compile -q -DskipTests -B 2>/dev/null); then
+    if COMPILE_OUT=$(cd "$FULL_SCAN_PATH" && ./mvnw compile -DskipTests -B 2>&1); then
       JAVA_BUILD_SUCCESS=true
+    else
+      echo "   Maven compile error (last 5 lines):"
+      echo "$COMPILE_OUT" | tail -5 | sed 's/^/   /'
     fi
   elif [ -f "$FULL_SCAN_PATH/gradlew" ]; then
     chmod +x "$FULL_SCAN_PATH/gradlew" 2>/dev/null
-    if (cd "$FULL_SCAN_PATH" && ./gradlew compileJava --no-daemon -q 2>/dev/null); then
+    if COMPILE_OUT=$(cd "$FULL_SCAN_PATH" && ./gradlew compileJava --no-daemon 2>&1); then
       JAVA_BUILD_SUCCESS=true
+    else
+      echo "   Gradle compile error (last 5 lines):"
+      echo "$COMPILE_OUT" | tail -5 | sed 's/^/   /'
     fi
   elif command -v mvn &>/dev/null && [ -f "$FULL_SCAN_PATH/pom.xml" ]; then
-    if (cd "$FULL_SCAN_PATH" && mvn compile -q -DskipTests -B 2>/dev/null); then
+    if COMPILE_OUT=$(cd "$FULL_SCAN_PATH" && mvn compile -DskipTests -B 2>&1); then
       JAVA_BUILD_SUCCESS=true
+    else
+      echo "   Maven compile error (last 5 lines):"
+      echo "$COMPILE_OUT" | tail -5 | sed 's/^/   /'
     fi
   fi
 

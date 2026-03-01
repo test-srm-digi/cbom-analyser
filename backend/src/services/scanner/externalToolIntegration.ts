@@ -84,7 +84,8 @@ export async function checkToolAvailability(): Promise<ToolAvailability> {
  */
 const CODEQL_QUERIES: Record<string, string> = {
   // Comprehensive query: find all crypto API getInstance() calls with string literal arguments.
-  // This works reliably with --build-mode=none (no compilation needed).
+  // Uses hasName() (simple class name) instead of hasQualifiedName() so it works
+  // with --build-mode=none where full type resolution may be partial.
   'CryptoAlgorithmDetection.ql': `
 /**
  * @name Cryptographic algorithm detection
@@ -100,17 +101,17 @@ where
   ma.getMethod().hasName("getInstance") and
   sl = ma.getArgument(0) and
   (
-    ma.getMethod().getDeclaringType().hasQualifiedName("java.security", "MessageDigest") or
-    ma.getMethod().getDeclaringType().hasQualifiedName("javax.crypto", "Cipher") or
-    ma.getMethod().getDeclaringType().hasQualifiedName("javax.crypto", "KeyGenerator") or
-    ma.getMethod().getDeclaringType().hasQualifiedName("java.security", "Signature") or
-    ma.getMethod().getDeclaringType().hasQualifiedName("java.security", "KeyPairGenerator") or
-    ma.getMethod().getDeclaringType().hasQualifiedName("javax.crypto", "KeyAgreement") or
-    ma.getMethod().getDeclaringType().hasQualifiedName("javax.crypto", "Mac") or
-    ma.getMethod().getDeclaringType().hasQualifiedName("javax.net.ssl", "SSLContext") or
-    ma.getMethod().getDeclaringType().hasQualifiedName("java.security", "AlgorithmParameters") or
-    ma.getMethod().getDeclaringType().hasQualifiedName("javax.crypto", "SecretKeyFactory") or
-    ma.getMethod().getDeclaringType().hasQualifiedName("java.security", "KeyFactory")
+    ma.getMethod().getDeclaringType().hasName("MessageDigest") or
+    ma.getMethod().getDeclaringType().hasName("Cipher") or
+    ma.getMethod().getDeclaringType().hasName("KeyGenerator") or
+    ma.getMethod().getDeclaringType().hasName("Signature") or
+    ma.getMethod().getDeclaringType().hasName("KeyPairGenerator") or
+    ma.getMethod().getDeclaringType().hasName("KeyAgreement") or
+    ma.getMethod().getDeclaringType().hasName("Mac") or
+    ma.getMethod().getDeclaringType().hasName("SSLContext") or
+    ma.getMethod().getDeclaringType().hasName("AlgorithmParameters") or
+    ma.getMethod().getDeclaringType().hasName("SecretKeyFactory") or
+    ma.getMethod().getDeclaringType().hasName("KeyFactory")
   )
 select ma, ma.getMethod().getDeclaringType().getName() + ".getInstance() uses algorithm: " + sl.getValue()
   `.trim(),
@@ -179,24 +180,25 @@ export async function runCodeQLAnalysis(
       fs.writeFileSync(path.join(queryDir, filename), content);
     }
 
-    // Write qlpack.yml with modern dependencies format
+    // Write qlpack.yml — use libraryPathDependencies (resolved via CodeQL's bundled
+    // packs, no registry download needed). This avoids the pack install step entirely.
     fs.writeFileSync(path.join(queryDir, 'qlpack.yml'), [
       'name: cbom-crypto-queries',
       'version: 0.0.1',
-      'dependencies:',
-      '  codeql/java-all: "*"',
+      'libraryPathDependencies:',
+      '  - codeql/java-all',
     ].join('\n'));
 
-    // Install CodeQL pack dependencies (downloads codeql/java-all from registry)
-    console.log('CodeQL: installing query pack dependencies...');
+    // Resolve CodeQL home to find bundled standard libraries
+    let codeqlHome = '';
     try {
-      await execAsync(`codeql pack install "${queryDir}" 2>&1`, { timeout: 120000 });
-      console.log('CodeQL: pack dependencies installed successfully');
-    } catch (err: any) {
-      const detail = err?.stdout || err?.stderr || err?.message || 'Unknown error';
-      console.warn(`CodeQL pack install warning: ${detail}`);
-      // Continue anyway — might work with bundled packs
+      const bin = execSync('which codeql', { encoding: 'utf-8' }).trim();
+      codeqlHome = path.dirname(fs.realpathSync(bin));
+      console.log(`CodeQL: home directory: ${codeqlHome}`);
+    } catch {
+      console.log('CodeQL: could not resolve home directory — will try default search path');
     }
+    const searchPathFlag = codeqlHome ? `--search-path="${codeqlHome}"` : '';
 
     // Step 1: Create CodeQL database
     // For compiled languages, try build command first, then fall back to --build-mode=none
@@ -273,17 +275,17 @@ export async function runCodeQLAnalysis(
 
     if (!dbCreated) return [];
 
-    // Step 2: Run queries
+    // Step 2: Run queries (--search-path tells CodeQL where to find bundled java-all library)
     const sarifOutput = path.join(tmpDir, 'results.sarif');
     console.log('CodeQL: running crypto analysis queries...');
     try {
-      await execAsync(
-        `codeql database analyze "${dbDir}" "${queryDir}" --format=sarifv2.1.0 --output="${sarifOutput}" 2>&1`,
-        { timeout: 600000 },  // 10 min timeout
-      );
+      const analyzeCmd = `codeql database analyze "${dbDir}" "${queryDir}" --format=sarifv2.1.0 --output="${sarifOutput}" ${searchPathFlag} 2>&1`;
+      console.log(`CodeQL: ${analyzeCmd}`);
+      const { stdout: analyzeOut } = await execAsync(analyzeCmd, { timeout: 600000 });
+      console.log(`CodeQL: analyze completed — ${analyzeOut.slice(-200)}`);
     } catch (err: any) {
       const detail = err?.stdout || err?.stderr || err?.message || 'Unknown error';
-      console.warn(`CodeQL analysis failed:\n${detail}`);
+      console.warn(`CodeQL analysis failed:\n${detail.slice(0, 500)}`);
       return [];
     }
 
