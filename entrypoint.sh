@@ -94,43 +94,75 @@ if [ "$ENABLE_CODEQL" = "true" ] && ! command -v codeql &>/dev/null; then
   fi
 fi
 
-# cbomkit-theia (Go static binary)
+# cbomkit-theia (Go project — no pre-built binaries, requires Go toolchain)
 if [ "$ENABLE_CBOMKIT_THEIA" = "true" ] && ! command -v cbomkit-theia &>/dev/null && ! command -v cbomkit &>/dev/null; then
-  echo -e "${YELLOW}⬇  Downloading cbomkit-theia...${NC}"
-  CBOMKIT_DL_URL="https://github.com/IBM/cbomkit-theia/releases/latest/download/cbomkit-theia-linux-amd64"
-  if curl -fsSL "$CBOMKIT_DL_URL" -o "$TOOLS_DIR/cbomkit-theia" 2>/dev/null; then
-    chmod +x "$TOOLS_DIR/cbomkit-theia"
-    ln -sf "$TOOLS_DIR/cbomkit-theia" /usr/local/bin/cbomkit-theia
-    # Quick smoke test
-    if cbomkit-theia --version &>/dev/null 2>&1 || cbomkit-theia version &>/dev/null 2>&1; then
-      echo -e "${GREEN}   ✓ cbomkit-theia installed${NC}"
+  if command -v go &>/dev/null; then
+    echo -e "${YELLOW}⬇  Building cbomkit-theia from source (Go)...${NC}"
+    if GOBIN="$TOOLS_DIR" go install github.com/cbomkit/cbomkit-theia@latest 2>/dev/null; then
+      ln -sf "$TOOLS_DIR/cbomkit-theia" /usr/local/bin/cbomkit-theia
+      echo -e "${GREEN}   ✓ cbomkit-theia built and installed${NC}"
     else
-      echo -e "${YELLOW}   ⚠ cbomkit-theia binary not compatible (non-blocking)${NC}"
-      rm -f /usr/local/bin/cbomkit-theia
+      echo -e "${YELLOW}   ⚠ cbomkit-theia build failed (non-blocking)${NC}"
     fi
   else
-    echo -e "${YELLOW}   ⚠ cbomkit-theia download failed (non-blocking)${NC}"
+    echo -e "${YELLOW}   ⚠ cbomkit-theia: no pre-built binaries available — requires Go toolchain (non-blocking)${NC}"
   fi
 fi
 
-# CryptoAnalysis (Java JAR — uses already-installed JRE)
+# CryptoAnalysis (HeadlessJavaScanner — Java JAR, uses already-installed JRE)
 if [ "$ENABLE_CRYPTO_ANALYSIS" = "true" ] && ! command -v CryptoAnalysis &>/dev/null; then
-  echo -e "${YELLOW}⬇  Downloading CryptoAnalysis...${NC}"
-  CRYPTO_ANALYSIS_VERSION="3.0.1"
-  JAR_URL="https://github.com/CROSSINGTUD/CryptoAnalysis/releases/download/${CRYPTO_ANALYSIS_VERSION}/CryptoAnalysis-${CRYPTO_ANALYSIS_VERSION}-jar-with-dependencies.jar"
-  if curl -fsSL "$JAR_URL" -o "$TOOLS_DIR/CryptoAnalysis.jar" 2>/dev/null; then
+  echo -e "${YELLOW}⬇  Downloading CryptoAnalysis (HeadlessJavaScanner)...${NC}"
+  CRYPTO_ANALYSIS_VERSION="5.0.1"
+  JAR_URL="https://github.com/CROSSINGTUD/CryptoAnalysis/releases/download/${CRYPTO_ANALYSIS_VERSION}/HeadlessJavaScanner-${CRYPTO_ANALYSIS_VERSION}-jar-with-dependencies.jar"
+  RULES_URL="https://github.com/CROSSINGTUD/CryptoAnalysis/releases/download/${CRYPTO_ANALYSIS_VERSION}/JavaCryptographicArchitecture.zip"
+  if curl -fsSL "$JAR_URL" -o "$TOOLS_DIR/HeadlessJavaScanner.jar" 2>/dev/null; then
+    # Also download CrySL rules for JCA
+    if curl -fsSL "$RULES_URL" -o /tmp/jca-rules.zip 2>/dev/null; then
+      mkdir -p "$TOOLS_DIR/crysl-rules"
+      unzip -qo /tmp/jca-rules.zip -d "$TOOLS_DIR/crysl-rules" 2>/dev/null
+      rm -f /tmp/jca-rules.zip
+      echo -e "${GREEN}   ✓ CrySL rules downloaded${NC}"
+    fi
     cat > /usr/local/bin/CryptoAnalysis << 'WRAPPER'
 #!/bin/bash
-exec java -jar /opt/cbom-tools/CryptoAnalysis.jar "$@"
+exec java -jar /opt/cbom-tools/HeadlessJavaScanner.jar "$@"
 WRAPPER
     chmod +x /usr/local/bin/CryptoAnalysis
-    echo -e "${GREEN}   ✓ CryptoAnalysis ${CRYPTO_ANALYSIS_VERSION} installed${NC}"
+    echo -e "${GREEN}   ✓ CryptoAnalysis (HeadlessJavaScanner) v${CRYPTO_ANALYSIS_VERSION} installed${NC}"
   else
     echo -e "${YELLOW}   ⚠ CryptoAnalysis download failed (non-blocking)${NC}"
   fi
 fi
 
 echo ""
+
+# ── Try to compile Java project for deeper analysis (CodeQL + CryptoAnalysis) ──
+JAVA_BUILD_SUCCESS=false
+if [ -f "$FULL_SCAN_PATH/pom.xml" ] || [ -f "$FULL_SCAN_PATH/build.gradle" ] || [ -f "$FULL_SCAN_PATH/build.gradle.kts" ]; then
+  echo -e "${YELLOW}📦 Java project detected — attempting compilation for deep analysis...${NC}"
+  if [ -f "$FULL_SCAN_PATH/mvnw" ]; then
+    chmod +x "$FULL_SCAN_PATH/mvnw" 2>/dev/null
+    if (cd "$FULL_SCAN_PATH" && ./mvnw compile -q -DskipTests -B 2>/dev/null); then
+      JAVA_BUILD_SUCCESS=true
+    fi
+  elif [ -f "$FULL_SCAN_PATH/gradlew" ]; then
+    chmod +x "$FULL_SCAN_PATH/gradlew" 2>/dev/null
+    if (cd "$FULL_SCAN_PATH" && ./gradlew compileJava --no-daemon -q 2>/dev/null); then
+      JAVA_BUILD_SUCCESS=true
+    fi
+  elif command -v mvn &>/dev/null && [ -f "$FULL_SCAN_PATH/pom.xml" ]; then
+    if (cd "$FULL_SCAN_PATH" && mvn compile -q -DskipTests -B 2>/dev/null); then
+      JAVA_BUILD_SUCCESS=true
+    fi
+  fi
+
+  if [ "$JAVA_BUILD_SUCCESS" = "true" ]; then
+    echo -e "${GREEN}   ✓ Java project compiled — CodeQL and CryptoAnalysis will use compiled classes${NC}"
+  else
+    echo -e "${YELLOW}   ⚠ Java compilation skipped/failed — CodeQL will use source-only mode${NC}"
+  fi
+  echo ""
+fi
 
 # Start the backend server in background
 cd /app

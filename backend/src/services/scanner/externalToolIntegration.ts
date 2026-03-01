@@ -83,136 +83,36 @@ export async function checkToolAvailability(): Promise<ToolAvailability> {
  * These are written to disk temporarily and executed via `codeql database analyze`.
  */
 const CODEQL_QUERIES: Record<string, string> = {
-  // Java: Trace string values flowing into MessageDigest.getInstance()
-  'MessageDigestAlgorithm.ql': `
+  // Comprehensive query: find all crypto API getInstance() calls with string literal arguments.
+  // This works reliably with --build-mode=none (no compilation needed).
+  'CryptoAlgorithmDetection.ql': `
 /**
- * @name MessageDigest algorithm resolution
- * @description Traces string values flowing into MessageDigest.getInstance()
+ * @name Cryptographic algorithm detection
+ * @description Finds crypto API getInstance() calls with string literal algorithm arguments
  * @kind problem
  * @tags security cryptography cbom
- * @id cbom/java/messagedigest-algorithm
+ * @id cbom/java/crypto-algorithm
  */
 import java
-import semmle.code.java.dataflow.DataFlow
 
-class MessageDigestFlow extends DataFlow::Configuration {
-  MessageDigestFlow() { this = "MessageDigestFlow" }
-
-  override predicate isSource(DataFlow::Node node) {
-    node.asExpr() instanceof StringLiteral
-  }
-
-  override predicate isSink(DataFlow::Node node) {
-    exists(MethodAccess ma |
-      ma.getMethod().hasName("getInstance") and
-      ma.getMethod().getDeclaringType().hasQualifiedName("java.security", "MessageDigest") and
-      node.asExpr() = ma.getArgument(0)
-    )
-  }
-}
-
-from MessageDigestFlow flow, DataFlow::Node source, DataFlow::Node sink
-where flow.hasFlow(source, sink)
-select sink, "MessageDigest.getInstance() uses algorithm: " + source.asExpr().(StringLiteral).getValue()
-  `.trim(),
-
-  // Java: Trace Cipher.getInstance() arguments
-  'CipherAlgorithm.ql': `
-/**
- * @name Cipher algorithm resolution
- * @description Traces string values flowing into Cipher.getInstance()
- * @kind problem
- * @tags security cryptography cbom
- * @id cbom/java/cipher-algorithm
- */
-import java
-import semmle.code.java.dataflow.DataFlow
-
-class CipherFlow extends DataFlow::Configuration {
-  CipherFlow() { this = "CipherFlow" }
-
-  override predicate isSource(DataFlow::Node node) {
-    node.asExpr() instanceof StringLiteral
-  }
-
-  override predicate isSink(DataFlow::Node node) {
-    exists(MethodAccess ma |
-      ma.getMethod().hasName("getInstance") and
-      ma.getMethod().getDeclaringType().hasQualifiedName("javax.crypto", "Cipher") and
-      node.asExpr() = ma.getArgument(0)
-    )
-  }
-}
-
-from CipherFlow flow, DataFlow::Node source, DataFlow::Node sink
-where flow.hasFlow(source, sink)
-select sink, "Cipher.getInstance() uses transform: " + source.asExpr().(StringLiteral).getValue()
-  `.trim(),
-
-  // Java: Trace KeyGenerator.getInstance() arguments
-  'KeyGeneratorAlgorithm.ql': `
-/**
- * @name KeyGenerator algorithm resolution
- * @description Traces string values flowing into KeyGenerator.getInstance()
- * @kind problem
- * @tags security cryptography cbom
- * @id cbom/java/keygenerator-algorithm
- */
-import java
-import semmle.code.java.dataflow.DataFlow
-
-class KeyGenFlow extends DataFlow::Configuration {
-  KeyGenFlow() { this = "KeyGenFlow" }
-
-  override predicate isSource(DataFlow::Node node) {
-    node.asExpr() instanceof StringLiteral
-  }
-
-  override predicate isSink(DataFlow::Node node) {
-    exists(MethodAccess ma |
-      ma.getMethod().hasName("getInstance") and
-      ma.getMethod().getDeclaringType().hasQualifiedName("javax.crypto", "KeyGenerator") and
-      node.asExpr() = ma.getArgument(0)
-    )
-  }
-}
-
-from KeyGenFlow flow, DataFlow::Node source, DataFlow::Node sink
-where flow.hasFlow(source, sink)
-select sink, "KeyGenerator.getInstance() uses algorithm: " + source.asExpr().(StringLiteral).getValue()
-  `.trim(),
-
-  // Java: Trace Signature.getInstance() arguments
-  'SignatureAlgorithm.ql': `
-/**
- * @name Signature algorithm resolution
- * @description Traces string values flowing into Signature.getInstance()
- * @kind problem
- * @tags security cryptography cbom
- * @id cbom/java/signature-algorithm
- */
-import java
-import semmle.code.java.dataflow.DataFlow
-
-class SigFlow extends DataFlow::Configuration {
-  SigFlow() { this = "SigFlow" }
-
-  override predicate isSource(DataFlow::Node node) {
-    node.asExpr() instanceof StringLiteral
-  }
-
-  override predicate isSink(DataFlow::Node node) {
-    exists(MethodAccess ma |
-      ma.getMethod().hasName("getInstance") and
-      ma.getMethod().getDeclaringType().hasQualifiedName("java.security", "Signature") and
-      node.asExpr() = ma.getArgument(0)
-    )
-  }
-}
-
-from SigFlow flow, DataFlow::Node source, DataFlow::Node sink
-where flow.hasFlow(source, sink)
-select sink, "Signature.getInstance() uses algorithm: " + source.asExpr().(StringLiteral).getValue()
+from MethodAccess ma, StringLiteral sl
+where
+  ma.getMethod().hasName("getInstance") and
+  sl = ma.getArgument(0) and
+  (
+    ma.getMethod().getDeclaringType().hasQualifiedName("java.security", "MessageDigest") or
+    ma.getMethod().getDeclaringType().hasQualifiedName("javax.crypto", "Cipher") or
+    ma.getMethod().getDeclaringType().hasQualifiedName("javax.crypto", "KeyGenerator") or
+    ma.getMethod().getDeclaringType().hasQualifiedName("java.security", "Signature") or
+    ma.getMethod().getDeclaringType().hasQualifiedName("java.security", "KeyPairGenerator") or
+    ma.getMethod().getDeclaringType().hasQualifiedName("javax.crypto", "KeyAgreement") or
+    ma.getMethod().getDeclaringType().hasQualifiedName("javax.crypto", "Mac") or
+    ma.getMethod().getDeclaringType().hasQualifiedName("javax.net.ssl", "SSLContext") or
+    ma.getMethod().getDeclaringType().hasQualifiedName("java.security", "AlgorithmParameters") or
+    ma.getMethod().getDeclaringType().hasQualifiedName("javax.crypto", "SecretKeyFactory") or
+    ma.getMethod().getDeclaringType().hasQualifiedName("java.security", "KeyFactory")
+  )
+select ma, ma.getMethod().getDeclaringType().getName() + ".getInstance() uses algorithm: " + sl.getValue()
   `.trim(),
 };
 
@@ -242,11 +142,12 @@ interface SARIFReport {
  * Run CodeQL analysis on a repository to resolve dynamic crypto arguments.
  *
  * Pipeline:
- *   1. Create CodeQL database for the repo (java language)
- *   2. Write custom .ql queries to a temp directory
- *   3. Execute queries against the database
- *   4. Parse SARIF output and extract resolved algorithm names
- *   5. Create CryptoAsset entries for each finding
+ *   1. Try to compile Java project (mvnw/gradlew) for better analysis
+ *   2. Create CodeQL database (with compilation or --build-mode=none fallback)
+ *   3. Write custom .ql queries to a temp directory
+ *   4. Install query pack dependencies (codeql pack install)
+ *   5. Execute queries against the database
+ *   6. Parse SARIF output and extract resolved algorithm names
  *
  * Returns empty array if CodeQL is not installed.
  */
@@ -259,6 +160,9 @@ export async function runCodeQLAnalysis(
     console.log('CodeQL not available — skipping data flow analysis');
     return [];
   }
+
+  // Normalise source root — remove trailing /. or .
+  const sourceRoot = repoPath.replace(/\/?\.$/, '') || repoPath;
 
   const assets: CryptoAsset[] = [];
   const tmpDir = path.join(repoPath, '.cbom-codeql-tmp');
@@ -275,24 +179,91 @@ export async function runCodeQLAnalysis(
       fs.writeFileSync(path.join(queryDir, filename), content);
     }
 
-    // Write qlpack.yml for the query pack
+    // Write qlpack.yml with modern dependencies format
     fs.writeFileSync(path.join(queryDir, 'qlpack.yml'), [
       'name: cbom-crypto-queries',
       'version: 0.0.1',
-      'libraryPathDependencies: codeql/java-all',
+      'dependencies:',
+      '  codeql/java-all: "*"',
     ].join('\n'));
 
-    // Step 1: Create CodeQL database
-    console.log(`CodeQL: creating ${language} database for ${repoPath}...`);
+    // Install CodeQL pack dependencies (downloads codeql/java-all from registry)
+    console.log('CodeQL: installing query pack dependencies...');
     try {
-      await execAsync(
-        `codeql database create "${dbDir}" --language="${language}" --source-root="${repoPath}" --overwrite 2>&1`,
-        { timeout: 300000, cwd: repoPath },  // 5 min timeout
-      );
+      await execAsync(`codeql pack install "${queryDir}" 2>&1`, { timeout: 120000 });
     } catch (err) {
-      console.warn(`CodeQL database creation failed: ${(err as Error).message}`);
-      return [];
+      console.warn(`CodeQL pack install warning: ${(err as Error).message}`);
+      // Continue anyway — might work with bundled packs
     }
+
+    // Step 1: Create CodeQL database
+    // For compiled languages, try build command first, then fall back to --build-mode=none
+    const compiledLanguages = ['java', 'java-kotlin', 'c-cpp', 'csharp', 'rust'];
+    const isCompiled = compiledLanguages.includes(language);
+    let dbCreated = false;
+
+    if (isCompiled) {
+      // Try compilation with project build tools first (better analysis quality)
+      const hasMvnw = fs.existsSync(path.join(sourceRoot, 'mvnw'));
+      const hasGradlew = fs.existsSync(path.join(sourceRoot, 'gradlew'));
+      const hasPom = fs.existsSync(path.join(sourceRoot, 'pom.xml'));
+      const hasGradle = fs.existsSync(path.join(sourceRoot, 'build.gradle')) ||
+                        fs.existsSync(path.join(sourceRoot, 'build.gradle.kts'));
+
+      if (hasMvnw && hasPom) {
+        console.log(`CodeQL: creating ${language} database with Maven wrapper...`);
+        try {
+          await execAsync(
+            `codeql database create "${dbDir}" --language="${language}" --source-root="${sourceRoot}" --command="./mvnw compile -DskipTests -B -q" --overwrite 2>&1`,
+            { timeout: 600000, cwd: sourceRoot },
+          );
+          dbCreated = true;
+          console.log('CodeQL: database created with Maven compilation');
+        } catch { /* fall through to next attempt */ }
+      }
+
+      if (!dbCreated && hasGradlew && hasGradle) {
+        console.log(`CodeQL: creating ${language} database with Gradle wrapper...`);
+        try {
+          await execAsync(
+            `codeql database create "${dbDir}" --language="${language}" --source-root="${sourceRoot}" --command="./gradlew compileJava --no-daemon -q" --overwrite 2>&1`,
+            { timeout: 600000, cwd: sourceRoot },
+          );
+          dbCreated = true;
+          console.log('CodeQL: database created with Gradle compilation');
+        } catch { /* fall through to --build-mode=none */ }
+      }
+
+      if (!dbCreated) {
+        // Fallback: source-only extraction (no compilation needed)
+        console.log(`CodeQL: creating ${language} database in source-only mode (--build-mode=none)...`);
+        try {
+          await execAsync(
+            `codeql database create "${dbDir}" --language="${language}" --source-root="${sourceRoot}" --build-mode=none --overwrite 2>&1`,
+            { timeout: 300000, cwd: sourceRoot },
+          );
+          dbCreated = true;
+        } catch (err) {
+          console.warn(`CodeQL database creation failed: ${(err as Error).message}`);
+          return [];
+        }
+      }
+    } else {
+      // Non-compiled languages (JS/TS, Python, Ruby) — no build needed
+      console.log(`CodeQL: creating ${language} database for ${sourceRoot}...`);
+      try {
+        await execAsync(
+          `codeql database create "${dbDir}" --language="${language}" --source-root="${sourceRoot}" --overwrite 2>&1`,
+          { timeout: 300000, cwd: sourceRoot },
+        );
+        dbCreated = true;
+      } catch (err) {
+        console.warn(`CodeQL database creation failed: ${(err as Error).message}`);
+        return [];
+      }
+    }
+
+    if (!dbCreated) return [];
 
     // Step 2: Run queries
     const sarifOutput = path.join(tmpDir, 'results.sarif');
@@ -318,7 +289,7 @@ export async function runCodeQLAnalysis(
       }
     }
 
-    console.log(`CodeQL: resolved ${assets.length} crypto algorithm references via data flow analysis`);
+    console.log(`CodeQL: resolved ${assets.length} crypto algorithm references`);
   } catch (err) {
     console.warn(`CodeQL integration error: ${(err as Error).message}`);
   } finally {
@@ -347,21 +318,15 @@ function parseSARIFResult(result: SARIFResult, repoPath: string): CryptoAsset | 
   const fileName = loc?.artifactLocation?.uri ?? 'unknown';
   const lineNumber = loc?.region?.startLine ?? 0;
 
-  // Determine API from ruleId
-  const apiMap: Record<string, string> = {
-    'cbom/java/messagedigest-algorithm': 'MessageDigest',
-    'cbom/java/cipher-algorithm': 'Cipher',
-    'cbom/java/keygenerator-algorithm': 'KeyGenerator',
-    'cbom/java/signature-algorithm': 'Signature',
-  };
-  const api = apiMap[result.ruleId] || 'Unknown';
+  // Determine API from message text (e.g., "Cipher.getInstance() uses algorithm: ...")
+  const apiMatch = msg.match(/^(\w+)\.getInstance\(\)/);
+  const api = apiMatch?.[1] || 'Unknown';
 
   const asset: CryptoAsset = {
     id: uuidv4(),
     name: algo,
     type: AssetType.ALGORITHM,
-    description: `${api}.getInstance("${rawAlgo}") — resolved via CodeQL data flow analysis. ` +
-      `The algorithm argument was traced from a string literal through variable assignments to the API call site.`,
+    description: `${api}.getInstance("${rawAlgo}") — resolved via CodeQL source analysis.`,
     cryptoProperties: {
       assetType: AssetType.ALGORITHM,
     },
@@ -543,7 +508,7 @@ interface CryptoAnalysisResult {
 }
 
 /**
- * Run CryptoAnalysis (CogniCryptSAST) on a Java project.
+ * Run CryptoAnalysis (CogniCryptSAST / HeadlessJavaScanner) on a Java project.
  *
  * CryptoAnalysis uses CrySL rules to perform typestate analysis on JCA/JCE APIs:
  *   - Traces Cipher, MessageDigest, KeyGenerator, etc. through their full lifecycle
@@ -551,7 +516,7 @@ interface CryptoAnalysisResult {
  *   - Checks API call ordering (typestate)
  *   - Validates constraint compliance (key sizes, algorithms, etc.)
  *
- * Requires: Java 11+, CryptoAnalysis CLI JAR
+ * Requires: Java 17+, HeadlessJavaScanner JAR, compiled .class or .jar files
  * Returns empty array if CryptoAnalysis is not installed.
  */
 export async function runCryptoAnalysis(repoPath: string): Promise<CryptoAsset[]> {
@@ -572,10 +537,33 @@ export async function runCryptoAnalysis(repoPath: string): Promise<CryptoAsset[]
     }
 
     // Look for build artifacts (needed for CryptoAnalysis)
-    const targetDir = findBuildTarget(repoPath);
+    let targetDir = findBuildTarget(repoPath);
+
+    // If no build artifacts, try to compile with Maven/Gradle wrapper
     if (!targetDir) {
-      console.log('CryptoAnalysis: no compiled Java classes found (target/classes or build/classes) — skipping');
-      return [];
+      console.log('CryptoAnalysis: no compiled classes found — attempting compilation...');
+      const hasMvnw = fs.existsSync(path.join(repoPath, 'mvnw'));
+      const hasGradlew = fs.existsSync(path.join(repoPath, 'gradlew'));
+
+      try {
+        if (hasMvnw) {
+          await execAsync(`chmod +x ./mvnw && ./mvnw compile -DskipTests -B -q 2>&1`, {
+            timeout: 300000, cwd: repoPath,
+          });
+        } else if (hasGradlew) {
+          await execAsync(`chmod +x ./gradlew && ./gradlew compileJava --no-daemon -q 2>&1`, {
+            timeout: 300000, cwd: repoPath,
+          });
+        }
+      } catch {
+        console.log('CryptoAnalysis: compilation failed — cannot analyze without compiled classes');
+      }
+
+      targetDir = findBuildTarget(repoPath);
+      if (!targetDir) {
+        console.log('CryptoAnalysis: no compiled Java classes found (target/classes or build/classes) — skipping');
+        return [];
+      }
     }
 
     const outputDir = path.join(repoPath, '.cbom-cryptoanalysis-tmp');
@@ -583,12 +571,17 @@ export async function runCryptoAnalysis(repoPath: string): Promise<CryptoAsset[]
 
     console.log(`CryptoAnalysis: analyzing ${targetDir}...`);
 
-    // Run CryptoAnalysis
+    // Run CryptoAnalysis (HeadlessJavaScanner v5.x CLI)
     const binName = execSync('which CryptoAnalysis 2>/dev/null || which crypto-analysis 2>/dev/null', { encoding: 'utf-8' }).trim();
+
+    // Check for CrySL rules (downloaded by entrypoint.sh)
+    const rulesDir = '/opt/cbom-tools/crysl-rules';
+    const hasRules = fs.existsSync(rulesDir);
+    const rulesFlag = hasRules ? `--rulesDir "${rulesDir}"` : '';
 
     try {
       await execAsync(
-        `"${binName}" --appPath "${targetDir}" --reportFormat JSON --reportDir "${outputDir}" 2>&1`,
+        `"${binName}" --appPath "${targetDir}" ${rulesFlag} --reportFormat SARIF --reportPath "${outputDir}" 2>&1`,
         { timeout: 300000 },  // 5 min timeout
       );
     } catch (err) {
@@ -596,16 +589,27 @@ export async function runCryptoAnalysis(repoPath: string): Promise<CryptoAsset[]
       return [];
     }
 
-    // Parse results
-    const reportFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.json'));
+    // Parse SARIF results
+    const reportFiles = fs.readdirSync(outputDir).filter(f => f.endsWith('.sarif') || f.endsWith('.json'));
     for (const reportFile of reportFiles) {
       try {
         const report = JSON.parse(fs.readFileSync(path.join(outputDir, reportFile), 'utf-8'));
-        const results: CryptoAnalysisResult[] = Array.isArray(report) ? report : report.results ?? [];
 
-        for (const result of results) {
-          const asset = parseCryptoAnalysisResult(result, repoPath);
-          if (asset) assets.push(asset);
+        // Try SARIF format first (v5.x default)
+        if (report.runs) {
+          for (const run of (report as SARIFReport).runs ?? []) {
+            for (const result of run.results ?? []) {
+              const asset = parseCryptoAnalysisSARIFResult(result, repoPath);
+              if (asset) assets.push(asset);
+            }
+          }
+        } else {
+          // Fallback: legacy JSON format
+          const results: CryptoAnalysisResult[] = Array.isArray(report) ? report : report.results ?? [];
+          for (const result of results) {
+            const asset = parseCryptoAnalysisResult(result, repoPath);
+            if (asset) assets.push(asset);
+          }
         }
       } catch { /* skip malformed */ }
     }
@@ -657,6 +661,50 @@ function parseCryptoAnalysisResult(
     location: {
       fileName: filePath,
       lineNumber: result.lineNumber,
+    },
+    quantumSafety: QuantumSafetyStatus.UNKNOWN,
+    detectionSource: 'cryptoanalysis',
+  };
+
+  return enrichAssetWithPQCData(asset);
+}
+
+/**
+ * Parse a CryptoAnalysis SARIF result into a CryptoAsset (v5.x output format).
+ */
+function parseCryptoAnalysisSARIFResult(
+  result: SARIFResult,
+  repoPath: string,
+): CryptoAsset | null {
+  const msg = result.message?.text ?? '';
+  const loc = result.locations?.[0]?.physicalLocation;
+
+  // Try to extract algorithm name from SARIF message
+  // CryptoAnalysis messages often reference algorithms in quotes or after "algorithm:"
+  const algoMatch = msg.match(
+    /(?:algorithm|transform|cipher|digest)[:=\s]+["']?([A-Za-z0-9/_-]+(?:\/[A-Za-z0-9_-]+)*)["']?/i,
+  ) ?? msg.match(
+    /["']([A-Za-z0-9/_-]+(?:\/[A-Za-z0-9_-]+)*)["']/,
+  );
+
+  if (!algoMatch) return null;
+
+  const rawAlgo = algoMatch[1].trim();
+  const algo = normaliseAlgorithmName(rawAlgo);
+  const fileName = loc?.artifactLocation?.uri ?? 'unknown';
+  const lineNumber = loc?.region?.startLine ?? 0;
+
+  const asset: CryptoAsset = {
+    id: uuidv4(),
+    name: algo,
+    type: AssetType.ALGORITHM,
+    description: `Detected by CryptoAnalysis (CrySL typestate analysis): ${msg}. Rule: ${result.ruleId}.`,
+    cryptoProperties: {
+      assetType: AssetType.ALGORITHM,
+    },
+    location: {
+      fileName: fileName.replace(/^\//, ''),
+      lineNumber,
     },
     quantumSafety: QuantumSafetyStatus.UNKNOWN,
     detectionSource: 'cryptoanalysis',
