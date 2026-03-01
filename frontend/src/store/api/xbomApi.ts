@@ -112,6 +112,16 @@ export const xbomApi = createApi({
       providesTags: (_result, _err, id) => [{ type: 'XBOM', id }],
     }),
 
+    /** POST /api/xbom/upload — Upload an existing xBOM JSON file */
+    uploadXBOM: builder.mutation<XBOMGenerateResponse, FormData>({
+      query: (formData) => ({
+        url: '/api/xbom/upload',
+        method: 'POST',
+        body: formData,
+      }),
+      invalidatesTags: ['XBOM'],
+    }),
+
     /** DELETE /api/xbom/:id — Delete a stored xBOM */
     deleteXBOM: builder.mutation<{ success: boolean }, string>({
       query: (id) => ({
@@ -127,6 +137,7 @@ export const {
   useGetXBOMStatusQuery,
   useGenerateXBOMMutation,
   useMergeXBOMMutation,
+  useUploadXBOMMutation,
   useGetXBOMListQuery,
   useGetXBOMQuery,
   useDeleteXBOMMutation,

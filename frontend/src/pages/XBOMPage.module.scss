@@ -466,6 +466,10 @@
   transition: all 0.15s ease;
   color: var(--dc1-text-muted, #64748b);
   font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 
 .dropZone:hover {

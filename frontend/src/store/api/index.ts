@@ -140,6 +140,7 @@ export {
   useGetXBOMStatusQuery,
   useGenerateXBOMMutation,
   useMergeXBOMMutation,
+  useUploadXBOMMutation,
   useGetXBOMListQuery,
   useGetXBOMQuery,
   useDeleteXBOMMutation,

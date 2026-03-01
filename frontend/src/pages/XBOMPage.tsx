@@ -13,6 +13,7 @@ import {
   useGetXBOMQuery,
   useGenerateXBOMMutation,
   useMergeXBOMMutation,
+  useUploadXBOMMutation,
   useDeleteXBOMMutation,
 } from '../store/api';
 import type { XBOMDocument, XBOMAnalytics, XBOMListItem, SBOMComponent, SBOMVulnerability, XBOMCrossReference, CryptoAsset } from '../types';
@@ -37,8 +38,14 @@ export default function XBOMPage() {
   const [deleteXBOM] = useDeleteXBOMMutation();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [localXbom, setLocalXbom] = useState<{ xbom: XBOMDocument; analytics: XBOMAnalytics } | null>(null);
 
-  /* ── List / Detail toggle ─── */
+  /* ── Local upload viewer ─── */
+  if (localXbom) {
+    return <LocalXBOMDetailView xbom={localXbom.xbom} analytics={localXbom.analytics} onBack={() => setLocalXbom(null)} />;
+  }
+
+  /* ── Server-stored detail view ─── */
   if (selectedId) {
     return <XBOMDetailView id={selectedId} onBack={() => setSelectedId(null)} />;
   }
@@ -79,8 +86,8 @@ export default function XBOMPage() {
         </div>
       </div>
 
-      {/* Generate / Merge — tabbed, only one active */}
-      <GenerateOrMerge />
+      {/* Generate / Merge / Upload — tabbed, only one active */}
+      <GenerateOrMerge onViewLocal={(xbom, analytics) => setLocalXbom({ xbom, analytics })} />
 
       {/* xBOM list */}
       <div className="dc1-card">
@@ -140,9 +147,9 @@ export default function XBOMPage() {
 /*  Generate or Merge — tabbed, only one active at a time              */
 /* ================================================================== */
 
-type InputMode = 'generate' | 'merge';
+type InputMode = 'generate' | 'merge' | 'upload';
 
-function GenerateOrMerge() {
+function GenerateOrMerge({ onViewLocal }: { onViewLocal: (xbom: XBOMDocument, analytics: XBOMAnalytics) => void }) {
   const [inputMode, setInputMode] = useState<InputMode>('generate');
 
   return (
@@ -155,9 +162,14 @@ function GenerateOrMerge() {
         <button className={`${s.tab} ${inputMode === 'merge' ? s.tabActive : ''}`} onClick={() => setInputMode('merge')}>
           Merge Existing Files
         </button>
+        <button className={`${s.tab} ${inputMode === 'upload' ? s.tabActive : ''}`} onClick={() => setInputMode('upload')}>
+          Upload xBOM
+        </button>
       </div>
 
-      {inputMode === 'generate' ? <GenerateForm /> : <MergeForm />}
+      {inputMode === 'generate' && <GenerateForm />}
+      {inputMode === 'merge' && <MergeForm />}
+      {inputMode === 'upload' && <UploadForm onViewLocal={onViewLocal} />}
     </div>
   );
 }
@@ -542,7 +554,206 @@ function MergeForm() {
 }
 
 /* ================================================================== */
-/*  xBOM Detail View                                                   */
+/*  Upload Form                                                        */
+/* ================================================================== */
+
+/** Client-side analytics computation for uploaded xBOMs */
+function computeLocalAnalytics(xbom: XBOMDocument): XBOMAnalytics {
+  const cryptoAssets = xbom.cryptoAssets ?? [];
+  const vulns = xbom.vulnerabilities ?? [];
+  const totalCrypto = cryptoAssets.length;
+  const qSafe = cryptoAssets.filter(a => a.quantumSafety === 'quantum-safe').length;
+  const notSafe = cryptoAssets.filter(a => a.quantumSafety === 'not-quantum-safe').length;
+  const conditional = cryptoAssets.filter(a => a.quantumSafety === 'conditional').length;
+  const unknown = totalCrypto - qSafe - notSafe - conditional;
+  const score = totalCrypto > 0 ? Math.round((qSafe / totalCrypto) * 100) : 100;
+
+  const vulnCritical = vulns.filter(v => v.ratings?.some((r: any) => r.severity === 'critical')).length;
+  const vulnHigh = vulns.filter(v => v.ratings?.some((r: any) => r.severity === 'high') && !v.ratings?.some((r: any) => r.severity === 'critical')).length;
+  const vulnMedium = vulns.filter(v => v.ratings?.some((r: any) => r.severity === 'medium')).length;
+  const vulnLow = vulns.filter(v => v.ratings?.some((r: any) => r.severity === 'low')).length;
+
+  return {
+    quantumReadiness: { score, totalAssets: totalCrypto, quantumSafe: qSafe, notQuantumSafe: notSafe, conditional, unknown },
+    compliance: { isCompliant: notSafe === 0, policy: 'PQC Readiness', source: 'local-analysis', totalAssets: totalCrypto, compliantAssets: qSafe + conditional, nonCompliantAssets: notSafe, unknownAssets: unknown },
+    vulnerabilitySummary: { total: vulns.length, critical: vulnCritical, high: vulnHigh, medium: vulnMedium, low: vulnLow, info: 0 },
+    totalSoftwareComponents: xbom.components?.length ?? 0,
+    totalCryptoAssets: totalCrypto,
+    totalCrossReferences: xbom.crossReferences?.length ?? 0,
+  };
+}
+
+function UploadForm({ onViewLocal }: { onViewLocal: (xbom: XBOMDocument, analytics: XBOMAnalytics) => void }) {
+  const [uploadXBOM, { isLoading: uploading }] = useUploadXBOMMutation();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [fileName, setFileName] = useState('');
+  const [jsonText, setJsonText] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const parseAndView = useCallback((raw: string, name: string) => {
+    try {
+      setError('');
+      const parsed = JSON.parse(raw);
+      if (parsed.bomFormat !== 'CycloneDX') {
+        setError('Invalid file: bomFormat must be CycloneDX');
+        return;
+      }
+      const xbom: XBOMDocument = {
+        bomFormat: parsed.bomFormat,
+        specVersion: parsed.specVersion ?? '1.6',
+        serialNumber: parsed.serialNumber ?? `local-${Date.now()}`,
+        version: parsed.version ?? 1,
+        metadata: parsed.metadata ?? { timestamp: new Date().toISOString(), tools: [] },
+        components: parsed.components ?? [],
+        cryptoAssets: parsed.cryptoAssets ?? [],
+        dependencies: parsed.dependencies ?? [],
+        vulnerabilities: parsed.vulnerabilities ?? [],
+        crossReferences: parsed.crossReferences ?? [],
+        thirdPartyLibraries: parsed.thirdPartyLibraries,
+      };
+      const analytics = computeLocalAnalytics(xbom);
+      setFileName(name);
+      setSuccess(
+        `${name} loaded — ${xbom.components.length} software, ` +
+        `${xbom.cryptoAssets.length} crypto, ` +
+        `${xbom.vulnerabilities.length} vulns, ` +
+        `${xbom.crossReferences.length} cross-refs`
+      );
+      onViewLocal(xbom, analytics);
+    } catch {
+      setError('Invalid JSON — could not parse xBOM file');
+    }
+  }, [onViewLocal]);
+
+  const handleFile = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => parseAndView(reader.result as string, file.name);
+    reader.readAsText(file);
+  }, [parseAndView]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }, [handleFile]);
+
+  const handleSaveToServer = async () => {
+    if (!jsonText.trim() && !fileName) { setError('Upload or paste an xBOM file first'); return; }
+    setError('');
+    setSuccess('');
+    try {
+      let body: any;
+      if (jsonText.trim()) {
+        body = { xbom: JSON.parse(jsonText) };
+      } else {
+        setError('Please paste the xBOM JSON or upload a file');
+        return;
+      }
+      const fd = new FormData();
+      fd.append('xbom', JSON.stringify(body.xbom));
+      const res = await uploadXBOM(fd).unwrap();
+      if (res.success) {
+        setSuccess(res.message || 'xBOM uploaded and saved');
+      } else {
+        setError(res.error || 'Upload failed');
+      }
+    } catch (e: any) {
+      setError(e?.data?.error || e?.message || 'Upload failed');
+    }
+  };
+
+  return (
+    <div style={{ padding: '0 4px' }}>
+      <p style={{ fontSize: 13, color: 'var(--dc1-text-muted)', marginBottom: 16 }}>
+        Upload a pre-existing xBOM JSON file (e.g. from a CI/CD artifact) to view it instantly.
+        You can also save it to the server for persistent storage.
+      </p>
+
+      {/* Drag-and-drop zone */}
+      <div
+        className={`${s.dropZone} ${dragActive ? s.dropZoneActive : ''}`}
+        onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+        onDragLeave={() => setDragActive(false)}
+        onDrop={handleDrop}
+        onClick={() => fileRef.current?.click()}
+      >
+        <input
+          type="file"
+          accept=".json"
+          ref={fileRef}
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              handleFile(file);
+              // Also store JSON text for save-to-server
+              const reader = new FileReader();
+              reader.onload = () => setJsonText(reader.result as string);
+              reader.readAsText(file);
+            }
+          }}
+        />
+        {fileName ? (
+          <>
+            <span style={{ fontSize: 20 }}>📄</span>
+            <span style={{ fontWeight: 600, color: 'var(--dc1-text)' }}>{fileName}</span>
+            <span>Drop another file to replace</span>
+          </>
+        ) : (
+          <>
+            <span style={{ fontSize: 20 }}>📤</span>
+            <span style={{ fontWeight: 500 }}>Drop an xBOM JSON file here</span>
+            <span>(or click to browse)</span>
+          </>
+        )}
+      </div>
+
+      {/* OR paste JSON */}
+      <div className={s.orDivider}><span>or paste JSON</span></div>
+
+      <div className={s.formRow}>
+        <textarea
+          placeholder='Paste xBOM JSON here…'
+          value={jsonText}
+          onChange={(e) => setJsonText(e.target.value)}
+          style={{ minHeight: 120 }}
+        />
+      </div>
+
+      {error && <div style={{ color: 'var(--dc1-danger)', fontSize: 13, marginTop: 8 }}>{error}</div>}
+      {success && <div style={{ color: 'var(--dc1-success)', fontSize: 13, marginTop: 8 }}>{success}</div>}
+
+      <div className={s.formActions}>
+        <button
+          className="dc1-btn-primary"
+          onClick={() => {
+            if (jsonText.trim()) {
+              parseAndView(jsonText, 'pasted-xbom.json');
+            } else {
+              setError('Upload or paste an xBOM file to view');
+            }
+          }}
+        >
+          View xBOM
+        </button>
+        <button
+          className={s.iconBtn}
+          style={{ padding: '8px 16px', fontSize: 13 }}
+          onClick={handleSaveToServer}
+          disabled={uploading}
+        >
+          {uploading ? 'Saving…' : 'Save to server'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  xBOM Detail View (server-stored)                                   */
 /* ================================================================== */
 
 function XBOMDetailView({ id, onBack }: { id: string; onBack: () => void }) {
@@ -588,6 +799,75 @@ function XBOMDetailView({ id, onBack }: { id: string; onBack: () => void }) {
       </div>
 
       {/* Tab content */}
+      {tab === 'overview' && <OverviewTab xbom={xbom} analytics={analytics} />}
+      {tab === 'software' && <SoftwareTab components={xbom.components} />}
+      {tab === 'crypto' && <CryptoTab assets={xbom.cryptoAssets} />}
+      {tab === 'vulnerabilities' && <VulnerabilityTab vulns={xbom.vulnerabilities} analytics={analytics} />}
+      {tab === 'cross-references' && <CrossRefTab refs={xbom.crossReferences} />}
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  xBOM Detail View (local / uploaded — no server fetch)              */
+/* ================================================================== */
+
+function LocalXBOMDetailView({ xbom, analytics, onBack }: { xbom: XBOMDocument; analytics: XBOMAnalytics; onBack: () => void }) {
+  const [uploadXBOM, { isLoading: saving }] = useUploadXBOMMutation();
+  const [tab, setTab] = useState<DetailTab>('overview');
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = async () => {
+    const fd = new FormData();
+    fd.append('xbom', JSON.stringify(xbom));
+    try {
+      await uploadXBOM(fd).unwrap();
+      setSaved(true);
+    } catch { /* ignore */ }
+  };
+
+  const tabDef: { key: DetailTab; label: string; count?: number }[] = [
+    { key: 'overview', label: 'Overview' },
+    { key: 'software', label: 'Software', count: xbom.components?.length },
+    { key: 'crypto', label: 'Crypto Assets', count: xbom.cryptoAssets?.length },
+    { key: 'vulnerabilities', label: 'Vulnerabilities', count: xbom.vulnerabilities?.length },
+    { key: 'cross-references', label: 'Cross-References', count: xbom.crossReferences?.length },
+  ];
+
+  return (
+    <div className={s.xbomPage}>
+      <div className={s.detailHeader}>
+        <div>
+          <button className={s.backBtn} onClick={onBack}>← Back to xBOM list</button>
+          <h2 style={{ margin: '8px 0 4px' }}>
+            {xbom.metadata?.component?.name ?? 'xBOM'}
+            <span style={{ fontSize: 12, fontWeight: 400, marginLeft: 10, padding: '2px 8px', borderRadius: 10, background: '#dbeafe', color: '#1d4ed8' }}>Uploaded</span>
+          </h2>
+          <div className={s.detailMeta}>
+            <span>Format: {xbom.bomFormat} {xbom.specVersion}</span>
+            <span>Generated: {fmtDate(xbom.metadata?.timestamp)}</span>
+            {xbom.metadata?.repository?.url && <span>Repo: {xbom.metadata.repository.url}</span>}
+          </div>
+        </div>
+        <button
+          className={s.iconBtn}
+          style={{ padding: '8px 16px', fontSize: 13, opacity: saved ? 0.6 : 1 }}
+          onClick={handleSave}
+          disabled={saving || saved}
+        >
+          {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save to server'}
+        </button>
+      </div>
+
+      <div className={s.tabs}>
+        {tabDef.map(t => (
+          <button key={t.key} className={`${s.tab} ${tab === t.key ? s.tabActive : ''}`} onClick={() => setTab(t.key)}>
+            {t.label}
+            {t.count !== undefined && <span className={s.tabBadge}>{t.count}</span>}
+          </button>
+        ))}
+      </div>
+
       {tab === 'overview' && <OverviewTab xbom={xbom} analytics={analytics} />}
       {tab === 'software' && <SoftwareTab components={xbom.components} />}
       {tab === 'crypto' && <CryptoTab assets={xbom.cryptoAssets} />}

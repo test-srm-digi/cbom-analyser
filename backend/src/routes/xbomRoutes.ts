@@ -10,6 +10,7 @@
 
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
+import crypto from 'crypto';
 import {
   XBOMDocument,
   XBOMResponse,
@@ -249,6 +250,67 @@ router.get('/xbom/:id', (req: Request, res: Response) => {
 
   const analytics = computeXBOMAnalytics(xbom);
   res.json({ success: true, xbom, analytics });
+});
+
+// ─── Upload an existing xBOM ──────────────────────────────────────────────────
+
+/**
+ * POST /api/xbom/upload
+ * Upload a pre-existing xBOM JSON file (e.g. a CI artifact) to store and view.
+ */
+router.post('/xbom/upload', upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    let raw: any;
+
+    if (req.file) {
+      raw = JSON.parse(req.file.buffer.toString('utf-8'));
+    } else if (req.body.xbom) {
+      raw = typeof req.body.xbom === 'string' ? JSON.parse(req.body.xbom) : req.body.xbom;
+    } else {
+      res.status(400).json({ success: false, error: 'Provide an xBOM file or JSON body (key: xbom)' });
+      return;
+    }
+
+    // Basic validation — must look like a CycloneDX document
+    if (raw.bomFormat !== 'CycloneDX') {
+      res.status(400).json({ success: false, error: 'Invalid xBOM: bomFormat must be CycloneDX' });
+      return;
+    }
+
+    // Normalise into XBOMDocument shape
+    const xbom: XBOMDocument = {
+      bomFormat: 'CycloneDX',
+      specVersion: raw.specVersion ?? '1.6',
+      serialNumber: raw.serialNumber ?? `urn:uuid:${crypto.randomUUID()}`,
+      version: raw.version ?? 1,
+      metadata: raw.metadata ?? { timestamp: new Date().toISOString(), tools: [] },
+      components: raw.components ?? [],
+      cryptoAssets: raw.cryptoAssets ?? [],
+      dependencies: raw.dependencies ?? [],
+      vulnerabilities: raw.vulnerabilities ?? [],
+      crossReferences: raw.crossReferences ?? [],
+      thirdPartyLibraries: raw.thirdPartyLibraries,
+    };
+
+    // Store it
+    xbomStore.set(xbom.serialNumber, xbom);
+
+    const analytics = computeXBOMAnalytics(xbom);
+
+    res.json({
+      success: true,
+      message:
+        `xBOM uploaded: ${xbom.components.length} software components, ` +
+        `${xbom.cryptoAssets.length} crypto assets, ` +
+        `${xbom.vulnerabilities.length} vulnerabilities, ` +
+        `${xbom.crossReferences.length} cross-references.`,
+      xbom,
+      analytics,
+    });
+  } catch (error) {
+    console.error('[xBOM] Upload failed:', error);
+    res.status(400).json({ success: false, error: (error as Error).message });
+  }
 });
 
 // ─── Download xBOM as file ───────────────────────────────────────────────────
