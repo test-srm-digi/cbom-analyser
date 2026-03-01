@@ -28,7 +28,7 @@ import { analyzeAllConditionalAssets } from './pqcParameterAnalyzer';
 import { CryptoPattern, SKIP_FILE_PATTERNS } from './scanner/scannerTypes';
 import { globToRegex, shouldExcludeFile, normaliseAlgorithmName, resolveVariableToAlgorithm, filterFalsePositives } from './scanner/scannerUtils';
 import { scanNearbyContext } from './scanner/contextScanners';
-import { allCryptoPatterns } from './scanner/patterns';
+import { allCryptoPatterns, allConfigPatterns, CONFIG_FILENAMES } from './scanner/patterns';
 
 const execAsync = promisify(exec);
 
@@ -307,6 +307,7 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
         `-o -name "*.cs" ` +
         `-o -name "*.go" ` +
         `-o -name "*.php" ` +
+        `-o -name "*.rs" ` +
       `\\) -print | head -5000`,
       { timeout: 60000 }
     );
@@ -399,6 +400,80 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
       } catch {
         // Skip files that can't be read
       }
+    }
+
+    // ── Configuration / artifact file scanning (cbomkit-theia inspired) ─────
+    // Scan non-source-code files for crypto configuration: certificates,
+    // private keys, java.security, openssl.cnf, application.yml, nginx.conf, etc.
+    try {
+      const configNameArgs = CONFIG_FILENAMES.map(n => `-name "${n}"`).join(' -o ');
+      const { stdout: configFiles } = await execAsync(
+        `find "${repoPath}" -type d \\( ` +
+          `-name node_modules -o -name dist -o -name build -o -name .git ` +
+          `-o -name target -o -name out -o -name vendor ` +
+        `\\) -prune -o -type f \\( ` +
+          `-name "*.pem" -o -name "*.crt" -o -name "*.cer" -o -name "*.key" ` +
+          `-o -name "*.p12" -o -name "*.pfx" -o -name "*.jks" -o -name "*.pub" ` +
+          `-o -name "*.security" -o -name "*.cnf" -o -name "*.conf" ` +
+          `-o -name "*.keystore" -o -name "*.truststore" ` +
+          `-o ${configNameArgs} ` +
+        `\\) -print | head -500`,
+        { timeout: 30000 }
+      );
+
+      const configFileList = configFiles.trim().split('\n').filter(Boolean);
+
+      for (const cfgPath of configFileList) {
+        const relativePath = path.relative(repoPath, cfgPath);
+        if (excludePatterns && excludePatterns.length > 0 && shouldExcludeFile(relativePath, excludePatterns)) continue;
+
+        try {
+          const content = fs.readFileSync(cfgPath, 'utf-8');
+          // Skip binary files (certificates in DER format won't parse as UTF-8 meaningfully)
+          if (content.includes('\0')) continue;
+
+          for (const patternDef of allConfigPatterns) {
+            const { pattern, algorithm, primitive, cryptoFunction: cf, assetType, extractAlgorithm } = patternDef;
+            pattern.lastIndex = 0;
+            let match;
+            while ((match = pattern.exec(content)) !== null) {
+              const lineNumber = content.substring(0, match.index).split('\n').length;
+              const dedupeKey = `${relativePath}:${lineNumber}:${match.index}`;
+              if (seen.has(dedupeKey)) continue;
+              seen.add(dedupeKey);
+
+              let assetName = algorithm;
+              if (extractAlgorithm && match[1]) {
+                assetName = normaliseAlgorithmName(match[1]);
+              }
+
+              const asset: CryptoAsset = {
+                id: uuidv4(),
+                name: assetName,
+                type: 'crypto-asset',
+                description: `Detected in configuration/artifact file: ${path.basename(cfgPath)}`,
+                cryptoProperties: {
+                  assetType: assetType ?? AssetType.ALGORITHM,
+                  algorithmProperties: {
+                    primitive,
+                    cryptoFunctions: [cf],
+                  },
+                },
+                location: {
+                  fileName: relativePath,
+                  lineNumber,
+                },
+                quantumSafety: QuantumSafetyStatus.UNKNOWN,
+              };
+              cbom.cryptoAssets.push(enrichAssetWithPQCData(asset));
+            }
+          }
+        } catch {
+          // Skip files that can't be read
+        }
+      }
+    } catch (err) {
+      console.warn('Config file scan failed (non-blocking):', (err as Error).message);
     }
 
     // ── Cross-file enrichment for BouncyCastle-Provider assets ──────────────

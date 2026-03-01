@@ -229,4 +229,50 @@ export const goPatterns: CryptoPattern[] = [
   { pattern: /"encoding\/pem"/g, algorithm: 'PEM', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, scanContext: true },
   { pattern: /pem\.Decode\s*\(/g, algorithm: 'PEM', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER },
   { pattern: /pem\.Encode\s*\(/g, algorithm: 'PEM', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER },
+
+  // ════════════════════════════════════════════════════════════════════════
+  // ── Missing x/crypto packages ───────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════
+  { pattern: /"golang\.org\/x\/crypto\/twofish"/g, algorithm: 'Twofish', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
+  { pattern: /"golang\.org\/x\/crypto\/blowfish"/g, algorithm: 'Blowfish', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
+  { pattern: /"golang\.org\/x\/crypto\/cast5"/g, algorithm: 'CAST5', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
+  { pattern: /"golang\.org\/x\/crypto\/tea"/g, algorithm: 'TEA', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
+  { pattern: /"golang\.org\/x\/crypto\/xtea"/g, algorithm: 'XTEA', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
+  { pattern: /"golang\.org\/x\/crypto\/xts"/g, algorithm: 'XTS', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
+  { pattern: /"golang\.org\/x\/crypto\/poly1305"/g, algorithm: 'Poly1305', primitive: CryptoPrimitive.MAC, cryptoFunction: CryptoFunction.TAG },
+  { pattern: /"golang\.org\/x\/crypto\/openpgp"/g, algorithm: 'OpenPGP', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
+  { pattern: /"golang\.org\/x\/crypto\/acme"/g, algorithm: 'ACME', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
+
+  // Missing ecdh
+  { pattern: /ecdh\.GenerateKey\s*\(/g, algorithm: 'ECDH', primitive: CryptoPrimitive.KEY_AGREEMENT, cryptoFunction: CryptoFunction.KEYGEN },
+  // Missing P-224 curve
+  { pattern: /elliptic\.P224\s*\(/g, algorithm: 'P-224', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.KEYGEN },
+
+  // ════════════════════════════════════════════════════════════════════════
+  // ── PQC: Cloudflare CIRCL ───────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════
+  { pattern: /"github\.com\/cloudflare\/circl"/g, algorithm: 'CIRCL', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER },
+  { pattern: /"github\.com\/cloudflare\/circl\/kem\/kyber"/g, algorithm: 'ML-KEM', primitive: CryptoPrimitive.KEY_ENCAPSULATION, cryptoFunction: CryptoFunction.KEY_EXCHANGE },
+  { pattern: /"github\.com\/cloudflare\/circl\/kem\/mlkem"/g, algorithm: 'ML-KEM', primitive: CryptoPrimitive.KEY_ENCAPSULATION, cryptoFunction: CryptoFunction.KEY_EXCHANGE },
+  { pattern: /"github\.com\/cloudflare\/circl\/sign\/dilithium"/g, algorithm: 'ML-DSA', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
+  { pattern: /"github\.com\/cloudflare\/circl\/sign\/mldsa"/g, algorithm: 'ML-DSA', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
+  { pattern: /"github\.com\/cloudflare\/circl\/sign\/ed448"/g, algorithm: 'Ed448', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
+  { pattern: /"github\.com\/cloudflare\/circl\/kem\/frodo"/g, algorithm: 'FrodoKEM', primitive: CryptoPrimitive.KEY_ENCAPSULATION, cryptoFunction: CryptoFunction.KEY_EXCHANGE },
+  { pattern: /"github\.com\/cloudflare\/circl\/hpke"/g, algorithm: 'HPKE', primitive: CryptoPrimitive.KEY_ENCAPSULATION, cryptoFunction: CryptoFunction.KEY_EXCHANGE },
+  { pattern: /"github\.com\/cloudflare\/circl\/pke\/kyber"/g, algorithm: 'ML-KEM', primitive: CryptoPrimitive.KEY_ENCAPSULATION, cryptoFunction: CryptoFunction.KEY_EXCHANGE },
+  { pattern: /"github\.com\/cloudflare\/circl\/sign\/sphincs"/g, algorithm: 'SLH-DSA', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
+
+  // ── Go PQC in go.mod / import path detection ──
+  { pattern: /"github\.com\/open-quantum-safe\/liboqs-go"/g, algorithm: 'liboqs', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER },
+  { pattern: /oqs\.KeyEncapsulation/g, algorithm: 'PQC-KEM', primitive: CryptoPrimitive.KEY_ENCAPSULATION, cryptoFunction: CryptoFunction.KEY_EXCHANGE },
+  { pattern: /oqs\.Signature/g, algorithm: 'PQC-Signature', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.SIGN },
+
+  // ════════════════════════════════════════════════════════════════════════
+  // ── Additional TLS cipher suites / config ───────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════
+  { pattern: /tls\.CipherSuiteName\s*\(/g, algorithm: 'TLS-CipherSuite', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
+  { pattern: /tls\.X509KeyPair\s*\(/g, algorithm: 'X.509', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.CERTIFICATE },
+
+  // ── Key size via RSA key generation ──
+  { pattern: /rsa\.GenerateKey\s*\([^,]+,\s*(\d{3,5})\s*\)/g, algorithm: 'RSA-KeySize', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN, extractAlgorithm: true },
 ];
