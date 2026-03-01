@@ -7,6 +7,7 @@ import {
   parseCBOMFile,
   calculateReadinessScore,
   checkNISTPQCCompliance,
+  filterInformationalAssets,
 } from '../services';
 import { UploadResponse, CBOMDocument } from '../types';
 import CbomUpload from '../models/CbomUpload';
@@ -53,16 +54,18 @@ router.post('/upload', upload.single('cbom'), (req: Request, res: Response) => {
 
     // Persist to DB (fire-and-forget, don't block response)
     const assets = cbom.cryptoAssets ?? [];
+    // Use actionable assets (exclude informational) for stats
+    const actionableAssets = filterInformationalAssets(assets);
     CbomUpload.create({
       fileName: req.file.originalname || 'unknown.json',
       componentName: cbom.metadata?.component?.name ?? null,
       format: cbom.bomFormat ?? 'CycloneDX',
       specVersion: cbom.specVersion ?? '1.7',
       totalAssets: assets.length,
-      quantumSafe: assets.filter((a: { quantumSafety?: string }) => a.quantumSafety === 'quantum-safe').length,
-      notQuantumSafe: assets.filter((a: { quantumSafety?: string }) => a.quantumSafety === 'not-quantum-safe').length,
-      conditional: assets.filter((a: { quantumSafety?: string }) => a.quantumSafety === 'conditional').length,
-      unknown: assets.filter((a: { quantumSafety?: string }) => a.quantumSafety === 'unknown').length,
+      quantumSafe: actionableAssets.filter((a: { quantumSafety?: string }) => a.quantumSafety === 'quantum-safe').length,
+      notQuantumSafe: actionableAssets.filter((a: { quantumSafety?: string }) => a.quantumSafety === 'not-quantum-safe').length,
+      conditional: actionableAssets.filter((a: { quantumSafety?: string }) => a.quantumSafety === 'conditional').length,
+      unknown: actionableAssets.filter((a: { quantumSafety?: string }) => a.quantumSafety === 'unknown').length,
       uploadDate: new Date().toISOString(),
       cbomFile: req.file.buffer,
       cbomFileType: 'application/json',
