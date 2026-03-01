@@ -319,12 +319,23 @@ This isn't a specific tool but a **technique** inspired by cbomkit-theia's certi
 
 ## Prioritized Implementation Plan
 
-### Phase 1 — Quick Wins (1-2 weeks)
+### Phase 1 — Quick Wins (1-2 weeks) ✅ IMPLEMENTED
 
-#### 1A. Certificate File Parsing
+#### 1A. Certificate File Parsing ✅
+**Status:** Implemented in `backend/src/services/scanner/certificateFileScanner.ts`
 **Impact:** Resolves certificate-file X.509 conditionals
 **Effort:** Low (Node.js `crypto.X509Certificate` API)
 **Estimated resolution:** ~50-200 of the 1,350 X.509 conditionals (those with actual cert files in repos)
+
+Implementation includes:
+- `scanCertificateFiles()` — discovers and parses `.pem`, `.crt`, `.cer`, `.der` files
+- `scanKeystoreFiles()` — detects `.jks`, `.p12`, `.pfx`, `.keystore` files
+- `discoverCertificateFiles()` — recursive file discovery with exclusion patterns
+- Multi-certificate PEM bundle support
+- DER binary format support
+- Private/public key file detection
+- Full PQC enrichment via `enrichAssetWithPQCData()`
+- `detectionSource: 'certificate'` on all findings
 
 ```typescript
 // Implementation sketch for backend/src/services/scanner/certificateFileScanner.ts
@@ -366,10 +377,22 @@ async function scanCertificateFiles(repoPath: string): Promise<CertificateInfo[]
 
 Then feed `signatureAlgorithm` and `publicKeyAlgorithm` into `classifyAlgorithm()` from `pqcRiskEngine.ts` — immediately promoting X.509 conditionals to definitive classifications.
 
-#### 1B. Enhanced Backward Variable Resolution
+#### 1B. Enhanced Backward Variable Resolution ✅
+**Status:** Implemented in `backend/src/services/scanner/scannerUtils.ts`
 **Impact:** Resolves dynamic argument cases where the variable is assigned within the same method
 **Effort:** Low (extend existing `pqcParameterAnalyzer.ts`)
 **Estimated resolution:** ~15-30 of the ~52 dynamic argument cases
+
+`resolveVariableToAlgorithm()` now implements **7 resolution strategies** (in priority order):
+1. **Backward search (100 lines)** — scans up from call site for `varName = "ALGORITHM"` assignments
+2. **Class-level constants** — matches `static final`, `const`, `readonly` field declarations
+3. **Ternary/conditional** — extracts algorithm from ternary expressions
+4. **Enum/switch-case** — detects enum constants or switch/case values near the variable
+5. **Method parameter → call site** — traces method parameters to their call sites with positional argument matching
+6. **String concatenation root** — extracts the root algorithm from concatenated strings
+7. **Cross-file import** — detects imported constants from other modules
+
+Additionally, `resolveVariableBackward()` was added for the PQC parameter analyzer to use when processing source context blocks.
 
 The current parameter analyzer searches ±15 lines around the API call. Enhance it with **simple backward variable resolution**:
 
@@ -398,25 +421,40 @@ String algo = "SHA-256";  // or: const algo = 'AES-GCM';
 MessageDigest.getInstance(algo);
 ```
 
-#### 1C. BouncyCastle-Provider Reclassification
+#### 1C. BouncyCastle-Provider Reclassification ✅
+**Status:** Implemented in `backend/src/services/pqcRiskEngine.ts`
 **Impact:** Eliminates ~137 "false" conditionals
 **Effort:** Minimal (data model change)
 **Estimated resolution:** All 137 BouncyCastle-Provider entries
 
-BouncyCastle-Provider detections are **informational** — they indicate the provider is registered, not which algorithms are used. The actual algorithms are already detected separately. Options:
-
-1. **Filter from classification counts** — mark as `INFORMATIONAL` category, exclude from conditional totals
-2. **Merge with algorithm detections** — associate BC-Provider context with the algorithm detections that actually use BouncyCastle
-3. **Lower severity** — change `pqcVerdict` to `NO_ACTION_NEEDED` for provider registrations
+Implementation:
+- Added `isInformational?: boolean` flag to the `AlgorithmProfile` interface
+- Marked `BouncyCastle-Provider`, `JCE-Signature-Registration`, `JCE-KeyPairGen-Registration`, `JCE-Digest-Registration` as `isInformational: true`
+- `enrichAssetWithPQCData()` now handles informational entries: confidence 10, COMPLIANT status, `[INFORMATIONAL]` prefix
+- New exported helpers: `isInformationalAsset()` and `filterInformationalAssets()`
+- Informational assets are excluded from risk scoring and conditional/unknown counts
 
 ---
 
 ### Phase 2 — Medium Effort (1-2 months)
 
-#### 2A. CodeQL Integration for Dynamic Argument Resolution
+#### 2A. CodeQL Integration for Dynamic Argument Resolution ✅
+**Status:** Implemented in `backend/src/services/scanner/externalToolIntegration.ts`
 **Impact:** Resolves remaining dynamic argument cases via proper data flow analysis
 **Effort:** Medium (custom CodeQL queries + CI pipeline integration)
 **Estimated resolution:** ~40-50 of the ~52 dynamic argument cases
+
+Implementation includes:
+- `runExternalToolScans()` — orchestrates all three external tools (CodeQL, cbomkit-theia, CryptoAnalysis)
+- `checkToolAvailability()` — tests whether each tool's CLI is accessible
+- `runCodeQLAnalysis()` — creates CodeQL database, runs custom `.ql` queries, parses SARIF output
+- `runCbomkitTheia()` — runs cbomkit-theia filesystem scanning, parses JSON output
+- `runCryptoAnalysis()` — runs CrySL-based typestate analysis, parses JSON report
+- `deduplicateExternalAssets()` — merges external findings with regex results (enriches existing, adds novel)
+- All tools optional — fail gracefully if not installed
+- Custom CodeQL queries for `MessageDigest`, `Cipher`, `KeyGenerator`, `Signature` argument resolution
+
+> **Note:** The external tool integration framework is fully implemented. The tools themselves need to be installed separately on the system for the integration to produce results.
 
 Write custom CodeQL queries for each dynamic argument pattern:
 
@@ -539,15 +577,15 @@ Useful as a **validation tool** rather than a primary scanner, comparing static 
 
 ## Impact Estimates
 
-| Phase | Technique | X.509 Resolved | BC-Provider Resolved | Dynamic Args Resolved | Total Reduction |
-|-------|-----------|:-:|:-:|:-:|:-:|
-| 1A | Cert File Parsing | ~100-200 | — | — | ~100-200 |
-| 1B | Backward Variable Resolution | — | — | ~15-30 | ~15-30 |
-| 1C | BC-Provider Reclassification | — | **~137** | — | ~137 |
-| 2A | CodeQL Integration | — | — | ~40-50 | ~40-50 |
-| 2B | Keystore Scanning | ~100-300 | — | — | ~100-300 |
-| 3A | sonar-cryptography | — | ✅ remaining | ✅ remaining | ~50-100 |
-| | **CUMULATIVE** | **~200-500** | **~137** | **~52** | **~390-690** |
+| Phase | Technique | Status | X.509 Resolved | BC-Provider Resolved | Dynamic Args Resolved | Total Reduction |
+|-------|-----------|--------|:-:|:-:|:-:|:-:|
+| 1A | Cert File Parsing | ✅ Implemented | ~100-200 | — | — | ~100-200 |
+| 1B | Backward Variable Resolution | ✅ Implemented | — | — | ~15-30 | ~15-30 |
+| 1C | BC-Provider Reclassification | ✅ Implemented | — | **~137** | — | ~137 |
+| 2A | External Tool Integration | ✅ Implemented | — | — | ~40-50 | ~40-50 |
+| 2B | Keystore Scanning | Planned | ~100-300 | — | — | ~100-300 |
+| 3A | sonar-cryptography | Planned | — | ✅ remaining | ✅ remaining | ~50-100 |
+| | **CUMULATIVE** | | **~200-500** | **~137** | **~52** | **~390-690** |
 
 **Realistic expectation:** Phases 1+2 could reduce the ~1,569 irreducible assets by **~400-700** (~25-45%), with the remainder being X.509 references in dependency metadata that no tool can resolve without runtime analysis.
 
@@ -566,26 +604,29 @@ Useful as a **validation tool** rather than a primary scanner, comparing static 
                     │                   │                   │
                     ▼                   ▼                   ▼
           ┌─────────────┐    ┌─────────────────┐  ┌──────────────────┐
-          │  Regex       │    │  Certificate    │  │  CodeQL / Joern  │
-          │  Scanner     │    │  File Scanner   │  │  (optional)      │
-          │  (existing)  │    │  (Phase 1A)     │  │  (Phase 2A/3B)   │
-          └──────┬──────┘    └────────┬────────┘  └────────┬─────────┘
-                 │                    │                     │
-                 └────────────────────┼─────────────────────┘
+          │  Regex       │    │  Certificate    │  │  External Tools   │
+          │  Scanner     │    │  File Scanner   │  │  CodeQL           │
+          │  (existing)  │    │  (Phase 1A) ✅   │  │  cbomkit-theia    │
+          └──────┬──────┘    └────────┬────────┘  │  CryptoAnalysis   │
+                 │                    │           │  (Phase 2A) ✅    │
+                 └────────────────────┼───────────┘───────────┘
                                       │
                                       ▼
                           ┌───────────────────────┐
                           │  Scanner Aggregator    │
-                          │  (scannerAggregator.ts)│
-                          │  Merges & deduplicates │
+                          │  (scannerAggregator.ts) │
+                          │  10-step pipeline       │
+                          │  Merges & deduplicates  │
                           └───────────┬───────────┘
                                       │
                                       ▼
                           ┌───────────────────────┐
                           │  PQC Risk Engine       │
-                          │  + Parameter Analyzer  │
-                          │  + Backward Variable   │
-                          │    Resolution (1B)     │
+                          │  + Parameter Analyzer   │
+                          │  + 7-Strategy Variable  │
+                          │    Resolution (1B) ✅    │
+                          │  + Informational Filter │
+                          │    (1C) ✅               │
                           └───────────┬───────────┘
                                       │
                                       ▼
@@ -597,10 +638,11 @@ Useful as a **validation tool** rather than a primary scanner, comparing static 
 
 ### Key Design Decisions
 
-1. **Certificate file scanner** plugs into the existing `scannerAggregator.ts` as a new scanner module
-2. **Backward variable resolution** enhances the existing `pqcParameterAnalyzer.ts` — no new surface area
-3. **CodeQL/Joern** are external tools invoked via subprocess with SARIF/JSON output parsing
-4. **BC-Provider reclassification** is a data model change in `pqcRiskEngine.ts`
+1. **Certificate file scanner** plugs into `scannerAggregator.ts` as step 4 of the 10-step pipeline ✅
+2. **7-strategy variable resolution** enhances `scannerUtils.ts` — backward search, constants, ternary, enum, call-site tracing, concatenation, imports ✅
+3. **BC-Provider reclassification** adds `isInformational` flag to `AlgorithmProfile` in `pqcRiskEngine.ts` ✅
+4. **External tools** (CodeQL, cbomkit-theia, CryptoAnalysis) are invoked via subprocess with SARIF/JSON output parsing in `externalToolIntegration.ts` ✅
+5. **Deduplication** enriches existing assets from external findings rather than creating duplicates ✅
 
 ---
 

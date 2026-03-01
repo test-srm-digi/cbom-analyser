@@ -25,10 +25,13 @@ The application then evaluates every cryptographic asset against **Post-Quantum 
 |---------|-------------|
 | **CBOM Upload & Parse** | Upload CycloneDX 1.7 CBOM JSON files |
 | **Code Scanning** | Regex-based scanning for 8 languages (Java, Python, JS/TS, C/C++, C#, Go, PHP, Rust) with 1000+ patterns |
+| **Certificate File Scanning** | Parse `.pem`, `.crt`, `.cer`, `.der` certificate files for signature/key algorithms |
 | **Network TLS Scanner** | Scan live endpoints for TLS/cipher details |
 | **xBOM Unified BOMs** | Merge SBOM + CBOM into a single document with cross-references |
 | **Third-Party Dependency Scanning** | Detect crypto libraries in Maven, npm, pip, Go dependencies |
+| **External Tool Integration** | Optional CodeQL, cbomkit-theia, CryptoAnalysis subprocess scanners |
 | **PQC Risk Engine** | Flag quantum-vulnerable algorithms with NIST-approved replacements |
+| **Enhanced Variable Resolution** | 7-strategy backward variable resolution for dynamic crypto arguments |
 | **Cryptographic Policies** | Define compliance rules with 10 NIST SP 800-57 presets |
 | **Integrations Hub** | DigiCert TLM, GitHub CBOM Import, Network TLS Scanner connectors |
 | **Ticket Tracking** | Create remediation tickets in JIRA, GitHub Issues, ServiceNow |
@@ -50,7 +53,9 @@ The application then evaluates every cryptographic asset against **Post-Quantum 
 | **PQC Replacement Recommendations** | ❌ | ❌ | ✅ |
 | **Offline/Client-side Mode** | ❌ | ❌ | ✅ |
 | **Cryptographic Policies** | ❌ | ❌ | ✅ |
-| **50+ Algorithm PQC Database** | ❌ | ❌ | ✅ |
+| **100+ Algorithm PQC Database** | ❌ | ❌ | ✅ |
+| **Certificate File Parsing** | ❌ | ❌ | ✅ |
+| **External Tool Integration** | ❌ | ❌ | ✅ (CodeQL, cbomkit-theia, CryptoAnalysis) |
 
 ---
 
@@ -83,11 +88,13 @@ All detailed documentation is organized in the [`docs/`](docs/) folder:
 | [Getting Started](docs/getting-started.md) | Installation, Docker deployment, environment variables, sample data |
 | [GitHub Actions](docs/github-actions.md) | CI/CD integration, inputs/outputs, SARIF, SonarQube, artifact download |
 | [API Reference](docs/api-reference.md) | Complete REST API documentation — all endpoints, request/response formats |
-| [Scanning](docs/scanning.md) | Code scanning (8 languages), network scanning, dependency scanning, PQC verdicts |
+| [Scanning](docs/scanning.md) | Code scanning (8 languages), certificate file scanning, network scanning, dependency scanning, external tool integration, PQC verdicts |
 | [UI Guide](docs/ui-guide.md) | Dashboard, integrations, discovery pages, policies, tickets, quantum safety |
 | [Database](docs/database.md) | MariaDB setup, Sequelize config, connection pooling, all 11 table schemas |
 | [Architecture](docs/architecture.md) | System architecture, project structure, tech stack, sync scheduler, RTK Query |
 | [PQC Standards](docs/pqc-standards.md) | Quantum threat, CycloneDX 1.7 spec, asset types, safety classification |
+| [PQC Classification Analysis](docs/pqc-classification-analysis.md) | Deep analysis of conditional/unknown assets, resolution strategies |
+| [Advanced Resolution Techniques](docs/advanced-resolution-techniques.md) | External tool research, implementation roadmap, certificate parsing, CodeQL integration |
 | [xBOM](docs/xbom.md) | Unified SBOM + CBOM — Trivy integration, merge engine, CI pipeline |
 
 **External:**

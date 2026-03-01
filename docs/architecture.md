@@ -35,9 +35,11 @@
 │  │ Services         │  │  │ └─ Client-side Fallback  │  │
 │  │ ├─ PQC Risk Eng. │  │  └──────────────────────────┘  │
 │  │ ├─ Network Scan  │  │                                │
-│  │ └─ Aggregator    │  │  Tailwind CSS (dark theme)     │
-│  ├──────────────────┤  │  Recharts (visualizations)     │
-│  │ Types (CycloneDX)│  │  Lucide (icons)                │
+│  │ ├─ Cert Scanner  │  │  Tailwind CSS (dark theme)     │
+│  │ ├─ External Tools│  │  Recharts (visualizations)     │
+│  │ └─ Aggregator    │  │  Lucide (icons)                │
+│  ├──────────────────┤  │                                │
+│  │ Types (CycloneDX)│  │                                │
 │  └──────────────────┘  │                                │
 │                        │                                │
 ├────────────────────────┴────────────────────────────────┤
@@ -73,10 +75,10 @@ cbom-analyser/
 │       │   ├── SyncLog.ts          # Sync audit trail
 │       │   └── index.ts            # Sequelize associations
 │       ├── services/
-│       │   ├── pqcRiskEngine.ts    # Quantum safety classification
+│       │   ├── pqcRiskEngine.ts    # Quantum safety classification + informational asset filtering
 │       │   ├── pqcParameterAnalyzer.ts # Per-algorithm parameter analysis
 │       │   ├── networkScanner.ts   # Live TLS endpoint scanning
-│       │   ├── scannerAggregator.ts# Code scanning + CBOM merging
+│       │   ├── scannerAggregator.ts# 10-step scanning pipeline + CBOM merging
 │       │   ├── dependencyScanner.ts# Third-party crypto dependency detection
 │       │   ├── connectors.ts       # 6 connector functions + CONNECTOR_REGISTRY
 │       │   ├── syncExecutor.ts     # 8-step sync lifecycle
@@ -86,7 +88,12 @@ cbom-analyser/
 │       │   ├── githubCbomConnector.ts    # GitHub CBOM real connector
 │       │   ├── networkTlsConnector.ts    # Network TLS real connector
 │       │   ├── bedrockService.ts         # AWS Bedrock AI suggestions
-│       │   ├── scanner/            # Language-specific pattern files
+│       │   ├── scanner/            # Language-specific pattern files + advanced scanners
+│       │   │   ├── certificateFileScanner.ts  # Parse .pem/.crt/.cer/.der certificate files
+│       │   │   ├── externalToolIntegration.ts # CodeQL, cbomkit-theia, CryptoAnalysis subprocess integration
+│       │   │   ├── scannerUtils.ts             # Variable resolution (7 strategies), normalisation
+│       │   │   ├── contextScanners.ts          # WebCrypto, X.509, nearby context scanning
+│       │   │   └── patterns/                   # 8 language pattern files + config patterns
 │       │   └── index.ts            # Barrel exports
 │       └── routes/
 │           ├── cbomRoutes.ts       # Upload, list, get CBOMs
@@ -246,11 +253,22 @@ When a sync runs (either from a cron tick or a manual trigger), the `SyncExecuto
 
 ```
 backend/src/services/
-├── connectors.ts      — 6 connector functions + CONNECTOR_REGISTRY
-├── syncExecutor.ts    — executeSyncForIntegration() — 8-step lifecycle
-├── syncScheduler.ts   — cron job management (node-cron)
-├── xbomDbLoader.ts    — loads xBOM files from cbom_imports into in-memory xbomStore
-└── index.ts           — barrel re-exports
+├── connectors.ts          — 6 connector functions + CONNECTOR_REGISTRY
+├── syncExecutor.ts        — executeSyncForIntegration() — 8-step lifecycle
+├── syncScheduler.ts       — cron job management (node-cron)
+├── xbomDbLoader.ts        — loads xBOM files from cbom_imports into in-memory xbomStore
+├── pqcRiskEngine.ts       — ALGORITHM_DATABASE (100+ entries) + informational asset filtering
+├── pqcParameterAnalyzer.ts — 12 context-aware analyzers for conditional assets
+├── scannerAggregator.ts   — 10-step scanning pipeline (code + certs + external tools + PQC)
+├── dependencyScanner.ts   — manifest parsing + transitive resolution
+├── networkScanner.ts      — live TLS endpoint scanning
+├── scanner/
+│   ├── certificateFileScanner.ts   — .pem/.crt/.cer/.der certificate parsing (Node.js crypto)
+│   ├── externalToolIntegration.ts  — CodeQL, cbomkit-theia, CryptoAnalysis subprocess runners
+│   ├── scannerUtils.ts             — 7-strategy variable resolution + normalisation
+│   ├── contextScanners.ts          — WebCrypto, X.509, nearby context enrichment
+│   └── patterns/                   — 8 language pattern files (~1,000+ patterns) + config patterns
+└── index.ts               — barrel re-exports
 ```
 
 ---

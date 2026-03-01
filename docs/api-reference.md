@@ -68,13 +68,32 @@ The list endpoint excludes the BLOB column (`cbomFile`) for performance. The sin
 | `POST` | `/api/scan-code/regex` | `{ repoPath, excludePatterns? }` | Same (regex scanner only, no sonar) |
 | `POST` | `/api/scan-code/full` | `{ repoPath, networkHosts?, excludePatterns? }` | Same + `cbom.thirdPartyLibraries` + PQC verdicts |
 
-The **`/api/scan-code/full`** endpoint runs the complete 6-step pipeline:
+The **`/api/scan-code/full`** endpoint runs the complete 10-step pipeline:
 1. Code scan (sonar-cryptography or regex fallback) — 8 languages, 1 000+ patterns
 2. Configuration & artifact scan (PEM certs, java.security, openssl.cnf, TLS configs)
 3. Dependency scan (manifest file analysis + transitive resolution)
-4. Network scan (if `networkHosts` provided)
-5. Merge all discovered crypto assets
-6. Smart PQC parameter analysis on conditional assets
+4. Certificate file scanning — parse `.pem`, `.crt`, `.cer`, `.der` files for signature/key algorithms
+5. External tool scanning — run CodeQL, cbomkit-theia, CryptoAnalysis (if installed)
+6. Network scan (if `networkHosts` provided)
+7. Merge all discovered crypto assets
+8. Deduplicate external tool findings against regex results
+9. Smart PQC parameter analysis on conditional assets
+10. Informational asset filtering + false positive removal
+
+### Detection Sources
+
+Each crypto asset in the CBOM output includes a `detectionSource` field indicating how it was discovered:
+
+| Value | Source |
+|-------|--------|
+| `sonar` | SonarQube sonar-cryptography plugin (AST-based) |
+| `regex` | Built-in regex pattern scanner |
+| `dependency` | Third-party dependency manifest scanning |
+| `network` | Network TLS endpoint scanning |
+| `certificate` | Certificate file parsing (`.pem`, `.crt`, `.cer`, `.der`) |
+| `codeql` | CodeQL data flow analysis (custom crypto queries) |
+| `cbomkit-theia` | cbomkit-theia filesystem/container scanning |
+| `cryptoanalysis` | CryptoAnalysis CrySL-based typestate analysis |
 
 ---
 

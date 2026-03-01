@@ -12,6 +12,8 @@
   - [Approach 3: Network TLS Scanner](#approach-3-network-tls-scanner-runtime-crypto-discovery)
   - [Approach 4: Full Pipeline](#approach-4-full-pipeline-recommended)
   - [Comparison Matrix](#comparison-matrix)
+- [Certificate File Scanning](#certificate-file-scanning)
+- [External Tool Integration](#external-tool-integration)
 - [Variable Resolution & Context Scanning](#variable-resolution--context-scanning)
   - [Supported Languages & Libraries](#supported-languages--libraries)
   - [Scanner Module Architecture](#scanner-module-architecture)
@@ -143,10 +145,13 @@ curl -X POST http://localhost:3001/api/scan-code/full \
 This produces a CBOM that includes:
 - All crypto assets from source code (sonar or regex) — 8 languages, 1 000+ patterns
 - Crypto configuration & artifact detections (PEM certificates/keys, java.security, openssl.cnf, nginx/apache TLS config, SSH config, Spring/ASP.NET settings)
+- **Certificate file parsing** — `.pem`, `.crt`, `.cer`, `.der` files parsed for signature algorithms, public key types, and key sizes
 - Third-party crypto libraries discovered from manifest files (`pom.xml`, `package.json`, `requirements.txt`, `go.mod`, etc.)
 - Known algorithms provided by each library (dependency graph with `provides` field)
+- **External tool results** (if CodeQL, cbomkit-theia, or CryptoAnalysis are installed) — deduplicated and merged with regex findings
 - Network TLS scan results (if `networkHosts` specified)
 - **Definitive PQC verdicts** on conditional assets (PBKDF2 iteration counts, AES key sizes, SecureRandom providers, KeyPairGenerator algorithms, etc.)
+- **Informational asset filtering** — BouncyCastle-Provider registrations marked as informational, excluded from risk counts
 
 **Alternatively**, you can still combine scanners manually:
 
@@ -171,12 +176,121 @@ curl -X POST http://localhost:3001/api/scan-network/merge/urn:uuid:YOUR-CBOM-ID 
 
 ### Comparison Matrix
 
-| Approach | Setup | Speed | Accuracy | Languages | Deps | PQC Verdicts | Runtime Crypto |
-|----------|-------|-------|----------|-----------|------|-------------|----------------|
-| **Regex Scanner** | None | Fast | Medium | Java, Python, JS/TS, C/C++, C#/.NET, Go, PHP, Rust + config files | No | No | No |
-| **PQCA sonar-cryptography** | High | Slow | Very High | Java, Python, Go | No | No | No |
-| **Network TLS Scanner** | None | Fast | High (TLS) | N/A | No | No | Yes |
-| **Full Pipeline** | Low–High | Medium | Highest | All (8 languages + config/artifacts) | Yes | Yes | Yes |
+| Approach | Setup | Speed | Accuracy | Languages | Deps | Certs | External Tools | PQC Verdicts | Runtime Crypto |
+|----------|-------|-------|----------|-----------|------|-------|----------------|-------------|----------------|
+| **Regex Scanner** | None | Fast | Medium | Java, Python, JS/TS, C/C++, C#/.NET, Go, PHP, Rust + config files | No | No | No | No | No |
+| **PQCA sonar-cryptography** | High | Slow | Very High | Java, Python, Go | No | No | N/A | No | No |
+| **Network TLS Scanner** | None | Fast | High (TLS) | N/A | No | No | No | No | Yes |
+| **Full Pipeline** | Low–High | Medium | Highest | All (8 languages + config/artifacts) | Yes | Yes | If installed | Yes | Yes |
+
+---
+
+## Certificate File Scanning
+
+The full scan pipeline includes a dedicated **certificate file scanner** (`certificateFileScanner.ts`) that discovers and parses certificate files in the repository, extracting actual cryptographic details that turn generic "X.509 (conditional)" entries into definitive classifications.
+
+### How It Works
+
+1. **Discovery** — scans the repository for files matching `.pem`, `.crt`, `.cer`, `.der` extensions (excluding `node_modules`, `.git`, `target`, `build`, `dist`, `vendor`)
+2. **PEM Parsing** — reads PEM files, splits multi-certificate bundles (multiple `-----BEGIN CERTIFICATE-----` blocks), and parses each using Node.js `crypto.X509Certificate`
+3. **DER Parsing** — attempts binary DER parsing for `.der` files
+4. **Key File Detection** — identifies private keys (`.key`, `*.pem` with `PRIVATE KEY` header) and public keys
+5. **Keystore Detection** — discovers `.jks`, `.p12`, `.pfx`, `.keystore` files (listed as assets but requires password for deep parsing)
+
+### Extracted Information
+
+| Field | Source | Example |
+|-------|--------|---------|
+| **Signature Algorithm** | `X509Certificate.sigAlgName` | `SHA256withRSA`, `ECDSA-with-SHA384`, `ML-DSA-65` |
+| **Public Key Algorithm** | `createPublicKey(cert.publicKey)` | `rsa`, `ec`, `ed25519`, `ml-dsa` |
+| **Public Key Size** | `asymmetricKeySize` | `2048`, `256`, `384` |
+| **Subject / Issuer** | Certificate fields | `CN=*.example.com` |
+| **Validity** | `validFrom` / `validTo` | Expiry tracking |
+| **Serial Number** | Certificate serial | Unique identifier |
+
+### CBOM Integration
+
+Each parsed certificate produces a `CryptoAsset` with:
+- `detectionSource: 'certificate'`
+- `cryptoProperties.assetType: 'certificate'`
+- `CertificateProperties` including `signatureAlgorithm`, `subjectPublicKeyAlgorithm`, `certificateExpiry`
+- PQC enrichment via `enrichAssetWithPQCData()` — turns "X.509" into "RSA-2048 (not-quantum-safe)" or "ML-DSA-65 (quantum-safe)"
+
+### Example Output
+
+A `.pem` certificate signed with SHA256withRSA and a 2048-bit key produces:
+```json
+{
+  "name": "RSA-2048",
+  "type": "crypto-asset",
+  "detectionSource": "certificate",
+  "quantumSafety": "not-quantum-safe",
+  "cryptoProperties": {
+    "assetType": "certificate",
+    "certificateProperties": {
+      "signatureAlgorithm": "SHA256withRSA",
+      "subjectPublicKeyAlgorithm": "RSA",
+      "subjectPublicKeySize": 2048
+    }
+  },
+  "location": { "fileName": "certs/server.pem" }
+}
+```
+
+---
+
+## External Tool Integration
+
+The scanner supports optional integration with three external static analysis tools. These run as **subprocesses** — if a tool is not installed, it fails gracefully and returns no results.
+
+### Supported Tools
+
+| Tool | What It Does | Languages | Detection Source |
+|------|-------------|-----------|-----------------|
+| **CodeQL** | Data flow analysis with custom crypto queries | Java, JS, Python, Go, C/C++, C# | `codeql` |
+| **cbomkit-theia** | Filesystem/container certificate & config scanning | N/A (file-based) | `cbomkit-theia` |
+| **CryptoAnalysis** | CrySL-based typestate analysis for Java crypto APIs | Java | `cryptoanalysis` |
+
+### Check Tool Availability
+
+Before running scans, the pipeline calls `checkToolAvailability()` which tests whether each tool's CLI is accessible:
+- `codeql --version`
+- `cbomkit-theia --version`
+- `java -jar CryptoAnalysis.jar --help`
+
+### CodeQL Integration
+
+When CodeQL is available, the scanner:
+
+1. **Creates a CodeQL database** for the repository
+2. **Runs custom `.ql` queries** that trace string values flowing into:
+   - `MessageDigest.getInstance()` — resolves dynamic digest algorithm arguments
+   - `Cipher.getInstance()` — resolves cipher transformation strings
+   - `KeyGenerator.getInstance()` — resolves key generation algorithm arguments
+   - `Signature.getInstance()` — resolves signature algorithm arguments
+3. **Parses SARIF output** to extract resolved algorithm names with file locations
+4. Each finding becomes a `CryptoAsset` with `detectionSource: 'codeql'`
+
+### cbomkit-theia Integration
+
+When cbomkit-theia is available:
+- Runs `cbomkit-theia scan --format json <repoPath>`
+- Parses the JSON output for certificate findings, java.security config, and OpenSSL config
+- Each finding is converted to a `CryptoAsset` with `detectionSource: 'cbomkit-theia'`
+
+### CryptoAnalysis Integration
+
+When CryptoAnalysis is available:
+- Runs `java -jar CryptoAnalysis.jar --appPath <repoPath> --reportFormat JSON`
+- Parses the JSON report for crypto misuse findings with resolved arguments
+- Each finding is converted to a `CryptoAsset` with `detectionSource: 'cryptoanalysis'`
+
+### Deduplication with Regex Results
+
+External tool findings are **deduplicated** against existing regex scanner results:
+- If an external tool detects the same algorithm at the same file/line as a regex finding, the external result **enriches** the existing asset (boosts confidence) rather than creating a duplicate
+- Novel findings (detected only by external tools) are added as new assets
+- The `deduplicateExternalAssets()` function handles this merge logic
 
 ---
 
@@ -207,8 +321,10 @@ The scanner is organized into a modular structure under `backend/src/services/sc
 ```
 scanner/
 ├── scannerTypes.ts          # CryptoPattern interface, file extension constants, skip patterns
-├── scannerUtils.ts          # globToRegex, shouldExcludeFile, normaliseAlgorithmName, resolveVariableToAlgorithm
+├── scannerUtils.ts          # globToRegex, shouldExcludeFile, normaliseAlgorithmName, resolveVariableToAlgorithm (7 strategies)
 ├── contextScanners.ts       # scanWebCryptoContext, scanX509Context, scanNearbyContext
+├── certificateFileScanner.ts # scanCertificateFiles, scanKeystoreFiles, discoverCertificateFiles
+├── externalToolIntegration.ts # runExternalToolScans, checkToolAvailability, deduplicateExternalAssets
 └── patterns/
     ├── index.ts             # Re-exports all patterns + combined allCryptoPatterns & allConfigPatterns arrays
     ├── javaPatterns.ts      # ~140 Java/JCE + deep BouncyCastle + PQC patterns
@@ -226,18 +342,28 @@ Each pattern file exports a `CryptoPattern[]` array. The `allCryptoPatterns` com
 
 ### Variable-Argument Resolution
 
-When the scanner encounters crypto API calls that use a **variable** instead of a string literal (e.g., `KeyPairGenerator.getInstance(algorithm)` instead of `getInstance("RSA")`), it attempts to **resolve the variable to an actual algorithm name**.
+When the scanner encounters crypto API calls that use a **variable** instead of a string literal (e.g., `KeyPairGenerator.getInstance(algorithm)` instead of `getInstance("RSA")`), it attempts to **resolve the variable to an actual algorithm name** using **7 resolution strategies**.
+
+**Resolution Strategies (in priority order):**
+
+| # | Strategy | Description | Example |
+|---|----------|-------------|--------|
+| 1 | **Backward Search (100 lines)** | Scans up to 100 lines before the call site for `varName = "ALGORITHM"` assignments | `String algo = "RSA"; ... getInstance(algo)` |
+| 2 | **Class-Level Constants** | Matches `static final`, `const`, `readonly` field declarations | `private static final String ALG = "AES";` |
+| 3 | **Ternary / Conditional** | Extracts algorithm from ternary expressions assigned to the variable | `String alg = useNew ? "ML-KEM" : "RSA";` |
+| 4 | **Enum / Switch-Case** | Detects enum constants or switch/case values near the variable | `case RSA: return "RSA"` |
+| 5 | **Method Parameter → Call Site** | Traces method parameters to their call sites with positional argument matching | `void init(String alg) {...}` → `init("AES")` |
+| 6 | **String Concatenation Root** | Extracts the root algorithm from concatenated strings | `"AES" + "/GCM/NoPadding"` → `AES` |
+| 7 | **Cross-File Import** | Detects imported constants from other modules | `import { ALGORITHM } from './config'` |
 
 **How it works:**
 
 1. The scanner detects a variable-arg pattern like `KeyPairGenerator.getInstance(algo)`
-2. It scans ±50 lines around the call site for assignment patterns:
-   - `String algo = "RSA";`
-   - `algo = "EC";`
-   - `final String algo = "ML-KEM";`
-3. If the variable is a method parameter, it traces callers in the same file for the concrete value
-4. If resolved → the asset is named with the **actual algorithm** (e.g., `RSA`) and enriched with PQC data
-5. If unresolved → the asset keeps a generic name with a description like *"Algorithm determined at runtime via variable `algo`"*
+2. It runs all 7 strategies in order, stopping at the first successful resolution
+3. If resolved → the asset is named with the **actual algorithm** (e.g., `RSA`) and enriched with PQC data
+4. If unresolved → the asset keeps a generic name with a description like *"Algorithm determined at runtime via variable `algo`"*
+
+Additionally, `resolveVariableBackward()` provides a simpler backward search used by the PQC parameter analyzer when processing source context blocks.
 
 **Supported variable patterns (Java):**
 - `KeyPairGenerator.getInstance(variable)`
@@ -516,7 +642,7 @@ For assets classified as **Conditional** (e.g., PBKDF2, AES, SecureRandom, KeyPa
 
 ### Algorithm Database Entries
 
-The scanner includes a comprehensive **ALGORITHM_DATABASE** with quantum safety classifications for 80+ algorithms. Recent additions include:
+The scanner includes a comprehensive **ALGORITHM_DATABASE** with quantum safety classifications for 100+ algorithms. Recent additions include:
 
 | Algorithm | Classification | Notes |
 |-----------|---------------|-------|
@@ -528,6 +654,25 @@ The scanner includes a comprehensive **ALGORITHM_DATABASE** with quantum safety 
 | `NONEwithECDSA` | NOT_QUANTUM_SAFE | ECDSA signature without hashing |
 
 Non-cryptographic hash functions (`CRC32`, `Murmur3`) are **excluded** from scanning results — they are checksums, not crypto primitives.
+
+### Informational Asset Filtering
+
+Some detected crypto assets are **informational** rather than actionable. The PQC Risk Engine marks these with `isInformational: true` and applies special handling:
+
+| Asset | Why Informational |
+|-------|-------------------|
+| `BouncyCastle-Provider` | Provider registration, not algorithm usage — actual algorithms detected separately |
+| `JCE-Signature-Registration` | Java JCE service registration boilerplate |
+| `JCE-KeyPairGen-Registration` | Java JCE service registration boilerplate |
+| `JCE-Digest-Registration` | Java JCE service registration boilerplate |
+
+**Informational assets receive:**
+- Confidence: **10** (minimal)
+- PQC status: **COMPLIANT**
+- Name prefix: **[INFORMATIONAL]**
+- Excluded from risk scoring and conditional/unknown counts
+
+Use `isInformationalAsset(asset)` to check or `filterInformationalAssets(assets)` to remove them from reports.
 
 ### Promotion Rules
 
