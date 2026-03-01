@@ -200,13 +200,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Step 1: Trivy SBOM
-      - name: Install Trivy
+      # Step 1: Install & Run Trivy (SBOM)
+      - name: Install & Run Trivy (SBOM + Vulnerabilities)
         run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-
-      - name: Run Trivy (SBOM + Vulnerabilities)
-        run: |
+          sudo apt-get update -qq && sudo apt-get install -yqq wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -qq && sudo apt-get install -yqq trivy
           trivy fs \\
             --format cyclonedx \\
             --output sbom.json \\
