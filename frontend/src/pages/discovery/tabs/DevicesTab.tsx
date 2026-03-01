@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
-import { Eye, ExternalLink, Ticket } from 'lucide-react';
-import { StatCards, Toolbar, AiBanner, DataTable, QsBadge, DeviceStatusBadge, EmptyState, PolicyViolationCell } from '../components';
+import { useMemo, useState, useCallback } from 'react';
+import { Ticket, Sparkles, Loader2, X } from 'lucide-react';
+import { StatCards, Toolbar, AiBanner, QsBadge, DeviceStatusBadge, EmptyState, PolicyViolationCell } from '../components';
+import { ArrowUpDown } from 'lucide-react';
+import Pagination from '../../../components/Pagination';
 import type { IntegrationStep } from '../components';
 import { DEVICES } from '../data';
 import { useGetDevicesQuery, useBulkCreateDevicesMutation, useDeleteAllDevicesMutation, useGetPoliciesQuery } from '../../../store/api';
@@ -10,6 +12,7 @@ import type { CbomPolicyResult } from '../../policies';
 import { CreateTicketModal } from '../../tracking';
 import type { TicketContext } from '../../tracking';
 import { useCreateTicketMutation } from '../../../store/api/trackingApi';
+import { exportTableToCSV } from '../utils/exportCsv';
 import s from '../components/shared.module.scss';
 
 interface Props {
@@ -35,9 +38,52 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
   // Data from a real integration has integrationId set — hide reset for integration-sourced data
   const isSampleData = loaded && data.every((d) => !d.integrationId);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
   /* ── Create-ticket modal state ─────────────────────────── */
   const [ticketCtx, setTicketCtx] = useState<TicketContext | null>(null);
   const [createTicket] = useCreateTicketMutation();
+
+  /* ── AI suggestion state (per-device "AI Fix") ─────────── */
+  const [suggestions, setSuggestions] = useState<Record<string, {
+    loading?: boolean;
+    fix?: string;
+    codeSnippet?: string;
+    confidence?: 'high' | 'medium' | 'low';
+    error?: string;
+  }>>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const fetchSuggestion = useCallback(async (dev: DiscoveryDevice) => {
+    const key = dev.id;
+    setSuggestions(prev => ({ ...prev, [key]: { loading: true } }));
+    setExpandedId(key);
+    try {
+      const res = await fetch('/api/ai-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          algorithmName: dev.certAlgorithm,
+          primitive: 'digital-signature',
+          quantumSafety: dev.quantumSafe ? 'quantum-safe' : 'not-quantum-safe',
+          assetType: 'certificate',
+          description: `IoT/OT device "${dev.deviceName}" (${dev.deviceType}) by ${dev.manufacturer} using ${dev.certAlgorithm} ${dev.keyLength} certificate. Firmware: ${dev.firmwareVersion}.`,
+          recommendedPQC: dev.quantumSafe ? undefined : 'ML-DSA-65 (or hybrid with ECDSA P-256)',
+          keyLength: dev.keyLength,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setSuggestions(prev => ({ ...prev, [key]: { fix: json.suggestedFix, codeSnippet: json.codeSnippet, confidence: json.confidence, loading: false } }));
+      } else {
+        setSuggestions(prev => ({ ...prev, [key]: { loading: false, error: 'No suggestion available' } }));
+      }
+    } catch {
+      setSuggestions(prev => ({ ...prev, [key]: { loading: false, error: 'Failed to fetch suggestion' } }));
+    }
+  }, []);
 
   const total      = data.length;
   const qsSafe     = data.filter((d) => d.quantumSafe).length;
@@ -119,35 +165,53 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
       key: 'actions',
       label: 'Actions',
       sortable: false,
-      headerStyle: { textAlign: 'right' as const },
-      render: (_d: DiscoveryDevice) => (
-        <div className={s.actions}>
-          {!_d.quantumSafe && (
-            <button
-              className={s.createTicketBtn}
-              title="Create remediation ticket"
-              onClick={(ev) => {
-                ev.stopPropagation();
-                setTicketCtx({
-                  entityType: 'Device',
-                  entityName: _d.deviceName,
-                  quantumSafe: _d.quantumSafe,
-                  problemStatement: `Device "${_d.deviceName}" (${_d.deviceType}) uses ${_d.certAlgorithm} ${_d.keyLength} certificate which is not quantum-safe. Manufacturer: ${_d.manufacturer}, Firmware: ${_d.firmwareVersion}.`,
-                  details: { certAlgorithm: _d.certAlgorithm, keyLength: _d.keyLength, manufacturer: _d.manufacturer, firmwareVersion: _d.firmwareVersion, deviceType: _d.deviceType },
-                  severity: _d.keyLength === '1024 bits' ? 'Critical' : 'High',
-                });
-              }}
-            >
-              <Ticket className={s.createTicketIcon} />
-              Create Ticket
-            </button>
-          )}
-          <button className={s.actionBtn}><Eye className={s.actionIcon} /></button>
-          <button className={s.actionBtn}><ExternalLink className={s.actionIcon} /></button>
-        </div>
-      ),
+      headerStyle: { textAlign: 'center' as const },
+      render: (_d: DiscoveryDevice) => {
+        const sg = suggestions[_d.id];
+        return (
+          <div className={s.actions}>
+            {!_d.quantumSafe && (
+              <>
+                <button
+                  className={s.aiFixBtn}
+                  title="Get AI-powered quantum-safe migration suggestion"
+                  disabled={sg?.loading}
+                  onClick={(ev) => { ev.stopPropagation(); fetchSuggestion(_d); }}
+                >
+                  {sg?.loading ? <Loader2 className={s.aiFixIcon} /> : <Sparkles className={s.aiFixIcon} />}
+                  AI Fix
+                </button>
+                <button
+                  className={s.createTicketBtn}
+                  title="Create remediation ticket"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    setTicketCtx({
+                      entityType: 'Device',
+                      entityName: _d.deviceName,
+                      quantumSafe: _d.quantumSafe,
+                      problemStatement: `Device "${_d.deviceName}" (${_d.deviceType}) uses ${_d.certAlgorithm} ${_d.keyLength} certificate which is not quantum-safe. Manufacturer: ${_d.manufacturer}, Firmware: ${_d.firmwareVersion}.`,
+                      details: { certAlgorithm: _d.certAlgorithm, keyLength: _d.keyLength, manufacturer: _d.manufacturer, firmwareVersion: _d.firmwareVersion, deviceType: _d.deviceType },
+                      severity: _d.keyLength === '1024 bits' ? 'Critical' : 'High',
+                      aiSuggestion: sg?.fix,
+                    });
+                  }}
+                >
+                  <Ticket className={s.createTicketIcon} />
+                  Create Ticket
+                </button>
+              </>
+            )}
+          </div>
+        );
+      },
     },
   ];
+
+  const paged = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
 
   if (isLoading) return null;
 
@@ -179,17 +243,103 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
         search={search}
         setSearch={setSearch}
         placeholder="Search by device name, type, manufacturer, or algorithm..."
+        onExport={() => exportTableToCSV(filtered as unknown as Record<string, unknown>[], [
+          { key: 'deviceName', label: 'Device Name' },
+          { key: 'deviceType', label: 'Type' },
+          { key: 'manufacturer', label: 'Manufacturer' },
+          { key: 'firmwareVersion', label: 'Firmware' },
+          { key: 'certAlgorithm', label: 'Cert Algorithm' },
+          { key: 'keyLength', label: 'Key Length' },
+          { key: 'enrollmentStatus', label: 'Status' },
+          { key: 'quantumSafe', label: 'Quantum-safe' },
+          { key: 'source', label: 'Source' },
+        ], 'devices')}
         onReset={isSampleData ? () => deleteAll() : undefined}
         resetLoading={isSampleData ? isResetLoading : undefined}
       />
 
-      <DataTable
-        title="Devices"
-        count={filtered.length}
-        columns={columns}
-        data={filtered}
-        rowKey={(d) => d.id}
-      />
+      <div className={s.tableCard}>
+        <h3 className={s.tableTitle}>Devices ({filtered.length})</h3>
+        <table className={s.table}>
+          <thead>
+            <tr>
+              {columns.map((col) => (
+                <th key={col.key} style={col.headerStyle}>
+                  {col.label}
+                  {col.sortable !== false && <ArrowUpDown className={s.sortIcon} />}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {paged.map((dev) => {
+              const sg = suggestions[dev.id];
+              return (
+                <>{/* Fragment needed for adjacent rows */}
+                  <tr key={dev.id}>
+                    {columns.map((col) => (
+                      <td key={col.key} style={'cellStyle' in col ? (col as { cellStyle?: React.CSSProperties }).cellStyle : undefined}>{col.render(dev)}</td>
+                    ))}
+                  </tr>
+                  {/* AI suggestion expandable row */}
+                  {expandedId === dev.id && sg && (
+                    <tr key={`${dev.id}-ai`} className={s.aiSuggestionRow}>
+                      <td colSpan={columns.length}>
+                        {sg.loading ? (
+                          <div className={s.aiLoading}>
+                            <Loader2 size={16} /> Generating AI suggestion for {dev.deviceName}…
+                            <button className={s.aiCloseBtn} onClick={() => setExpandedId(null)} title="Close"><X size={14} /></button>
+                          </div>
+                        ) : sg.error ? (
+                          <div className={s.aiSuggestionPanel}>
+                            <div className={s.aiSuggestionHeader}>
+                              <Sparkles />
+                              <span className={s.aiSuggestionTitle}>AI Suggestion</span>
+                              <button className={s.aiCloseBtn} onClick={() => setExpandedId(null)} title="Close"><X size={14} /></button>
+                            </div>
+                            <p className={s.aiSuggestionText}>{sg.error}</p>
+                            <button className={s.aiFixBtn} onClick={() => fetchSuggestion(dev)}>
+                              <Sparkles className={s.aiFixIcon} /> Retry
+                            </button>
+                          </div>
+                        ) : sg.fix ? (
+                          <div className={s.aiSuggestionPanel}>
+                            <div className={s.aiSuggestionHeader}>
+                              <Sparkles />
+                              <span className={s.aiSuggestionTitle}>AI Migration Suggestion</span>
+                              {sg.confidence && (
+                                <span className={`${s.aiConfidence} ${
+                                  sg.confidence === 'high' ? s.confidenceHigh
+                                    : sg.confidence === 'medium' ? s.confidenceMedium
+                                    : s.confidenceLow
+                                }`}>
+                                  {sg.confidence} confidence
+                                </span>
+                              )}
+                              <button className={s.aiCloseBtn} onClick={() => setExpandedId(null)} title="Close"><X size={14} /></button>
+                            </div>
+                            <p className={s.aiSuggestionText}>{sg.fix}</p>
+                            {sg.codeSnippet && (
+                              <pre className={s.aiCodeBlock}>{sg.codeSnippet}</pre>
+                            )}
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
+          </tbody>
+        </table>
+        <Pagination
+          page={page}
+          total={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(sz) => { setPageSize(sz); setPage(1); }}
+        />
+      </div>
 
       {/* Create Ticket Modal */}
       {ticketCtx && (

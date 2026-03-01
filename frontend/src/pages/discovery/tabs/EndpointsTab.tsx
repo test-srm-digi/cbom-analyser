@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Eye, ExternalLink, Sparkles, Loader2, ShieldCheck, ShieldX, Ticket } from 'lucide-react';
+import { Sparkles, Loader2, ShieldCheck, ShieldX, Ticket, X } from 'lucide-react';
 import { CreateTicketModal } from '../../tracking';
 import type { TicketContext } from '../../tracking';
 import { useCreateTicketMutation } from '../../../store/api/trackingApi';
@@ -11,6 +11,7 @@ import type { DiscoveryEndpoint, StatCardConfig } from '../types';
 import { evaluateSingleEndpointPolicies } from '../../policies';
 import type { CbomPolicyResult } from '../../policies';
 import Pagination from '../../../components/Pagination';
+import { exportTableToCSV } from '../utils/exportCsv';
 import s from '../components/shared.module.scss';
 
 interface Props {
@@ -173,7 +174,7 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
       key: 'actions',
       label: 'Actions',
       sortable: false,
-      headerStyle: { textAlign: 'right' as const },
+      headerStyle: { textAlign: 'center' as const },
       render: (e: DiscoveryEndpoint) => {
         const sg = suggestions[e.id];
         return (
@@ -210,10 +211,6 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
                 </button>
               </>
             )}
-            <button className={s.actionBtn} onClick={() => setExpandedId(expandedId === e.id ? null : e.id)}>
-              <Eye className={s.actionIcon} />
-            </button>
-            <button className={s.actionBtn}><ExternalLink className={s.actionIcon} /></button>
           </div>
         );
       },
@@ -250,6 +247,16 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
         search={search}
         setSearch={setSearch}
         placeholder="Search by hostname, IP address, cipher, or key agreement..."
+        onExport={() => exportTableToCSV(filtered as unknown as Record<string, unknown>[], [
+          { key: 'hostname', label: 'Hostname' },
+          { key: 'ipAddress', label: 'IP Address' },
+          { key: 'port', label: 'Port' },
+          { key: 'tlsVersion', label: 'TLS Version' },
+          { key: 'cipherSuite', label: 'Cipher Suite' },
+          { key: 'keyAgreement', label: 'Key Agreement' },
+          { key: 'quantumSafe', label: 'Quantum-safe' },
+          { key: 'source', label: 'Source' },
+        ], 'endpoints')}
         onReset={isSampleData ? () => deleteAll() : undefined}
         resetLoading={isSampleData ? isResetLoading : undefined}
       />
@@ -282,12 +289,14 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
                         {sg.loading ? (
                           <div className={s.aiLoading}>
                             <Loader2 size={16} /> Generating AI suggestion for {ep.hostname}:{ep.port}…
+                            <button className={s.aiCloseBtn} onClick={() => setExpandedId(null)} title="Close"><X size={14} /></button>
                           </div>
                         ) : sg.error ? (
                           <div className={s.aiSuggestionPanel}>
                             <div className={s.aiSuggestionHeader}>
                               <Sparkles />
                               <span className={s.aiSuggestionTitle}>AI Suggestion</span>
+                              <button className={s.aiCloseBtn} onClick={() => setExpandedId(null)} title="Close"><X size={14} /></button>
                             </div>
                             <p className={s.aiSuggestionText}>{sg.error}</p>
                             <button className={s.aiFixBtn} onClick={() => fetchSuggestion(ep)}>
@@ -308,6 +317,7 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
                                   {sg.confidence} confidence
                                 </span>
                               )}
+                              <button className={s.aiCloseBtn} onClick={() => setExpandedId(null)} title="Close"><X size={14} /></button>
                             </div>
                             <p className={s.aiSuggestionText}>{sg.fix}</p>
                             {sg.codeSnippet && (

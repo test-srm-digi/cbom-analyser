@@ -4,6 +4,7 @@ export { default as Endpoint } from './Endpoint';
 export { default as Software } from './Software';
 export { default as Device } from './Device';
 export { default as CbomImport } from './CbomImport';
+export { default as CbomUpload } from './CbomUpload';
 export { default as SyncLog } from './SyncLog';
 export { default as CryptoPolicy } from './CryptoPolicy';
 export { default as Ticket } from './Ticket';

@@ -6,7 +6,7 @@
  *  • Detail view — tabs: Overview  |  Software Components  |  Crypto Assets
  *                        Vulnerabilities  |  Cross-References
  */
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo } from "react";
 import {
   useGetXBOMStatusQuery,
   useGetXBOMListQuery,
@@ -15,29 +15,43 @@ import {
   useMergeXBOMMutation,
   useUploadXBOMMutation,
   useDeleteXBOMMutation,
-} from '../store/api';
-import type { XBOMDocument, XBOMAnalytics, XBOMListItem, SBOMComponent, SBOMVulnerability, XBOMCrossReference, CryptoAsset } from '../types';
+  useInstallTrivyMutation,
+  useRecheckTrivyMutation,
+} from "../store/api";
+import type { XBOMDocument, XBOMAnalytics, XBOMListItem } from "../types";
 import {
   SoftwarePanel,
-  CryptoPanel,
   CryptoAnalysisPanel,
   VulnerabilityPanel,
   CrossRefPanel,
   BomOverviewPanel,
   BomDownloadButtons,
-} from '../components/bom-panels';
-import Pagination from '../components/Pagination';
-import { Download } from 'lucide-react';
-import s from './XBOMPage.module.scss';
+} from "../components/bom-panels";
+import Pagination from "../components/Pagination";
+import { Download, AlertCircle, Terminal, CheckCircle2, Copy, Loader2, RefreshCw } from "lucide-react";
+import s from "./XBOMPage.module.scss";
 
 /* ── helper ─────────────── */
 function fmtDate(iso: string) {
   try {
-    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  } catch { return iso; }
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
 }
 
-type DetailTab = 'overview' | 'software' | 'crypto' | 'vulnerabilities' | 'cross-references';
+type DetailTab =
+  | "overview"
+  | "software"
+  | "crypto"
+  | "vulnerabilities"
+  | "cross-references";
 
 /* ================================================================== */
 /*  Main Component                                                     */
@@ -49,7 +63,10 @@ export default function XBOMPage() {
   const [deleteXBOM] = useDeleteXBOMMutation();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [localXbom, setLocalXbom] = useState<{ xbom: XBOMDocument; analytics: XBOMAnalytics } | null>(null);
+  const [localXbom, setLocalXbom] = useState<{
+    xbom: XBOMDocument;
+    analytics: XBOMAnalytics;
+  } | null>(null);
   const [listPage, setListPage] = useState(1);
   const [listPageSize, setListPageSize] = useState(25);
 
@@ -62,26 +79,38 @@ export default function XBOMPage() {
     try {
       const res = await fetch(`/api/xbom/${encodeURIComponent(id)}`);
       const json = await res.json();
-      const blob = new Blob([JSON.stringify(json.xbom ?? json, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(json.xbom ?? json, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `${component.replace(/[^a-zA-Z0-9_-]/g, '_')}-xbom.json`;
+      a.download = `${component.replace(/[^a-zA-Z0-9_-]/g, "_")}-xbom.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   /* ── Local upload viewer ─── */
   if (localXbom) {
-    return <LocalXBOMDetailView xbom={localXbom.xbom} analytics={localXbom.analytics} onBack={() => setLocalXbom(null)} />;
+    return (
+      <LocalXBOMDetailView
+        xbom={localXbom.xbom}
+        analytics={localXbom.analytics}
+        onBack={() => setLocalXbom(null)}
+      />
+    );
   }
 
   /* ── Server-stored detail view ─── */
   if (selectedId) {
-    return <XBOMDetailView id={selectedId} onBack={() => setSelectedId(null)} />;
+    return (
+      <XBOMDetailView id={selectedId} onBack={() => setSelectedId(null)} />
+    );
   }
 
   return (
@@ -96,43 +125,33 @@ export default function XBOMPage() {
       {/* Status cards */}
       <div className={s.statusCards}>
         <div className={s.statusCard}>
-          <span className={s.statusLabel}>Trivy Scanner</span>
-          <span className={`${s.statusBadge} ${status?.trivyInstalled ? s.badgeGreen : s.badgeRed}`}>
-            {status?.trivyInstalled ? '● Installed' : '● Not found'}
-          </span>
-          {status?.trivyVersion && (
-            <span style={{ fontSize: 12, color: 'var(--dc1-text-muted)' }}>v{status.trivyVersion}</span>
-          )}
-        </div>
-        <div className={s.statusCard}>
           <span className={s.statusLabel}>Stored xBOMs</span>
-          <span className={s.statusValue}>{status?.storedXBOMs ?? 0}</span>
-        </div>
-        <div className={s.statusCard}>
-          <span className={s.statusLabel}>SBOM Generation</span>
-          <span className={`${s.statusBadge} ${status?.capabilities?.sbomGeneration ? s.badgeGreen : s.badgeAmber}`}>
-            {status?.capabilities?.sbomGeneration ? 'Ready' : 'Unavailable'}
-          </span>
-        </div>
-        <div className={s.statusCard}>
-          <span className={s.statusLabel}>CBOM Generation</span>
-          <span className={`${s.statusBadge} ${s.badgeGreen}`}>Ready</span>
+          <span className={s.statusValue}>{xbomList.length}</span>
         </div>
       </div>
 
       {/* Generate / Merge / Upload — tabbed, only one active */}
-      <GenerateOrMerge onViewLocal={(xbom, analytics) => setLocalXbom({ xbom, analytics })} />
+      <GenerateOrMerge
+        onViewLocal={(xbom, analytics) => setLocalXbom({ xbom, analytics })}
+      />
 
       {/* xBOM list */}
       <div className="dc1-card">
         <h3 className="dc1-card-section-title">Stored xBOMs</h3>
 
         {listLoading ? (
-          <div className={s.spinner}><div className={s.spinnerDot} /><div className={s.spinnerDot} /><div className={s.spinnerDot} /></div>
+          <div className={s.spinner}>
+            <div className={s.spinnerDot} />
+            <div className={s.spinnerDot} />
+            <div className={s.spinnerDot} />
+          </div>
         ) : xbomList.length === 0 ? (
           <div className={s.emptyState}>
             <h3>No xBOMs generated yet</h3>
-            <p>Generate one from a repository scan or merge existing SBOM + CBOM files.</p>
+            <p>
+              Generate one from a repository scan or merge existing SBOM + CBOM
+              files.
+            </p>
           </div>
         ) : (
           <div className={s.xbomList}>
@@ -149,7 +168,7 @@ export default function XBOMPage() {
               <div key={item.id} className={s.listRow}>
                 <span
                   className="dc1-cell-name"
-                  style={{ cursor: 'pointer', color: 'var(--dc1-primary)' }}
+                  style={{ cursor: "pointer", color: "var(--dc1-primary)" }}
                   onClick={() => setSelectedId(item.id)}
                 >
                   {item.component}
@@ -164,15 +183,28 @@ export default function XBOMPage() {
                     className={s.iconBtn}
                     title="Download xBOM"
                     onClick={() => downloadXbom(item.id, item.component)}
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
                   >
                     <Download size={14} />
                   </button>
-                  <button className={s.iconBtn} title="View" onClick={() => setSelectedId(item.id)}>
+                  <button
+                    className={s.iconBtn}
+                    title="View"
+                    onClick={() => setSelectedId(item.id)}
+                  >
                     View
                   </button>
-                  <button className={`${s.iconBtn} ${s.iconBtnDanger}`} title="Delete"
-                    onClick={() => { if (confirm('Delete this xBOM?')) deleteXBOM(item.id); }}>
+                  <button
+                    className={`${s.iconBtn} ${s.iconBtnDanger}`}
+                    title="Delete"
+                    onClick={() => {
+                      if (confirm("Delete this xBOM?")) deleteXBOM(item.id);
+                    }}
+                  >
                     ✕
                   </button>
                 </span>
@@ -183,7 +215,10 @@ export default function XBOMPage() {
               total={xbomList.length}
               pageSize={listPageSize}
               onPageChange={setListPage}
-              onPageSizeChange={(sz) => { setListPageSize(sz); setListPage(1); }}
+              onPageSizeChange={(sz) => {
+                setListPageSize(sz);
+                setListPage(1);
+              }}
             />
           </div>
         )}
@@ -196,29 +231,43 @@ export default function XBOMPage() {
 /*  Generate or Merge — tabbed, only one active at a time              */
 /* ================================================================== */
 
-type InputMode = 'generate' | 'merge' | 'upload';
+type InputMode = "generate" | "merge" | "upload";
 
-function GenerateOrMerge({ onViewLocal }: { onViewLocal: (xbom: XBOMDocument, analytics: XBOMAnalytics) => void }) {
-  const [inputMode, setInputMode] = useState<InputMode>('generate');
+function GenerateOrMerge({
+  onViewLocal,
+}: {
+  onViewLocal: (xbom: XBOMDocument, analytics: XBOMAnalytics) => void;
+}) {
+  const [inputMode, setInputMode] = useState<InputMode>("upload");
 
   return (
     <div className="dc1-card" style={{ marginBottom: 24 }}>
       {/* mode tabs */}
       <div className={s.tabs} style={{ marginBottom: 16 }}>
-        <button className={`${s.tab} ${inputMode === 'generate' ? s.tabActive : ''}`} onClick={() => setInputMode('generate')}>
+        <button
+          className={`${s.tab} ${inputMode === "upload" ? s.tabActive : ""}`}
+          onClick={() => setInputMode("upload")}
+        >
+          Upload xBOM
+        </button>
+
+        <button
+          className={`${s.tab} ${inputMode === "generate" ? s.tabActive : ""}`}
+          onClick={() => setInputMode("generate")}
+        >
           Generate from Scan
         </button>
-        <button className={`${s.tab} ${inputMode === 'merge' ? s.tabActive : ''}`} onClick={() => setInputMode('merge')}>
+        <button
+          className={`${s.tab} ${inputMode === "merge" ? s.tabActive : ""}`}
+          onClick={() => setInputMode("merge")}
+        >
           Merge Existing Files
-        </button>
-        <button className={`${s.tab} ${inputMode === 'upload' ? s.tabActive : ''}`} onClick={() => setInputMode('upload')}>
-          Upload xBOM
         </button>
       </div>
 
-      {inputMode === 'generate' && <GenerateForm />}
-      {inputMode === 'merge' && <MergeForm />}
-      {inputMode === 'upload' && <UploadForm onViewLocal={onViewLocal} />}
+      {inputMode === "generate" && <GenerateForm />}
+      {inputMode === "merge" && <MergeForm />}
+      {inputMode === "upload" && <UploadForm onViewLocal={onViewLocal} />}
     </div>
   );
 }
@@ -232,7 +281,11 @@ function generateXBOMWorkflowYaml(opts: {
   failOnVulnerable: boolean;
   trivySeverity: string;
 }): string {
-  const branchList = opts.branches.split(',').map(b => b.trim()).filter(Boolean).join(', ');
+  const branchList = opts.branches
+    .split(",")
+    .map((b) => b.trim())
+    .filter(Boolean)
+    .join(", ");
   return `# xBOM Generator — Unified SBOM + CBOM
 # Copy this file to .github/workflows/xbom.yml in your repository
 
@@ -328,7 +381,9 @@ jobs:
             xbom.json
             sbom.json
             cbom-report.json
-          retention-days: 90${opts.failOnVulnerable ? `
+          retention-days: 90${
+            opts.failOnVulnerable
+              ? `
 
       - name: Check quantum safety
         run: |
@@ -336,26 +391,35 @@ jobs:
           if [ "$NOT_SAFE" -gt 0 ]; then
             echo "❌ $NOT_SAFE non-quantum-safe cryptographic assets detected"
             exit 1
-          fi` : ''}
+          fi`
+              : ""
+          }
 `;
 }
 
 function GenerateForm() {
+  const { data: status, refetch: refetchStatus } = useGetXBOMStatusQuery();
+  const [installTrivy, { isLoading: isInstalling }] = useInstallTrivyMutation();
+  const [recheckTrivy, { isLoading: isRechecking }] = useRecheckTrivyMutation();
+  const [installMsg, setInstallMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [generateXBOM, { isLoading }] = useGenerateXBOMMutation();
-  const [repoPath, setRepoPath] = useState('');
-  const [branch, setBranch] = useState('');
-  const [mode, setMode] = useState<'full' | 'sbom-only' | 'cbom-only'>('full');
-  const [specVersion, setSpecVersion] = useState<'1.6' | '1.7'>('1.6');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [repoPath, setRepoPath] = useState("");
+  const [branch, setBranch] = useState("");
+  const [mode, setMode] = useState<"full" | "sbom-only" | "cbom-only">("full");
+  const [specVersion, setSpecVersion] = useState<"1.6" | "1.7">("1.6");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [generatedXbom, setGeneratedXbom] = useState<XBOMDocument | null>(null);
 
   /* ── GitHub Actions workflow snippet ── */
   const [showWorkflow, setShowWorkflow] = useState(false);
-  const [wfBranches, setWfBranches] = useState('main');
-  const [wfScanPath, setWfScanPath] = useState('.');
-  const [wfExclude, setWfExclude] = useState('default');
+  const [wfBranches, setWfBranches] = useState("main");
+  const [wfScanPath, setWfScanPath] = useState(".");
+  const [wfExclude, setWfExclude] = useState("default");
   const [wfFailOnVuln, setWfFailOnVuln] = useState(false);
-  const [wfSeverity, setWfSeverity] = useState('UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL');
+  const [wfSeverity, setWfSeverity] = useState(
+    "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
+  );
   const [copied, setCopied] = useState(false);
 
   const workflowYaml = generateXBOMWorkflowYaml({
@@ -375,9 +439,13 @@ function GenerateForm() {
   };
 
   const handleSubmit = async () => {
-    if (!repoPath.trim()) { setError('Repository / directory path is required'); return; }
-    setError('');
-    setSuccess('');
+    if (!repoPath.trim()) {
+      setError("Repository / directory path is required");
+      return;
+    }
+    setError("");
+    setSuccess("");
+    setGeneratedXbom(null);
     try {
       const res = await generateXBOM({
         repoPath: repoPath.trim(),
@@ -386,98 +454,213 @@ function GenerateForm() {
         branch: branch.trim() || undefined,
       }).unwrap();
       if (res.success) {
-        setSuccess(`xBOM generated — ${res.analytics?.totalSoftwareComponents ?? 0} software components, ${res.analytics?.totalCryptoAssets ?? 0} crypto assets, ${res.analytics?.totalCrossReferences ?? 0} cross-references`);
-        setRepoPath('');
-        setBranch('');
+        setSuccess(
+          `xBOM generated — ${res.analytics?.totalSoftwareComponents ?? 0} software components, ${res.analytics?.totalCryptoAssets ?? 0} crypto assets, ${res.analytics?.totalCrossReferences ?? 0} cross-references`,
+        );
+        if (res.xbom) setGeneratedXbom(res.xbom as XBOMDocument);
+        setRepoPath("");
+        setBranch("");
       } else {
-        setError(res.error || res.message || 'Generation failed');
+        setError(res.error || res.message || "Generation failed");
       }
     } catch (e: any) {
-      setError(e?.data?.error || e?.data?.message || e?.message || 'Generation failed');
+      setError(
+        e?.data?.error || e?.data?.message || e?.message || "Generation failed",
+      );
     }
   };
 
   return (
-    <div style={{ padding: '0 4px' }}>
-      {/* ── GitHub Actions Integration ── */}
-      <div className={s.workflowSection} style={{ borderTop: 'none', paddingTop: 0 }}>
-        <div className={s.workflowHeader} onClick={() => setShowWorkflow(!showWorkflow)}>
-          <span style={{ fontSize: 14, transition: 'transform 0.15s', transform: showWorkflow ? 'rotate(90deg)' : 'rotate(0)' }}>▶</span>
-          <span className={s.workflowTitle}>GitHub Actions Integration</span>
-          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: 'var(--dc1-bg-muted, #f1f5f9)', color: 'var(--dc1-text-muted)' }}>Recommended</span>
+    <div style={{ padding: "0 4px" }}>
+      {/* ── Scanner status mini-cards ── */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+        <div style={{
+          flex: 1, padding: '10px 14px', borderRadius: 8,
+          border: '1px solid var(--dc1-border)', background: 'var(--dc1-bg-card, #fff)',
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--dc1-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trivy Scanner</span>
+          <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{
+              fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+              background: status?.trivyInstalled ? '#dcfce7' : '#fee2e2',
+              color: status?.trivyInstalled ? '#16a34a' : '#dc2626',
+            }}>
+              {status?.trivyInstalled ? '● Installed' : '● Not found'}
+            </span>
+            {status?.trivyVersion && <span style={{ fontSize: 11, color: 'var(--dc1-text-muted)' }}>v{status.trivyVersion}</span>}
+          </div>
         </div>
-        <p className={s.workflowSubtext}>
-          Add the xBOM workflow to your GitHub repository to automatically generate unified SBOM + CBOM reports on every push. Copy the YAML below into <code>.github/workflows/xbom.yml</code>.
-        </p>
+        <div style={{
+          flex: 1, padding: '10px 14px', borderRadius: 8,
+          border: '1px solid var(--dc1-border)', background: 'var(--dc1-bg-card, #fff)',
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--dc1-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>SBOM Generation</span>
+          <div style={{ marginTop: 4 }}>
+            <span style={{
+              fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+              background: status?.capabilities?.sbomGeneration ? '#dcfce7' : '#fef3c7',
+              color: status?.capabilities?.sbomGeneration ? '#16a34a' : '#d97706',
+            }}>
+              {status?.capabilities?.sbomGeneration ? 'Ready' : 'Unavailable'}
+            </span>
+          </div>
+        </div>
+        <div style={{
+          flex: 1, padding: '10px 14px', borderRadius: 8,
+          border: '1px solid var(--dc1-border)', background: 'var(--dc1-bg-card, #fff)',
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--dc1-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>CBOM Generation</span>
+          <div style={{ marginTop: 4 }}>
+            <span style={{
+              fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+              background: '#dcfce7', color: '#16a34a',
+            }}>Ready</span>
+          </div>
+        </div>
+      </div>
 
-        {showWorkflow && (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <div className={s.formRow}>
-                <label>Branches</label>
-                <input value={wfBranches} onChange={(e) => setWfBranches(e.target.value)} placeholder="main, develop" />
-              </div>
-              <div className={s.formRow}>
-                <label>Scan Path</label>
-                <input value={wfScanPath} onChange={(e) => setWfScanPath(e.target.value)} placeholder="." />
-              </div>
-              <div className={s.formRow}>
-                <label>Exclude Patterns</label>
-                <input value={wfExclude} onChange={(e) => setWfExclude(e.target.value)} placeholder="default" />
-              </div>
-              <div className={s.formRow}>
-                <label>Trivy Severity Filter</label>
-                <input value={wfSeverity} onChange={(e) => setWfSeverity(e.target.value)} placeholder="CRITICAL,HIGH" />
-              </div>
-              <div className={s.formRow}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input type="checkbox" checked={wfFailOnVuln} onChange={(e) => setWfFailOnVuln(e.target.checked)} style={{ width: 'auto' }} />
-                  Fail if non-quantum-safe crypto detected
-                </label>
-              </div>
-            </div>
+      {/* ── Trivy setup guide ── */}
+      {status && !status.trivyInstalled && (
+        <div style={{
+          margin: '0 0 20px',
+          padding: '16px 20px',
+          borderRadius: 8,
+          border: '1px solid #fde68a',
+          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <AlertCircle size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: 1 }}>
+              <h4 style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: '#92400e' }}>
+                Trivy Scanner Required for SBOM Generation
+              </h4>
+              <p style={{ margin: '0 0 12px', fontSize: 12, lineHeight: 1.5, color: '#78350f' }}>
+                <strong>Trivy</strong> is an open-source security scanner by Aqua Security. It scans repositories for software dependencies, vulnerabilities, and licenses to generate SBOMs.
+                Without Trivy, only CBOM generation is available.
+              </p>
 
-            <div className={s.yamlCodeWrap}>
-              <div className={s.yamlCodeHeader}>
-                <span className={s.yamlCodeFilename}>.github/workflows/xbom.yml</span>
-                <button type="button" className={s.yamlCopyBtn} onClick={handleCopy}>
-                  {copied ? '✓ Copied!' : '⧉ Copy workflow'}
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  disabled={isInstalling}
+                  onClick={async () => {
+                    setInstallMsg(null);
+                    try {
+                      const res = await installTrivy().unwrap();
+                      setInstallMsg({ ok: res.success, text: res.message });
+                      if (res.success) refetchStatus();
+                    } catch (e: any) {
+                      setInstallMsg({ ok: false, text: e?.data?.message || 'Installation failed' });
+                    }
+                  }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '8px 18px', fontSize: 13, fontWeight: 600,
+                    background: '#d97706', color: '#fff',
+                    border: 'none', borderRadius: 6, cursor: isInstalling ? 'wait' : 'pointer',
+                    opacity: isInstalling ? 0.7 : 1, transition: 'all 0.15s',
+                  }}
+                >
+                  {isInstalling ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={14} />}
+                  {isInstalling ? 'Installing Trivy…' : 'Install Trivy Automatically'}
+                </button>
+
+                <button
+                  disabled={isRechecking}
+                  onClick={async () => {
+                    await recheckTrivy().unwrap();
+                    refetchStatus();
+                  }}
+                  title="Already installed Trivy? Click to re-check."
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '8px 14px', fontSize: 12, fontWeight: 600,
+                    background: 'rgba(255,255,255,0.7)', color: '#78350f',
+                    border: '1px solid #fde68a', borderRadius: 6, cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <RefreshCw size={13} style={isRechecking ? { animation: 'spin 1s linear infinite' } : undefined} />
+                  Re-check
                 </button>
               </div>
-              <pre className={s.yamlCodeBlock}><code>{workflowYaml}</code></pre>
+
+              {installMsg && (
+                <div style={{
+                  marginTop: 10, padding: '8px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500,
+                  background: installMsg.ok ? '#dcfce7' : '#fee2e2',
+                  color: installMsg.ok ? '#16a34a' : '#dc2626',
+                  border: `1px solid ${installMsg.ok ? '#bbf7d0' : '#fecaca'}`,
+                }}>
+                  {installMsg.ok ? <CheckCircle2 size={13} style={{ verticalAlign: 'middle', marginRight: 6 }} /> : <AlertCircle size={13} style={{ verticalAlign: 'middle', marginRight: 6 }} />}
+                  {installMsg.text}
+                </div>
+              )}
+
+              <details style={{ marginTop: 12 }}>
+                <summary style={{ fontSize: 11, fontWeight: 600, color: '#92400e', cursor: 'pointer' }}>Or install manually</summary>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 8 }}>
+                  {[
+                    { label: 'macOS (Homebrew)', cmd: 'brew install trivy' },
+                    { label: 'Linux (apt)', cmd: 'sudo apt-get install trivy' },
+                    { label: 'Docker', cmd: 'docker pull aquasec/trivy' },
+                  ].map(({ label, cmd }) => (
+                    <div key={label} style={{ padding: '8px 12px', borderRadius: 6, background: 'rgba(255,255,255,0.7)', border: '1px solid #fde68a' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                        <Terminal size={12} style={{ color: '#92400e' }} />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</span>
+                      </div>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '6px 10px', borderRadius: 5,
+                        background: '#1e1e2e', fontFamily: 'monospace', fontSize: 11, color: '#a6e3a1',
+                      }}>
+                        <code>{cmd}</code>
+                        <button
+                          title="Copy"
+                          onClick={() => navigator.clipboard.writeText(cmd)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 2 }}
+                        >
+                          <Copy size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </details>
             </div>
-
-            <a
-              className={s.workflowLink}
-              href="https://github.com/annanay-sharma/cbom-analyser/blob/main/.github/workflows/xbom.yml"
-              target="_blank" rel="noreferrer"
-            >
-              View full reference workflow →
-            </a>
-          </>
-        )}
-      </div>
-
-      {/* ── OR divider ── */}
-      <div className={s.orDivider}>
-        <span>or scan locally</span>
-      </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Local scan form ── */}
-      <p style={{ fontSize: 13, color: 'var(--dc1-text-muted)', marginBottom: 16 }}>
-        Scan a local directory on this server. Trivy generates the SBOM (if installed)
-        and the CBOM Analyser scans for cryptographic usage.
+      <p
+        style={{
+          fontSize: 13,
+          color: "var(--dc1-text-muted)",
+          marginBottom: 16,
+        }}
+      >
+        Scan a local directory on this server. Trivy generates the SBOM (if
+        installed) and the CBOM Analyser scans for cryptographic usage.
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div className={s.formRow}>
           <label>Repository / Directory Path *</label>
-          <input placeholder="/path/to/local/repo" value={repoPath} onChange={(e) => setRepoPath(e.target.value)} />
+          <input
+            placeholder="/path/to/local/repo"
+            value={repoPath}
+            onChange={(e) => setRepoPath(e.target.value)}
+          />
         </div>
 
         <div className={s.formRow}>
           <label>Branch</label>
-          <input placeholder="main" value={branch} onChange={(e) => setBranch(e.target.value)} />
+          <input
+            placeholder="main"
+            value={branch}
+            onChange={(e) => setBranch(e.target.value)}
+          />
         </div>
 
         <div className={s.formRow}>
@@ -491,19 +674,56 @@ function GenerateForm() {
 
         <div className={s.formRow}>
           <label>CycloneDX Spec Version</label>
-          <select value={specVersion} onChange={(e) => setSpecVersion(e.target.value as '1.6' | '1.7')}>
+          <select
+            value={specVersion}
+            onChange={(e) => setSpecVersion(e.target.value as "1.6" | "1.7")}
+          >
             <option value="1.6">CycloneDX 1.6</option>
             <option value="1.7">CycloneDX 1.7</option>
           </select>
         </div>
       </div>
 
-      {error && <div style={{ color: 'var(--dc1-danger)', fontSize: 13, marginTop: 8 }}>{error}</div>}
-      {success && <div style={{ color: 'var(--dc1-success)', fontSize: 13, marginTop: 8 }}>{success}</div>}
+      {error && (
+        <div style={{ color: "var(--dc1-danger)", fontSize: 13, marginTop: 8 }}>
+          {error}
+        </div>
+      )}
+      {success && (
+        <div
+          style={{ color: "var(--dc1-success)", fontSize: 13, marginTop: 8, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}
+        >
+          <span>{success}</span>
+          {generatedXbom && (
+            <button
+              className="dc1-btn-secondary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, padding: '4px 12px' }}
+              onClick={() => {
+                const name = generatedXbom.metadata?.component?.name || 'generated';
+                const blob = new Blob([JSON.stringify(generatedXbom, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${name.replace(/[^a-zA-Z0-9_-]/g, '_')}-xbom.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }}
+            >
+              <Download size={13} /> Download xBOM
+            </button>
+          )}
+        </div>
+      )}
 
       <div className={s.formActions}>
-        <button className="dc1-btn-primary" onClick={handleSubmit} disabled={isLoading}>
-          {isLoading ? 'Generating…' : 'Generate xBOM'}
+        <button
+          className="dc1-btn-primary"
+          onClick={handleSubmit}
+          disabled={isLoading}
+        >
+          {isLoading ? "Generating…" : "Generate xBOM"}
         </button>
       </div>
     </div>
@@ -516,86 +736,186 @@ function GenerateForm() {
 
 function MergeForm() {
   const [mergeXBOM, { isLoading }] = useMergeXBOMMutation();
-  const [sbomText, setSbomText] = useState('');
-  const [cbomText, setCbomText] = useState('');
-  const [specVersion, setSpecVersion] = useState<'1.6' | '1.7'>('1.6');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [sbomText, setSbomText] = useState("");
+  const [cbomText, setCbomText] = useState("");
+  const [specVersion, setSpecVersion] = useState<"1.6" | "1.7">("1.6");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [mergedXbom, setMergedXbom] = useState<XBOMDocument | null>(null);
 
   const sbomFileRef = useRef<HTMLInputElement>(null);
   const cbomFileRef = useRef<HTMLInputElement>(null);
 
-  const loadFile = useCallback((setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = () => setter(reader.result as string);
-    reader.readAsText(f);
-  }, []);
+  const loadFile = useCallback(
+    (setter: (v: string) => void) =>
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => setter(reader.result as string);
+        reader.readAsText(f);
+      },
+    [],
+  );
 
   const handleMerge = async () => {
     let sbom: object | undefined;
     let cbom: object | undefined;
-    try { if (sbomText.trim()) sbom = JSON.parse(sbomText); } catch { setError('Invalid SBOM JSON'); return; }
-    try { if (cbomText.trim()) cbom = JSON.parse(cbomText); } catch { setError('Invalid CBOM JSON'); return; }
-    if (!sbom && !cbom) { setError('At least one of SBOM or CBOM is required'); return; }
-    setError('');
-    setSuccess('');
+    try {
+      if (sbomText.trim()) sbom = JSON.parse(sbomText);
+    } catch {
+      setError("Invalid SBOM JSON");
+      return;
+    }
+    try {
+      if (cbomText.trim()) cbom = JSON.parse(cbomText);
+    } catch {
+      setError("Invalid CBOM JSON");
+      return;
+    }
+    if (!sbom && !cbom) {
+      setError("At least one of SBOM or CBOM is required");
+      return;
+    }
+    setError("");
+    setSuccess("");
+    setMergedXbom(null);
     try {
       const res = await mergeXBOM({ sbom, cbom, specVersion }).unwrap();
       if (res.success) {
-        setSuccess(`xBOM merged — ${res.analytics?.totalSoftwareComponents ?? 0} software, ${res.analytics?.totalCryptoAssets ?? 0} crypto, ${res.analytics?.totalCrossReferences ?? 0} cross-refs`);
-        setSbomText('');
-        setCbomText('');
+        setSuccess(
+          `xBOM merged — ${res.analytics?.totalSoftwareComponents ?? 0} software, ${res.analytics?.totalCryptoAssets ?? 0} crypto, ${res.analytics?.totalCrossReferences ?? 0} cross-refs`,
+        );
+        if (res.xbom) setMergedXbom(res.xbom as XBOMDocument);
+        setSbomText("");
+        setCbomText("");
       } else {
-        setError(res.error || res.message || 'Merge failed');
+        setError(res.error || res.message || "Merge failed");
       }
     } catch (e: any) {
-      setError(e?.data?.error || e?.data?.message || e?.message || 'Merge failed');
+      setError(
+        e?.data?.error || e?.data?.message || e?.message || "Merge failed",
+      );
     }
   };
 
   return (
-    <div style={{ padding: '0 4px' }}>
-      <p style={{ fontSize: 13, color: 'var(--dc1-text-muted)', marginBottom: 16 }}>
-        Upload or paste pre-existing SBOM and/or CBOM CycloneDX JSON files. The merge engine will
-        combine them into a unified xBOM and build cross-references between software components and crypto assets.
+    <div style={{ padding: "0 4px" }}>
+      <p
+        style={{
+          fontSize: 13,
+          color: "var(--dc1-text-muted)",
+          marginBottom: 16,
+        }}
+      >
+        Upload or paste pre-existing SBOM and/or CBOM CycloneDX JSON files. The
+        merge engine will combine them into a unified xBOM and build
+        cross-references between software components and crypto assets.
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div className={s.formRow} style={{ gridColumn: '1 / -1' }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div className={s.formRow} style={{ gridColumn: "1 / -1" }}>
           <label>
             SBOM (CycloneDX JSON)
-            <button className={s.backBtn} style={{ marginLeft: 8 }} onClick={() => sbomFileRef.current?.click()}>Upload file</button>
+            <button
+              className={s.backBtn}
+              style={{ marginLeft: 8 }}
+              onClick={() => sbomFileRef.current?.click()}
+            >
+              Upload file
+            </button>
           </label>
-          <input type="file" accept=".json" ref={sbomFileRef} style={{ display: 'none' }} onChange={loadFile(setSbomText)} />
-          <textarea placeholder='Paste SBOM JSON or upload a file…' value={sbomText} onChange={(e) => setSbomText(e.target.value)} />
+          <input
+            type="file"
+            accept=".json"
+            ref={sbomFileRef}
+            style={{ display: "none" }}
+            onChange={loadFile(setSbomText)}
+          />
+          <textarea
+            placeholder="Paste SBOM JSON or upload a file…"
+            value={sbomText}
+            onChange={(e) => setSbomText(e.target.value)}
+          />
         </div>
 
-        <div className={s.formRow} style={{ gridColumn: '1 / -1' }}>
+        <div className={s.formRow} style={{ gridColumn: "1 / -1" }}>
           <label>
             CBOM (CycloneDX JSON)
-            <button className={s.backBtn} style={{ marginLeft: 8 }} onClick={() => cbomFileRef.current?.click()}>Upload file</button>
+            <button
+              className={s.backBtn}
+              style={{ marginLeft: 8 }}
+              onClick={() => cbomFileRef.current?.click()}
+            >
+              Upload file
+            </button>
           </label>
-          <input type="file" accept=".json" ref={cbomFileRef} style={{ display: 'none' }} onChange={loadFile(setCbomText)} />
-          <textarea placeholder='Paste CBOM JSON or upload a file…' value={cbomText} onChange={(e) => setCbomText(e.target.value)} />
+          <input
+            type="file"
+            accept=".json"
+            ref={cbomFileRef}
+            style={{ display: "none" }}
+            onChange={loadFile(setCbomText)}
+          />
+          <textarea
+            placeholder="Paste CBOM JSON or upload a file…"
+            value={cbomText}
+            onChange={(e) => setCbomText(e.target.value)}
+          />
         </div>
 
         <div className={s.formRow}>
           <label>CycloneDX Spec Version</label>
-          <select value={specVersion} onChange={(e) => setSpecVersion(e.target.value as '1.6' | '1.7')}>
+          <select
+            value={specVersion}
+            onChange={(e) => setSpecVersion(e.target.value as "1.6" | "1.7")}
+          >
             <option value="1.6">CycloneDX 1.6</option>
             <option value="1.7">CycloneDX 1.7</option>
           </select>
         </div>
       </div>
 
-      {error && <div style={{ color: 'var(--dc1-danger)', fontSize: 13, marginTop: 8 }}>{error}</div>}
-      {success && <div style={{ color: 'var(--dc1-success)', fontSize: 13, marginTop: 8 }}>{success}</div>}
+      {error && (
+        <div style={{ color: "var(--dc1-danger)", fontSize: 13, marginTop: 8 }}>
+          {error}
+        </div>
+      )}
+      {success && (
+        <div
+          style={{ color: "var(--dc1-success)", fontSize: 13, marginTop: 8, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}
+        >
+          <span>{success}</span>
+          {mergedXbom && (
+            <button
+              className="dc1-btn-secondary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, padding: '4px 12px' }}
+              onClick={() => {
+                const name = mergedXbom.metadata?.component?.name || 'merged';
+                const blob = new Blob([JSON.stringify(mergedXbom, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${name.replace(/[^a-zA-Z0-9_-]/g, '_')}-xbom.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }}
+            >
+              <Download size={13} /> Download xBOM
+            </button>
+          )}
+        </div>
+      )}
 
       <div className={s.formActions}>
-        <button className="dc1-btn-primary" onClick={handleMerge} disabled={isLoading}>
-          {isLoading ? 'Merging…' : 'Merge to xBOM'}
+        <button
+          className="dc1-btn-primary"
+          onClick={handleMerge}
+          disabled={isLoading}
+        >
+          {isLoading ? "Merging…" : "Merge to xBOM"}
         </button>
       </div>
     </div>
@@ -611,120 +931,187 @@ function computeLocalAnalytics(xbom: XBOMDocument): XBOMAnalytics {
   const cryptoAssets = xbom.cryptoAssets ?? [];
   const vulns = xbom.vulnerabilities ?? [];
   const totalCrypto = cryptoAssets.length;
-  const qSafe = cryptoAssets.filter(a => a.quantumSafety === 'quantum-safe').length;
-  const notSafe = cryptoAssets.filter(a => a.quantumSafety === 'not-quantum-safe').length;
-  const conditional = cryptoAssets.filter(a => a.quantumSafety === 'conditional').length;
+  const qSafe = cryptoAssets.filter(
+    (a) => a.quantumSafety === "quantum-safe",
+  ).length;
+  const notSafe = cryptoAssets.filter(
+    (a) => a.quantumSafety === "not-quantum-safe",
+  ).length;
+  const conditional = cryptoAssets.filter(
+    (a) => a.quantumSafety === "conditional",
+  ).length;
   const unknown = totalCrypto - qSafe - notSafe - conditional;
   const score = totalCrypto > 0 ? Math.round((qSafe / totalCrypto) * 100) : 100;
 
-  const vulnCritical = vulns.filter(v => v.ratings?.some((r: any) => r.severity === 'critical')).length;
-  const vulnHigh = vulns.filter(v => v.ratings?.some((r: any) => r.severity === 'high') && !v.ratings?.some((r: any) => r.severity === 'critical')).length;
-  const vulnMedium = vulns.filter(v => v.ratings?.some((r: any) => r.severity === 'medium')).length;
-  const vulnLow = vulns.filter(v => v.ratings?.some((r: any) => r.severity === 'low')).length;
+  const vulnCritical = vulns.filter((v) =>
+    v.ratings?.some((r: any) => r.severity === "critical"),
+  ).length;
+  const vulnHigh = vulns.filter(
+    (v) =>
+      v.ratings?.some((r: any) => r.severity === "high") &&
+      !v.ratings?.some((r: any) => r.severity === "critical"),
+  ).length;
+  const vulnMedium = vulns.filter((v) =>
+    v.ratings?.some((r: any) => r.severity === "medium"),
+  ).length;
+  const vulnLow = vulns.filter((v) =>
+    v.ratings?.some((r: any) => r.severity === "low"),
+  ).length;
 
   return {
-    quantumReadiness: { score, totalAssets: totalCrypto, quantumSafe: qSafe, notQuantumSafe: notSafe, conditional, unknown },
-    compliance: { isCompliant: notSafe === 0, policy: 'PQC Readiness', source: 'local-analysis', totalAssets: totalCrypto, compliantAssets: qSafe + conditional, nonCompliantAssets: notSafe, unknownAssets: unknown },
-    vulnerabilitySummary: { total: vulns.length, critical: vulnCritical, high: vulnHigh, medium: vulnMedium, low: vulnLow, info: 0 },
+    quantumReadiness: {
+      score,
+      totalAssets: totalCrypto,
+      quantumSafe: qSafe,
+      notQuantumSafe: notSafe,
+      conditional,
+      unknown,
+    },
+    compliance: {
+      isCompliant: notSafe === 0,
+      policy: "PQC Readiness",
+      source: "local-analysis",
+      totalAssets: totalCrypto,
+      compliantAssets: qSafe + conditional,
+      nonCompliantAssets: notSafe,
+      unknownAssets: unknown,
+    },
+    vulnerabilitySummary: {
+      total: vulns.length,
+      critical: vulnCritical,
+      high: vulnHigh,
+      medium: vulnMedium,
+      low: vulnLow,
+      info: 0,
+    },
     totalSoftwareComponents: xbom.components?.length ?? 0,
     totalCryptoAssets: totalCrypto,
     totalCrossReferences: xbom.crossReferences?.length ?? 0,
   };
 }
 
-function UploadForm({ onViewLocal }: { onViewLocal: (xbom: XBOMDocument, analytics: XBOMAnalytics) => void }) {
+function UploadForm({
+  onViewLocal,
+}: {
+  onViewLocal: (xbom: XBOMDocument, analytics: XBOMAnalytics) => void;
+}) {
   const [uploadXBOM, { isLoading: uploading }] = useUploadXBOMMutation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
-  const [fileName, setFileName] = useState('');
-  const [jsonText, setJsonText] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [fileName, setFileName] = useState("");
+  const [jsonText, setJsonText] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const parseAndView = useCallback((raw: string, name: string) => {
-    try {
-      setError('');
-      const parsed = JSON.parse(raw);
-      if (parsed.bomFormat !== 'CycloneDX') {
-        setError('Invalid file: bomFormat must be CycloneDX');
-        return;
+  const parseAndView = useCallback(
+    (raw: string, name: string) => {
+      try {
+        setError("");
+        const parsed = JSON.parse(raw);
+        if (parsed.bomFormat !== "CycloneDX") {
+          setError("Invalid file: bomFormat must be CycloneDX");
+          return;
+        }
+        const xbom: XBOMDocument = {
+          bomFormat: parsed.bomFormat,
+          specVersion: parsed.specVersion ?? "1.6",
+          serialNumber: parsed.serialNumber ?? `local-${Date.now()}`,
+          version: parsed.version ?? 1,
+          metadata: parsed.metadata ?? {
+            timestamp: new Date().toISOString(),
+            tools: [],
+          },
+          components: parsed.components ?? [],
+          cryptoAssets: parsed.cryptoAssets ?? [],
+          dependencies: parsed.dependencies ?? [],
+          vulnerabilities: parsed.vulnerabilities ?? [],
+          crossReferences: parsed.crossReferences ?? [],
+          thirdPartyLibraries: parsed.thirdPartyLibraries,
+        };
+        const analytics = computeLocalAnalytics(xbom);
+        setFileName(name);
+        setSuccess(
+          `${name} loaded — ${xbom.components.length} software, ` +
+            `${xbom.cryptoAssets.length} crypto, ` +
+            `${xbom.vulnerabilities.length} vulns, ` +
+            `${xbom.crossReferences.length} cross-refs`,
+        );
+        onViewLocal(xbom, analytics);
+      } catch {
+        setError("Invalid JSON — could not parse xBOM file");
       }
-      const xbom: XBOMDocument = {
-        bomFormat: parsed.bomFormat,
-        specVersion: parsed.specVersion ?? '1.6',
-        serialNumber: parsed.serialNumber ?? `local-${Date.now()}`,
-        version: parsed.version ?? 1,
-        metadata: parsed.metadata ?? { timestamp: new Date().toISOString(), tools: [] },
-        components: parsed.components ?? [],
-        cryptoAssets: parsed.cryptoAssets ?? [],
-        dependencies: parsed.dependencies ?? [],
-        vulnerabilities: parsed.vulnerabilities ?? [],
-        crossReferences: parsed.crossReferences ?? [],
-        thirdPartyLibraries: parsed.thirdPartyLibraries,
-      };
-      const analytics = computeLocalAnalytics(xbom);
-      setFileName(name);
-      setSuccess(
-        `${name} loaded — ${xbom.components.length} software, ` +
-        `${xbom.cryptoAssets.length} crypto, ` +
-        `${xbom.vulnerabilities.length} vulns, ` +
-        `${xbom.crossReferences.length} cross-refs`
-      );
-      onViewLocal(xbom, analytics);
-    } catch {
-      setError('Invalid JSON — could not parse xBOM file');
-    }
-  }, [onViewLocal]);
+    },
+    [onViewLocal],
+  );
 
-  const handleFile = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => parseAndView(reader.result as string, file.name);
-    reader.readAsText(file);
-  }, [parseAndView]);
+  const handleFile = useCallback(
+    (file: File) => {
+      const reader = new FileReader();
+      reader.onload = () => parseAndView(reader.result as string, file.name);
+      reader.readAsText(file);
+    },
+    [parseAndView],
+  );
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  }, [handleFile]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragActive(false);
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    },
+    [handleFile],
+  );
 
   const handleSaveToServer = async () => {
-    if (!jsonText.trim() && !fileName) { setError('Upload or paste an xBOM file first'); return; }
-    setError('');
-    setSuccess('');
+    if (!jsonText.trim() && !fileName) {
+      setError("Upload or paste an xBOM file first");
+      return;
+    }
+    setError("");
+    setSuccess("");
     try {
       let body: any;
       if (jsonText.trim()) {
         body = { xbom: JSON.parse(jsonText) };
       } else {
-        setError('Please paste the xBOM JSON or upload a file');
+        setError("Please paste the xBOM JSON or upload a file");
         return;
       }
       const fd = new FormData();
-      fd.append('xbom', JSON.stringify(body.xbom));
+      fd.append("xbom", JSON.stringify(body.xbom));
       const res = await uploadXBOM(fd).unwrap();
       if (res.success) {
-        setSuccess(res.message || 'xBOM uploaded and saved');
+        setSuccess(res.message || "xBOM uploaded and saved");
       } else {
-        setError(res.error || 'Upload failed');
+        setError(res.error || "Upload failed");
       }
     } catch (e: any) {
-      setError(e?.data?.error || e?.message || 'Upload failed');
+      setError(e?.data?.error || e?.message || "Upload failed");
     }
   };
 
   return (
-    <div style={{ padding: '0 4px' }}>
-      <p style={{ fontSize: 13, color: 'var(--dc1-text-muted)', marginBottom: 16 }}>
-        Upload a pre-existing xBOM JSON file (e.g. from a CI/CD artifact) to view it instantly.
-        You can also save it to the server for persistent storage.
+    <div style={{ padding: "0 4px" }}>
+      <p
+        style={{
+          fontSize: 13,
+          color: "var(--dc1-text-muted)",
+          marginBottom: 16,
+        }}
+      >
+        Upload a pre-existing xBOM JSON file (e.g. from a CI/CD artifact) to
+        view it instantly. You can also save it to the server for persistent
+        storage.
       </p>
 
       {/* Drag-and-drop zone */}
       <div
-        className={`${s.dropZone} ${dragActive ? s.dropZoneActive : ''}`}
-        onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+        className={`${s.dropZone} ${dragActive ? s.dropZoneActive : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragActive(true);
+        }}
         onDragLeave={() => setDragActive(false)}
         onDrop={handleDrop}
         onClick={() => fileRef.current?.click()}
@@ -733,7 +1120,7 @@ function UploadForm({ onViewLocal }: { onViewLocal: (xbom: XBOMDocument, analyti
           type="file"
           accept=".json"
           ref={fileRef}
-          style={{ display: 'none' }}
+          style={{ display: "none" }}
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) {
@@ -748,7 +1135,9 @@ function UploadForm({ onViewLocal }: { onViewLocal: (xbom: XBOMDocument, analyti
         {fileName ? (
           <>
             <span style={{ fontSize: 20 }}>📄</span>
-            <span style={{ fontWeight: 600, color: 'var(--dc1-text)' }}>{fileName}</span>
+            <span style={{ fontWeight: 600, color: "var(--dc1-text)" }}>
+              {fileName}
+            </span>
             <span>Drop another file to replace</span>
           </>
         ) : (
@@ -761,28 +1150,40 @@ function UploadForm({ onViewLocal }: { onViewLocal: (xbom: XBOMDocument, analyti
       </div>
 
       {/* OR paste JSON */}
-      <div className={s.orDivider}><span>or paste JSON</span></div>
+      <div className={s.orDivider}>
+        <span>or paste JSON</span>
+      </div>
 
       <div className={s.formRow}>
         <textarea
-          placeholder='Paste xBOM JSON here…'
+          placeholder="Paste xBOM JSON here…"
           value={jsonText}
           onChange={(e) => setJsonText(e.target.value)}
           style={{ minHeight: 120 }}
         />
       </div>
 
-      {error && <div style={{ color: 'var(--dc1-danger)', fontSize: 13, marginTop: 8 }}>{error}</div>}
-      {success && <div style={{ color: 'var(--dc1-success)', fontSize: 13, marginTop: 8 }}>{success}</div>}
+      {error && (
+        <div style={{ color: "var(--dc1-danger)", fontSize: 13, marginTop: 8 }}>
+          {error}
+        </div>
+      )}
+      {success && (
+        <div
+          style={{ color: "var(--dc1-success)", fontSize: 13, marginTop: 8 }}
+        >
+          {success}
+        </div>
+      )}
 
       <div className={s.formActions}>
         <button
           className="dc1-btn-primary"
           onClick={() => {
             if (jsonText.trim()) {
-              parseAndView(jsonText, 'pasted-xbom.json');
+              parseAndView(jsonText, "pasted-xbom.json");
             } else {
-              setError('Upload or paste an xBOM file to view');
+              setError("Upload or paste an xBOM file to view");
             }
           }}
         >
@@ -790,11 +1191,11 @@ function UploadForm({ onViewLocal }: { onViewLocal: (xbom: XBOMDocument, analyti
         </button>
         <button
           className={s.iconBtn}
-          style={{ padding: '8px 16px', fontSize: 13 }}
+          style={{ padding: "8px 16px", fontSize: 13 }}
           onClick={handleSaveToServer}
           disabled={uploading}
         >
-          {uploading ? 'Saving…' : 'Save to server'}
+          {uploading ? "Saving…" : "Save to server"}
         </button>
       </div>
     </div>
@@ -805,64 +1206,146 @@ function UploadForm({ onViewLocal }: { onViewLocal: (xbom: XBOMDocument, analyti
 /*  xBOM Detail View (server-stored)                                   */
 /* ================================================================== */
 
-function XBOMDetailView({ id, onBack }: { id: string; onBack: () => void }) {
+export function XBOMDetailView({
+  id,
+  onBack,
+}: {
+  id: string;
+  onBack: () => void;
+}) {
   const { data, isLoading, error } = useGetXBOMQuery(id);
-  const [tab, setTab] = useState<DetailTab>('overview');
+  const [tab, setTab] = useState<DetailTab>("overview");
 
-  if (isLoading) return <div className={s.spinner}><div className={s.spinnerDot} /><div className={s.spinnerDot} /><div className={s.spinnerDot} /></div>;
-  if (error || !data?.xbom) return <div className={s.emptyState}><h3>Failed to load xBOM</h3><button className={s.backBtn} onClick={onBack}>← Back</button></div>;
+  if (isLoading)
+    return (
+      <div className={s.spinner}>
+        <div className={s.spinnerDot} />
+        <div className={s.spinnerDot} />
+        <div className={s.spinnerDot} />
+      </div>
+    );
+  if (error || !data?.xbom)
+    return (
+      <div className={s.emptyState}>
+        <h3>Failed to load xBOM</h3>
+        <button className={s.backBtn} onClick={onBack}>
+          ← Back
+        </button>
+      </div>
+    );
 
   const xbom = data.xbom;
   const analytics = data.analytics;
 
   const tabDef: { key: DetailTab; label: string; count?: number }[] = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'software', label: 'Software', count: xbom.components?.length },
-    { key: 'crypto', label: 'Crypto Assets', count: xbom.cryptoAssets?.length },
-    { key: 'vulnerabilities', label: 'Vulnerabilities', count: xbom.vulnerabilities?.length },
-    { key: 'cross-references', label: 'Cross-References', count: xbom.crossReferences?.length },
+    { key: "overview", label: "Overview" },
+    { key: "software", label: "Software", count: xbom.components?.length },
+    { key: "crypto", label: "Crypto Assets", count: xbom.cryptoAssets?.length },
+    {
+      key: "vulnerabilities",
+      label: "Vulnerabilities",
+      count: xbom.vulnerabilities?.length,
+    },
+    {
+      key: "cross-references",
+      label: "Cross-References",
+      count: xbom.crossReferences?.length,
+    },
   ];
 
-  const componentName = xbom.metadata?.component?.name ?? 'xBOM';
+  const componentName = xbom.metadata?.component?.name ?? "xBOM";
 
   return (
     <div className={s.xbomPage}>
       <div className={s.detailHeader}>
         <div>
-          <button className={s.backBtn} onClick={onBack}>← Back to xBOM list</button>
-          <h2 style={{ margin: '8px 0 4px' }}>{componentName}</h2>
+          <button className={s.backBtn} onClick={onBack}>
+            ← Back to xBOM list
+          </button>
+          <h2 style={{ margin: "8px 0 4px" }}>{componentName}</h2>
           <div className={s.detailMeta}>
-            <span>Format: {xbom.bomFormat} {xbom.specVersion}</span>
+            <span>
+              Format: {xbom.bomFormat} {xbom.specVersion}
+            </span>
             <span>Generated: {fmtDate(xbom.metadata?.timestamp)}</span>
-            {xbom.metadata?.repository?.url && <span>Repo: {xbom.metadata.repository.url}</span>}
+            {xbom.metadata?.repository?.url && (
+              <span>Repo: {xbom.metadata.repository.url}</span>
+            )}
           </div>
         </div>
         <BomDownloadButtons
           compact
           items={[
-            { label: 'xBOM', filename: `${componentName}-xbom.json`, data: xbom },
-            { label: 'SBOM', filename: `${componentName}-sbom.json`, data: xbom.components?.length ? { bomFormat: 'CycloneDX', specVersion: xbom.specVersion, components: xbom.components } : null },
-            { label: 'CBOM', filename: `${componentName}-cbom.json`, data: xbom.cryptoAssets?.length ? { bomFormat: 'CycloneDX', specVersion: xbom.specVersion, cryptoAssets: xbom.cryptoAssets } : null },
+            {
+              label: "xBOM",
+              filename: `${componentName}-xbom.json`,
+              data: xbom,
+            },
+            {
+              label: "SBOM",
+              filename: `${componentName}-sbom.json`,
+              data: xbom.components?.length
+                ? {
+                    bomFormat: "CycloneDX",
+                    specVersion: xbom.specVersion,
+                    components: xbom.components,
+                  }
+                : null,
+            },
+            {
+              label: "CBOM",
+              filename: `${componentName}-cbom.json`,
+              data: xbom.cryptoAssets?.length
+                ? {
+                    bomFormat: "CycloneDX",
+                    specVersion: xbom.specVersion,
+                    cryptoAssets: xbom.cryptoAssets,
+                  }
+                : null,
+            },
           ]}
         />
       </div>
 
       {/* Tabs */}
       <div className={s.tabs}>
-        {tabDef.map(t => (
-          <button key={t.key} className={`${s.tab} ${tab === t.key ? s.tabActive : ''}`} onClick={() => setTab(t.key)}>
+        {tabDef.map((t) => (
+          <button
+            key={t.key}
+            className={`${s.tab} ${tab === t.key ? s.tabActive : ""}`}
+            onClick={() => setTab(t.key)}
+          >
             {t.label}
-            {t.count !== undefined && <span className={s.tabBadge}>{t.count}</span>}
+            {t.count !== undefined && (
+              <span className={s.tabBadge}>{t.count}</span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Tab content — shared panels */}
-      {tab === 'overview' && <BomOverviewPanel xbom={xbom} analytics={analytics} />}
-      {tab === 'software' && <SoftwarePanel components={xbom.components ?? []} />}
-      {tab === 'crypto' && <CryptoAnalysisPanel assets={xbom.cryptoAssets ?? []} />}
-      {tab === 'vulnerabilities' && <VulnerabilityPanel vulns={xbom.vulnerabilities ?? []} summary={analytics?.vulnerabilitySummary} />}
-      {tab === 'cross-references' && <CrossRefPanel refs={xbom.crossReferences ?? []} components={xbom.components} cryptoAssets={xbom.cryptoAssets} />}
+      {tab === "overview" && (
+        <BomOverviewPanel xbom={xbom} analytics={analytics} />
+      )}
+      {tab === "software" && (
+        <SoftwarePanel components={xbom.components ?? []} />
+      )}
+      {tab === "crypto" && (
+        <CryptoAnalysisPanel assets={xbom.cryptoAssets ?? []} thirdPartyLibraries={xbom.thirdPartyLibraries} />
+      )}
+      {tab === "vulnerabilities" && (
+        <VulnerabilityPanel
+          vulns={xbom.vulnerabilities ?? []}
+          summary={analytics?.vulnerabilitySummary}
+        />
+      )}
+      {tab === "cross-references" && (
+        <CrossRefPanel
+          refs={xbom.crossReferences ?? []}
+          components={xbom.components}
+          cryptoAssets={xbom.cryptoAssets}
+        />
+      )}
     </div>
   );
 }
@@ -871,83 +1354,167 @@ function XBOMDetailView({ id, onBack }: { id: string; onBack: () => void }) {
 /*  xBOM Detail View (local / uploaded — no server fetch)              */
 /* ================================================================== */
 
-function LocalXBOMDetailView({ xbom, analytics, onBack }: { xbom: XBOMDocument; analytics: XBOMAnalytics; onBack: () => void }) {
+function LocalXBOMDetailView({
+  xbom,
+  analytics,
+  onBack,
+}: {
+  xbom: XBOMDocument;
+  analytics: XBOMAnalytics;
+  onBack: () => void;
+}) {
   const [uploadXBOM, { isLoading: saving }] = useUploadXBOMMutation();
-  const [tab, setTab] = useState<DetailTab>('overview');
+  const [tab, setTab] = useState<DetailTab>("overview");
   const [saved, setSaved] = useState(false);
 
   const handleSave = async () => {
     const fd = new FormData();
-    fd.append('xbom', JSON.stringify(xbom));
+    fd.append("xbom", JSON.stringify(xbom));
     try {
       await uploadXBOM(fd).unwrap();
       setSaved(true);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   const tabDef: { key: DetailTab; label: string; count?: number }[] = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'software', label: 'Software', count: xbom.components?.length },
-    { key: 'crypto', label: 'Crypto Assets', count: xbom.cryptoAssets?.length },
-    { key: 'vulnerabilities', label: 'Vulnerabilities', count: xbom.vulnerabilities?.length },
-    { key: 'cross-references', label: 'Cross-References', count: xbom.crossReferences?.length },
+    { key: "overview", label: "Overview" },
+    { key: "software", label: "Software", count: xbom.components?.length },
+    { key: "crypto", label: "Crypto Assets", count: xbom.cryptoAssets?.length },
+    {
+      key: "vulnerabilities",
+      label: "Vulnerabilities",
+      count: xbom.vulnerabilities?.length,
+    },
+    {
+      key: "cross-references",
+      label: "Cross-References",
+      count: xbom.crossReferences?.length,
+    },
   ];
 
-  const componentName = xbom.metadata?.component?.name ?? 'xBOM';
+  const componentName = xbom.metadata?.component?.name ?? "xBOM";
 
   return (
     <div className={s.xbomPage}>
       <div className={s.detailHeader}>
         <div>
-          <button className={s.backBtn} onClick={onBack}>← Back to xBOM list</button>
-          <h2 style={{ margin: '8px 0 4px' }}>
+          <button className={s.backBtn} onClick={onBack}>
+            ← Back to xBOM list
+          </button>
+          <h2 style={{ margin: "8px 0 4px" }}>
             {componentName}
-            <span style={{ fontSize: 12, fontWeight: 400, marginLeft: 10, padding: '2px 8px', borderRadius: 10, background: '#dbeafe', color: '#1d4ed8' }}>Uploaded</span>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 400,
+                marginLeft: 10,
+                padding: "2px 8px",
+                borderRadius: 10,
+                background: "#dbeafe",
+                color: "#1d4ed8",
+              }}
+            >
+              Uploaded
+            </span>
           </h2>
           <div className={s.detailMeta}>
-            <span>Format: {xbom.bomFormat} {xbom.specVersion}</span>
+            <span>
+              Format: {xbom.bomFormat} {xbom.specVersion}
+            </span>
             <span>Generated: {fmtDate(xbom.metadata?.timestamp)}</span>
-            {xbom.metadata?.repository?.url && <span>Repo: {xbom.metadata.repository.url}</span>}
+            {xbom.metadata?.repository?.url && (
+              <span>Repo: {xbom.metadata.repository.url}</span>
+            )}
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <BomDownloadButtons
             compact
             items={[
-              { label: 'xBOM', filename: `${componentName}-xbom.json`, data: xbom },
-              { label: 'SBOM', filename: `${componentName}-sbom.json`, data: xbom.components?.length ? { bomFormat: 'CycloneDX', specVersion: xbom.specVersion, components: xbom.components } : null },
-              { label: 'CBOM', filename: `${componentName}-cbom.json`, data: xbom.cryptoAssets?.length ? { bomFormat: 'CycloneDX', specVersion: xbom.specVersion, cryptoAssets: xbom.cryptoAssets } : null },
+              {
+                label: "xBOM",
+                filename: `${componentName}-xbom.json`,
+                data: xbom,
+              },
+              {
+                label: "SBOM",
+                filename: `${componentName}-sbom.json`,
+                data: xbom.components?.length
+                  ? {
+                      bomFormat: "CycloneDX",
+                      specVersion: xbom.specVersion,
+                      components: xbom.components,
+                    }
+                  : null,
+              },
+              {
+                label: "CBOM",
+                filename: `${componentName}-cbom.json`,
+                data: xbom.cryptoAssets?.length
+                  ? {
+                      bomFormat: "CycloneDX",
+                      specVersion: xbom.specVersion,
+                      cryptoAssets: xbom.cryptoAssets,
+                    }
+                  : null,
+              },
             ]}
           />
           <button
             className={s.iconBtn}
-            style={{ padding: '8px 16px', fontSize: 13, opacity: saved ? 0.6 : 1 }}
+            style={{
+              padding: "8px 16px",
+              fontSize: 13,
+              opacity: saved ? 0.6 : 1,
+            }}
             onClick={handleSave}
             disabled={saving || saved}
           >
-            {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save to server'}
+            {saved ? "✓ Saved" : saving ? "Saving…" : "Save to server"}
           </button>
         </div>
       </div>
 
       <div className={s.tabs}>
-        {tabDef.map(t => (
-          <button key={t.key} className={`${s.tab} ${tab === t.key ? s.tabActive : ''}`} onClick={() => setTab(t.key)}>
+        {tabDef.map((t) => (
+          <button
+            key={t.key}
+            className={`${s.tab} ${tab === t.key ? s.tabActive : ""}`}
+            onClick={() => setTab(t.key)}
+          >
             {t.label}
-            {t.count !== undefined && <span className={s.tabBadge}>{t.count}</span>}
+            {t.count !== undefined && (
+              <span className={s.tabBadge}>{t.count}</span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Tab content — shared panels */}
-      {tab === 'overview' && <BomOverviewPanel xbom={xbom} analytics={analytics} />}
-      {tab === 'software' && <SoftwarePanel components={xbom.components ?? []} />}
-      {tab === 'crypto' && <CryptoAnalysisPanel assets={xbom.cryptoAssets ?? []} />}
-      {tab === 'vulnerabilities' && <VulnerabilityPanel vulns={xbom.vulnerabilities ?? []} summary={analytics?.vulnerabilitySummary} />}
-      {tab === 'cross-references' && <CrossRefPanel refs={xbom.crossReferences ?? []} components={xbom.components} cryptoAssets={xbom.cryptoAssets} />}
+      {tab === "overview" && (
+        <BomOverviewPanel xbom={xbom} analytics={analytics} />
+      )}
+      {tab === "software" && (
+        <SoftwarePanel components={xbom.components ?? []} />
+      )}
+      {tab === "crypto" && (
+        <CryptoAnalysisPanel assets={xbom.cryptoAssets ?? []} thirdPartyLibraries={xbom.thirdPartyLibraries} />
+      )}
+      {tab === "vulnerabilities" && (
+        <VulnerabilityPanel
+          vulns={xbom.vulnerabilities ?? []}
+          summary={analytics?.vulnerabilitySummary}
+        />
+      )}
+      {tab === "cross-references" && (
+        <CrossRefPanel
+          refs={xbom.crossReferences ?? []}
+          components={xbom.components}
+          cryptoAssets={xbom.cryptoAssets}
+        />
+      )}
     </div>
   );
 }
-
-
-

@@ -10,7 +10,7 @@
  *  • Asset list view (table)
  */
 import { useState, useMemo } from 'react';
-import type { CryptoAsset, QuantumReadinessScore, ComplianceSummary } from '../../types';
+import type { CryptoAsset, QuantumReadinessScore, ComplianceSummary, ThirdPartyCryptoLibrary } from '../../types';
 import {
   ReadinessScoreCard,
   QuantumSafetyDonut,
@@ -21,15 +21,17 @@ import {
   AssetListView,
   CbomStatsRow,
   AssetBreakdown,
+  ThirdPartyLibrariesView,
 } from '../../components';
 
-type CryptoSubTab = 'overview' | 'inventory';
+type CryptoSubTab = 'overview' | 'inventory' | 'libraries';
 
 interface Props {
   assets: CryptoAsset[];
+  thirdPartyLibraries?: ThirdPartyCryptoLibrary[];
 }
 
-export default function CryptoAnalysisPanel({ assets }: Props) {
+export default function CryptoAnalysisPanel({ assets, thirdPartyLibraries = [] }: Props) {
   const [subTab, setSubTab] = useState<CryptoSubTab>('overview');
 
   const { readinessScore, compliance, safe, notSafe, conditional, unknown, totalAssets } = useMemo(() => {
@@ -86,6 +88,14 @@ export default function CryptoAnalysisPanel({ assets }: Props) {
         >
           Crypto Inventory ({totalAssets})
         </button>
+        {thirdPartyLibraries.length > 0 && (
+          <button
+            className={`dc1-tab-btn ${subTab === 'libraries' ? 'dc1-tab-active' : ''}`}
+            onClick={() => setSubTab('libraries')}
+          >
+            Third-Party Libraries ({thirdPartyLibraries.length})
+          </button>
+        )}
       </div>
 
       {subTab === 'overview' && (
@@ -143,6 +153,10 @@ export default function CryptoAnalysisPanel({ assets }: Props) {
         <div className="dc1-card" style={{ marginTop: 0 }}>
           <AssetListView assets={assets} />
         </div>
+      )}
+
+      {subTab === 'libraries' && thirdPartyLibraries.length > 0 && (
+        <ThirdPartyLibrariesView libraries={thirdPartyLibraries} />
       )}
     </div>
   );

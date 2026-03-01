@@ -37,6 +37,46 @@ export async function isTrivyInstalled(): Promise<boolean> {
   return trivyAvailable;
 }
 
+/** Reset the cached Trivy availability flag so the next call re-probes. */
+export function resetTrivyCache(): void {
+  trivyAvailable = null;
+}
+
+/**
+ * Attempt to install Trivy automatically.
+ * Returns { success, message } indicating the result.
+ */
+export async function installTrivy(): Promise<{ success: boolean; message: string }> {
+  const platform = os.platform();
+  try {
+    if (platform === 'darwin') {
+      // macOS — Homebrew
+      await execFileAsync('brew', ['install', 'trivy'], { timeout: 120_000 });
+    } else if (platform === 'linux') {
+      // Linux — try snap first (no sudo needed), fall back to apt
+      try {
+        await execFileAsync('snap', ['install', 'trivy'], { timeout: 120_000 });
+      } catch {
+        // Try curl-based install script (official Trivy installer, no sudo)
+        const { stdout } = await execFileAsync('bash', ['-c', 'curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin'], { timeout: 120_000 });
+        void stdout;
+      }
+    } else {
+      return { success: false, message: `Automatic installation is not supported on ${platform}. Please install Trivy manually.` };
+    }
+    // Reset cache and re-check
+    resetTrivyCache();
+    const installed = await isTrivyInstalled();
+    if (installed) {
+      const ver = await getTrivyVersion();
+      return { success: true, message: `Trivy ${ver ? 'v' + ver + ' ' : ''}installed successfully.` };
+    }
+    return { success: false, message: 'Installation command completed but Trivy was not found on PATH.' };
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Installation failed. Please install Trivy manually.' };
+  }
+}
+
 export async function getTrivyVersion(): Promise<string | null> {
   try {
     const { stdout } = await execFileAsync('trivy', ['version', '--format', 'json'], { timeout: 10_000 });

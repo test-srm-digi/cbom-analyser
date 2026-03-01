@@ -144,6 +144,17 @@ export {
   useGetXBOMListQuery,
   useGetXBOMQuery,
   useDeleteXBOMMutation,
+  useInstallTrivyMutation,
+  useRecheckTrivyMutation,
 } from './xbomApi';
 
 export type { XBOMGenerateRequest, XBOMMergeRequest } from './xbomApi';
+
+export {
+  cbomUploadsApi,
+  useGetCbomUploadsQuery,
+  useGetCbomUploadQuery,
+  useDeleteCbomUploadMutation,
+} from './cbomUploadsApi';
+
+export type { CbomUploadItem, CbomUploadDetail } from './cbomUploadsApi';

@@ -41,7 +41,7 @@ export default function BomDownloadButtons({ items, compact }: Props) {
           title={`Download ${item.label}`}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: compact ? '4px 8px' : '6px 14px',
+            padding: compact ? '4px 10px' : '6px 14px',
             fontSize: compact ? 11 : 12,
             fontWeight: 500,
             background: 'var(--dc1-bg-card, #fff)',
@@ -55,7 +55,7 @@ export default function BomDownloadButtons({ items, compact }: Props) {
           onMouseLeave={e => { (e.target as HTMLElement).style.background = 'var(--dc1-bg-card, #fff)'; }}
         >
           <Download size={compact ? 12 : 14} />
-          {!compact && item.label}
+          <span style={{ fontWeight: 600 }}>{item.label}</span>
         </button>
       ))}
     </div>

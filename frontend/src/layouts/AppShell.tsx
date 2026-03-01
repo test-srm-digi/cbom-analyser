@@ -54,6 +54,7 @@ export type NavPage =
   | "discovery-cbom-imports"
   | "cbom-detail"
   | "repo-overview"
+  | "xbom-detail"
   | "network"
   | "settings"
   /* Other products */
@@ -230,7 +231,7 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
               onClick={() => setQraExpanded(!qraExpanded)}
             >
               <span className="dc1-nav-section-icon">
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <svg width="24" height="24" viewBox="0 0 18 18" fill="none">
                   <circle
                     cx="9"
                     cy="9"

@@ -130,6 +130,22 @@ export const xbomApi = createApi({
       }),
       invalidatesTags: ['XBOM'],
     }),
+
+    /** POST /api/xbom/trivy/install — Install Trivy on the server */
+    installTrivy: builder.mutation<{ success: boolean; message: string; trivyInstalled: boolean; trivyVersion?: string | null }, void>({
+      query: () => ({
+        url: '/api/xbom/trivy/install',
+        method: 'POST',
+      }),
+    }),
+
+    /** POST /api/xbom/trivy/recheck — Re-probe Trivy availability */
+    recheckTrivy: builder.mutation<{ success: boolean; trivyInstalled: boolean; trivyVersion?: string | null }, void>({
+      query: () => ({
+        url: '/api/xbom/trivy/recheck',
+        method: 'POST',
+      }),
+    }),
   }),
 });
 
@@ -141,4 +157,6 @@ export const {
   useGetXBOMListQuery,
   useGetXBOMQuery,
   useDeleteXBOMMutation,
+  useInstallTrivyMutation,
+  useRecheckTrivyMutation,
 } = xbomApi;

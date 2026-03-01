@@ -31,9 +31,10 @@ interface Props {
   onViewRepo?: (name: string) => void;
   onGoToIntegrations?: () => void;
   onGoToXBOM?: () => void;
+  onViewXBOM?: (id: string) => void;
 }
 
-export default function DiscoveryPage({ tab, onViewCbom, onViewRepo, onGoToIntegrations, onGoToXBOM }: Props) {
+export default function DiscoveryPage({ tab, onViewCbom, onViewRepo, onGoToIntegrations, onGoToXBOM, onViewXBOM }: Props) {
   const [search, setSearch] = useState('');
   const meta = TAB_META[tab];
 
@@ -43,7 +44,7 @@ export default function DiscoveryPage({ tab, onViewCbom, onViewRepo, onGoToInteg
       case 'endpoints':      return <EndpointsTab    search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
       case 'software':       return <SoftwareTab     search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
       case 'devices':        return <DevicesTab      search={search} setSearch={setSearch} onGoToIntegrations={onGoToIntegrations} />;
-      case 'cbom-imports':   return <CbomImportsTab  search={search} setSearch={setSearch} onViewCbom={onViewCbom} onViewRepo={onViewRepo} onGoToIntegrations={onGoToIntegrations} onGoToXBOM={onGoToXBOM} />;
+      case 'cbom-imports':   return <CbomImportsTab  search={search} setSearch={setSearch} onViewCbom={onViewCbom} onViewRepo={onViewRepo} onGoToIntegrations={onGoToIntegrations} onGoToXBOM={onGoToXBOM} onViewXBOM={onViewXBOM} />;
     }
   };
 
