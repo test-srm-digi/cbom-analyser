@@ -349,6 +349,10 @@ export default function ConfigField({ field, value, onChange, allValues = {}, on
 
   /* ── Section Header ─────────────────────────────────────── */
   if (field.type === 'section-header') {
+    // Invisible separator — used only to break out of a collapsed section scope
+    if (!field.label) {
+      return null;
+    }
     return (
       <div className={s.sectionHeaderField} onClick={() => onToggleSection?.(field.key)}>
         <div className={s.sectionHeaderLeft}>

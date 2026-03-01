@@ -298,7 +298,13 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
         helpText: "If the scanner encounters errors, fail the workflow run",
       },
 
-      // ── Generate Workflow Button ──
+      // ── Generate Workflow Button (outside collapsed section) ──
+      {
+        key: "_generateSection",
+        label: "",
+        type: "section-header",
+        required: false,
+      },
       {
         key: "workflowYaml",
         label: "Generate Workflow YAML",
