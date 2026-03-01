@@ -19,7 +19,7 @@ name: xBOM — Unified SBOM + CBOM
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [main, X-bom]
   pull_request:
     branches: [main, master]
   workflow_dispatch:
