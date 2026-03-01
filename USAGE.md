@@ -14,22 +14,29 @@
 6. [UI Navigation & Application Layout](#ui-navigation--application-layout)
 7. [Integrations Hub](#integrations-hub)
 8. [Discovery Pages](#discovery-pages)
-9. [Database Setup (MariaDB)](#database-setup-mariadb)
-10. [Integrations REST API](#integrations-rest-api)
-11. [Discovery Data REST API](#discovery-data-rest-api)
-12. [Sync Scheduler](#sync-scheduler)
-13. [Sync Logs REST API](#sync-logs-rest-api)
-14. [Scheduler REST API](#scheduler-rest-api)
-15. [Frontend State Management (RTK Query)](#frontend-state-management-rtk-query)
-16. [Variable Resolution & Context Scanning](#variable-resolution--context-scanning)
-17. [Third-Party Dependency Scanning](#third-party-dependency-scanning)
-18. [PQC Readiness Verdicts](#pqc-readiness-verdicts)
-19. [Quantum Safety Dashboard](#quantum-safety-dashboard)
-20. [Project Insight Panel](#project-insight-panel)
-21. [AI-Powered Suggested Fixes](#ai-powered-suggested-fixes)
-22. [Sample Data & Demo Code](#sample-data--demo-code)
-23. [Configuration](#configuration)
-24. [CycloneDX 1.7 Standard](#cyclonedx-17-standard)
+9. [Real Connectors](#real-connectors)
+10. [Cryptographic Policies](#cryptographic-policies)
+11. [Violations Page](#violations-page)
+12. [Ticket & Issue Tracking](#ticket--issue-tracking)
+13. [Database Setup (MariaDB)](#database-setup-mariadb)
+14. [Integrations REST API](#integrations-rest-api)
+15. [Discovery Data REST API](#discovery-data-rest-api)
+16. [Policies REST API](#policies-rest-api)
+17. [Tickets REST API](#tickets-rest-api)
+18. [Ticket Connectors REST API](#ticket-connectors-rest-api)
+19. [Sync Scheduler](#sync-scheduler)
+20. [Sync Logs REST API](#sync-logs-rest-api)
+21. [Scheduler REST API](#scheduler-rest-api)
+22. [Frontend State Management (RTK Query)](#frontend-state-management-rtk-query)
+23. [Variable Resolution & Context Scanning](#variable-resolution--context-scanning)
+24. [Third-Party Dependency Scanning](#third-party-dependency-scanning)
+25. [PQC Readiness Verdicts](#pqc-readiness-verdicts)
+26. [Quantum Safety Dashboard](#quantum-safety-dashboard)
+27. [Project Insight Panel](#project-insight-panel)
+28. [AI-Powered Suggested Fixes](#ai-powered-suggested-fixes)
+29. [Sample Data & Demo Code](#sample-data--demo-code)
+30. [Configuration](#configuration)
+31. [CycloneDX 1.7 Standard](#cyclonedx-17-standard)
 
 ---
 
@@ -436,12 +443,54 @@ curl -L -H "Authorization: token $GITHUB_TOKEN" \
 
 ## Docker Deployment
 
-### Using Docker Compose
+### Using Docker Compose (Recommended)
+
+The `docker-compose.yml` spins up all three services — **MariaDB**, **backend**, and **frontend** — in a single command:
 
 ```bash
-docker-compose up --build
-# Frontend → http://localhost:8080
+docker compose up --build
+# DB       → MariaDB 11 on port 3306
 # Backend  → http://localhost:3001
+# Frontend → http://localhost:8080
+```
+
+#### Services
+
+| Service | Image | Port | Description |
+|---------|-------|------|-------------|
+| `db` | `mariadb:11` | `3306` | MariaDB database with a health check. Auto-creates the `dcone-quantum-gaurd` database. Data persisted in a `db_data` named volume. |
+| `backend` | Custom (Node 20 Alpine) | `3001` | Express + Sequelize API server. Waits for `db` to report healthy before starting. |
+| `frontend` | Custom (nginx Alpine) | `8080` | Vite-built SPA served by nginx. API requests at `/api/*` are proxied to `backend:3001`. |
+
+#### Environment Variables Set in Docker Compose
+
+The `backend` service is pre-configured with all database connection variables:
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `DB_HOST` | `db` | Docker service name for MariaDB |
+| `DB_PORT` | `3306` | MariaDB port |
+| `DB_DATABASE` | `dcone-quantum-gaurd` | Database name |
+| `DB_USERNAME` | `root` | MariaDB user |
+| `DB_PASSWORD` | `asdasd` | MariaDB password |
+
+Additional secrets (API keys, tokens) are loaded from a `.env` file via `env_file: .env`. Create a `.env` in the project root with any keys you need (e.g. `AWS_BEARER_TOKEN_BEDROCK`, `SONAR_TOKEN`).
+
+#### Health Check & Startup Order
+
+The `db` service uses MariaDB's built-in health check (`healthcheck.sh --connect --innodb_initialized`). The `backend` has `depends_on: db: condition: service_healthy`, so it only starts once the database is ready to accept connections. The `frontend` starts after the backend.
+
+#### Persistent Volume
+
+The `db_data` Docker volume persists database contents across restarts:
+
+```bash
+# Remove everything including the database volume
+docker compose down -v
+
+# Keep the database between rebuilds
+docker compose down
+docker compose up --build
 ```
 
 ### Manual Docker Build
@@ -453,8 +502,11 @@ cd backend && docker build -t cbom-backend .
 # Build frontend
 cd frontend && docker build -t cbom-frontend .
 
-# Run
-docker run -d -p 3001:3001 cbom-backend
+# Run (you must provide your own MariaDB instance)
+docker run -d -p 3001:3001 \
+  -e DB_HOST=host.docker.internal \
+  -e DB_DATABASE=dcone-quantum-gaurd \
+  cbom-backend
 docker run -d -p 8080:80 cbom-frontend
 ```
 
@@ -776,9 +828,9 @@ digicert ONE
    │  ├─ Devices             — IoT / OT devices (from DigiCert DTM)
    │  └─ CBOM Imports        — CycloneDX CBOM files (from CI/CD)
    ├─ Network Scanner        — Live TLS endpoint scanner
-   ├─ Tracking               — Migration task tracking
-   ├─ Policies               — Crypto policy management
-   └─ Settings               — Application configuration
+   ├─ Tracking               — Remediation ticket tracking (JIRA / GitHub / ServiceNow)
+   ├─ Policies               — Crypto policy management (NIST SP 800-57 presets)
+   └─ Settings               — Ticket connector configuration (JIRA / GitHub / ServiceNow)
 ```
 
 Additional sidebar sections (below the main nav):
@@ -961,6 +1013,354 @@ Each integration type feeds into its corresponding Discovery page:
 - **DigiCert DTM** → Devices page
 - **CBOM File Import** → CBOM Imports page
 
+### Policy Violations in Discovery Tabs
+
+The **Certificates**, **Endpoints**, **Devices**, and **CBOM Imports** tabs each include a **Policies Violated** column. This column evaluates every row against all active cryptographic policies and shows the count of violated policies. A red violation badge links to the details.
+
+Each tab also adds a **Policy Violations** stat card in the header, showing the total number of items that fail at least one policy.
+
+The evaluation is asset-type-aware:
+- **CBOM Imports** — only `cbom-component`-scoped rules apply
+- **Certificates** — `certificate` and `cbom-component` rules apply
+- **Endpoints** — `endpoint` and `cbom-component` rules apply
+- **Devices** — `device`, `certificate`, and `cbom-component` rules apply (devices carry certificate info)
+
+### Sync Button UX
+
+When a sync is in progress, the integration card's **Sync Now** button shows a spinning refresh icon and is disabled until the API call completes (including a 3.5 s cooldown). This prevents double-clicks and gives clear visual feedback.
+
+### Catalog Type Filtering
+
+When an integration type tile is selected in the "Available Integration Types" row and the user clicks the **"+ Add Integration"** button beneath it, the catalog modal shows only templates of that type. The header-level **"+ Add Integration"** button always shows all types.
+
+---
+
+## Real Connectors
+
+While the `CONNECTOR_REGISTRY` in `connectors.ts` contains simulated fallback connectors, three integration types have **real production connectors** that talk to external APIs.
+
+### DigiCert Trust Lifecycle Manager
+
+**File:** `backend/src/services/digicertTlmConnector.ts`
+
+Fetches certificate data from the **DigiCert ONE REST API** and maps it to the normalised `Certificate` model.
+
+#### Configuration
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `apiBaseUrl` | Yes | DigiCert ONE base URL (e.g. `https://one.digicert.com`) |
+| `apiKey` | Yes | DigiCert ONE API key |
+| `accountId` | No | Account ID filter |
+| `divisionId` | No | Restrict to a specific division |
+| `allowInsecureTls` | No | `"true"` to accept self-signed / internal CA certs |
+| `apiPath` | No | Override the certificate list endpoint path |
+
+#### Endpoint Auto-Detection
+
+The connector tries multiple well-known DigiCert ONE API paths in fallback order:
+
+| Priority | Path | Method | Notes |
+|----------|------|--------|-------|
+| 1 | `mpki/api/v1/certificate/search` | POST | MPKI micro-service (preferred) |
+| 2 | `em/api/v1/certificate/search` | POST | Enterprise Manager |
+| 3 | `tlm/api/v1/certificate/search` | POST | TLM micro-service |
+| 4 | `mpki/api/v1/certificate` | GET | Classic MPKI collection |
+| 5 | `em/api/v1/certificate` | GET | Classic EM collection |
+| 6 | `tlm/api/v1/certificate` | GET | Classic TLM collection |
+| 7 | `certcentral/api/v1/certificate` | GET | CertCentral v1 |
+| 8 | `services/v2/order/certificate` | GET | CertCentral v2 |
+
+The first path that returns a 200 is cached for subsequent pages. POST endpoints use `{ offset, limit }` JSON body; GET endpoints use query string pagination.
+
+If an explicit `apiPath` is configured and ends with `/search`, POST is used automatically.
+
+#### Features
+
+- **Pagination** — fetches up to 5 000 certificates (100 per page, max 50 pages)
+- **Test Connection** — validates the API key and base URL before saving
+- **TLS bypass** — `allowInsecureTls: "true"` for on-prem deployments with internal CA certs
+- **Certificate normalisation** — maps DigiCert fields (`common_name`, `key_type`, `key_size`, `status`, `valid_till`, `serial_number`, `signature_hash`) to the standard `Certificate` model with PQC safety classification
+
+### GitHub CBOM Connector
+
+**File:** `backend/src/services/githubCbomConnector.ts`
+
+Fetches CBOM artifacts from **GitHub Actions workflow runs**, extracts the JSON, and analyses the cryptographic components.
+
+#### Configuration
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `githubRepo` | Yes | Repository in `owner/repo` format |
+| `githubToken` | Yes | GitHub PAT with `actions:read` scope |
+| `artifactName` | No | Artifact name to look for (default: `cbom-report`) |
+| `workflowFile` | No | Filter to a specific workflow file (e.g. `cbom.yml`) |
+| `branch` | No | Filter to a specific branch |
+
+#### Sync Flow
+
+```
+1. List workflow runs  →  GET /repos/{owner}/{repo}/actions/runs
+2. Filter successful   →  conclusion === 'success'
+3. List artifacts      →  GET /repos/{owner}/{repo}/actions/runs/{id}/artifacts
+4. Match artifact name →  artifact.name === 'cbom-report'
+5. Download ZIP        →  GET {archive_download_url} (follows 302 redirect)
+6. Extract JSON        →  Unzip → find *.json → parse CycloneDX
+7. Analyse CBOM        →  Count crypto components, quantum-safe breakdown
+8. Store records       →  Bulk insert into cbom_imports table
+```
+
+#### Features
+
+- **Incremental sync** — only fetches runs completed after the integration's `lastSync` timestamp
+- **ZIP extraction** — handles GitHub's artifact ZIP format using Central Directory parsing for reliable size info
+- **Redirect handling** — follows 302 redirect to Azure Blob storage without leaking the auth header
+- **Per-CBOM analysis** — counts total components, crypto components, quantum-safe vs. not-safe
+
+### Network TLS Connector
+
+**File:** `backend/src/services/networkTlsConnector.ts`
+
+Performs real TLS handshakes against user-configured targets and extracts cipher suite, key agreement, and certificate information.
+
+#### Configuration
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `targets` | Yes | Comma-separated hosts, IPs, or CIDR ranges (e.g. `google.com, 10.0.0.1, 192.168.1.0/24`) |
+| `ports` | Yes | Comma-separated ports to probe (e.g. `443, 8443, 636`) |
+| `concurrency` | No | Max parallel connections (default: 10) |
+| `timeout` | No | Per-connection timeout in seconds (default: 10) |
+
+#### Features
+
+- **CIDR expansion** — `/24` to `/32` ranges (max 256 IPs per range)
+- **DNS resolution** — resolves hostnames to IPs for the `ipAddress` field
+- **Concurrency control** — parallel scans with configurable limit
+- **TLS version & cipher extraction** — uses Node.js `tls.connect()` to negotiate and inspect the connection
+- **Quantum-safety classification** — marks endpoints with PQC key exchange (ML-KEM, X25519Kyber768) as quantum-safe
+
+---
+
+## Cryptographic Policies
+
+The **Policies** page provides a rule-based engine for defining and enforcing cryptographic compliance requirements. Policies are evaluated against all crypto assets — CBOM components, certificates, endpoints, and devices — with violations surfaced across the application.
+
+### Policy Structure
+
+Each policy consists of:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Human-readable policy name |
+| `description` | `string` | Detailed description with NIST reference |
+| `severity` | `High \| Medium \| Low` | Impact level |
+| `status` | `active \| draft` | Only `active` policies are evaluated |
+| `operator` | `AND \| OR` | How multiple rules combine |
+| `rules` | `PolicyRule[]` | Array of rule conditions |
+
+### Policy Rules
+
+Each rule defines a condition on a specific asset type and field:
+
+| Property | Options |
+|----------|---------|
+| **Asset** | `certificate`, `endpoint`, `software`, `device`, `cbom-component` |
+| **Field** | `keyAlgorithm`, `keyLength`, `signatureAlgorithm`, `tlsVersion`, `cipherSuite`, `hashFunction`, `quantumSafe`, `expiryDays`, `protocol` |
+| **Condition** | `equals`, `not-equals`, `greater-than`, `less-than`, `contains`, `not-contains`, `in`, `not-in` |
+| **Value** | The expected value (e.g. `RSA`, `2047`, `true`, `TLS 1.0, TLS 1.1`) |
+
+### Preset Policies (NIST SP 800-57)
+
+Ten NIST-aligned preset policies are available and auto-seeded on first visit:
+
+| Preset | Severity | Description |
+|--------|----------|-------------|
+| **TLS 1.3 Requirement** | High | All endpoints must support TLS 1.3+ (SP 800-52 Rev 2) |
+| **Minimum RSA Key Size** | High | RSA keys ≥ 2048 bits (SP 800-57 Table 2) |
+| **No SHA-1 Usage** | High | SHA-1 prohibited (SP 800-131A Rev 2) |
+| **PQC Readiness** | Medium | All CBOM components must be quantum-safe (FIPS 203/204/205) |
+| **No Deprecated Algorithms** | High | DES, 3DES, RC4, MD5 not allowed |
+| **Minimum ECC Key Size** | High | ECC keys ≥ 256 bits (P-256+) |
+| **Minimum AES Key Size** | Medium | AES keys ≥ 128 bits |
+| **Approved Hash Functions** | High | Only SHA-256/384/512 and SHA3 variants |
+| **Certificate Max Lifetime** | Medium | Certificates ≤ 90 days (CA/Browser Forum) |
+| **CNSA 2.0 Compliance** | High | ML-KEM-1024, ML-DSA-87, AES-256, SHA-384+ |
+
+### Evaluation Engine
+
+The evaluation engine (`evaluator.ts`) uses **prerequisite-aware AND evaluation**:
+
+1. **Prerequisite rules** (equals, contains, in) act as filters — if a prerequisite doesn't match an asset, the policy simply doesn't apply to it
+2. **Constraint rules** (greater-than, less-than, not-equals, etc.) are checked only when all prerequisites match
+3. A constraint failure = **violation**
+
+This prevents spurious violations (e.g. "RSA key must be ≥ 2048 bits" won't flag ECDSA keys).
+
+#### Cross-Asset Evaluation
+
+| Evaluator | Function | Applicable Rule Assets |
+|-----------|----------|------------------------|
+| `evaluatePolicies()` | CBOM components | `cbom-component` only |
+| `evaluateCertificatePolicies()` | Discovery certificates | `certificate`, `cbom-component` |
+| `evaluateEndpointPolicies()` | Discovery endpoints | `endpoint`, `cbom-component` |
+| `evaluateDevicePolicies()` | Discovery devices | `device`, `certificate`, `cbom-component` |
+| `evaluateSingleAssetPolicies()` | Single crypto asset | `cbom-component` |
+
+Policies are persisted in MariaDB and managed via the [Policies REST API](#policies-rest-api).
+
+### Policies Page UI
+
+- **Stats** — total policies, active count, draft count
+- **Filtering** — by name, description, severity, status
+- **Sorting** — by name, description, severity, status (ascending/descending)
+- **Create Policy** — modal with preset selection or custom rule builder
+- **Toggle Status** — switch between `active` and `draft`
+- **Delete** — remove individual policies
+
+---
+
+## Violations Page
+
+The **Violations** page filters the loaded CBOM to show only cryptographic assets that are **not quantum-safe** or **conditional**, providing a focused remediation view.
+
+### Stat Cards
+
+| Card | Color | Description |
+|------|-------|-------------|
+| **Not Quantum Safe** | Red | Assets that require immediate migration |
+| **Conditional** | Amber | Assets whose safety depends on parameters |
+| **Total At Risk** | — | Combined count of not-safe + conditional |
+
+The asset table below uses the same `AssetListView` component as the Inventory page, including AI Suggested Fix, PQC verdict, and the ability to create remediation tickets.
+
+---
+
+## Ticket & Issue Tracking
+
+The application includes a full **remediation ticket management** system that integrates with three external platforms: **JIRA**, **GitHub Issues**, and **ServiceNow**.
+
+### Architecture
+
+```
+┌───────────────────────┐     ┌──────────────────────┐     ┌───────────────────────┐
+│   Discovery Tables    │────▶│  CreateTicketModal    │────▶│   External Platform   │
+│   + CBOM Asset View   │     │  (JIRA/GitHub/SNow)  │     │   API                 │
+│                       │     │                      │     │                       │
+│  "Create Ticket" btn  │     │  Pre-filled form:    │     │  • JIRA Cloud REST    │
+│  on every row with    │     │  title, description,  │     │  • GitHub Issues API  │
+│  policy violations    │     │  priority, assignee   │     │  • ServiceNow Table   │
+└───────────────────────┘     └──────┬───────────────┘     └───────────────────────┘
+                                     │
+                                     ▼
+                              ┌──────────────────────┐
+                              │   Tickets Table (DB)  │
+                              │   + Tracking Page UI  │
+                              └──────────────────────┘
+```
+
+### Ticket Connectors (Settings Page)
+
+Before creating tickets, configure connectors on the **Settings** page (`/settings`). Each connector stores credentials and default values.
+
+#### JIRA Connector
+
+| Field | Description |
+|-------|-------------|
+| Base URL | Atlassian Cloud URL (e.g. `https://your-org.atlassian.net`) |
+| Email | Atlassian account email |
+| API Token | JIRA API token ([generate here](https://id.atlassian.com/manage/api-tokens)) |
+| Default Project | Project key for new issues (cascade-loaded from JIRA) |
+| Default Issue Type | Issue type (e.g. Bug, Task — cascade-loaded per project) |
+| Default Assignee | Assignable user (cascade-loaded per project, displayed by name) |
+
+JIRA fields use **SearchableSelect** dropdowns that load data from your JIRA instance in real-time:
+- Select project → loads issue types + assignable users for that project
+- Assignees show display names, store account IDs
+
+#### GitHub Connector
+
+| Field | Description |
+|-------|-------------|
+| Personal Access Token | GitHub PAT with `repo` scope |
+| Default Owner/Org | GitHub org or user (cascade: select org → loads repos) |
+| Default Repository | Repository for issues (cascade-loaded per owner) |
+| Default Assignee | Collaborator (cascade-loaded per repo) |
+| Default Labels | Labels to apply (e.g. `cryptography, security`) |
+
+GitHub fields use **cascade dropdowns**: select org → repos load → select repo → collaborators load.
+
+#### ServiceNow Connector
+
+| Field | Description |
+|-------|-------------|
+| Instance URL | ServiceNow instance (e.g. `https://your-org.service-now.com`) |
+| Username | ServiceNow username |
+| Password | ServiceNow password |
+| Default Category | Incident category (e.g. `Security`) |
+| Default Subcategory | Incident subcategory (e.g. `Cryptography`) |
+| Default Impact | Impact level |
+| Default Assignment Group | Team to assign incidents to |
+
+Each connector has a **Test Connection** button and a **View / Edit** mode toggle.
+
+### CreateTicketModal
+
+The ticket creation modal appears from:
+- **Discovery tabs** (Certificates, Endpoints, Software, Devices) — on rows with policy violations
+- **CBOM Asset View** (Inventory) — on individual crypto assets
+
+The modal workflow:
+1. **Select platform** — choose JIRA, GitHub, or ServiceNow (cards are only shown if a connector is configured and enabled)
+2. **Fill form** — auto-populated with context:
+   - Title: `"{Severity} Risk: Non-quantum-safe {entityType} for {entityName}"`
+   - Description: problem statement + file location as clickable GitHub link (if repo/branch available)
+   - Priority: derived from severity
+   - Platform-specific fields pre-filled from connector defaults
+3. **AI Suggestion** — optional AI-generated remediation text appended to description
+4. **Submit** — creates ticket via the external API and stores it locally
+
+#### CBOM-Specific Enhancements
+
+When creating a ticket from the CBOM tab:
+- **GitHub repo and branch** are pre-populated from the CBOM import metadata
+- **File location** is rendered as a clickable GitHub link (`https://github.com/{owner}/{repo}/blob/{branch}/{path}#L{line}`)
+- **GitHub Issues** card is available; other tabs only show JIRA and ServiceNow
+
+### Tracking Page
+
+The **Tracking** page (`/tracking`) shows all created remediation tickets in a filterable table.
+
+#### Stat Cards
+
+| Card | Description |
+|------|-------------|
+| **Total Tickets** | All tickets across all platforms |
+| **Completed** | Tickets marked as Done |
+| **In Progress** | Tickets being worked on |
+| **Pending** | Tickets with status To Do, Open, or New |
+| **Blocked** | Tickets that are blocked |
+| **High Priority** | Critical + High priority tickets |
+
+#### Table Columns
+
+| Column | Description |
+|--------|-------------|
+| Ticket ID | Platform-specific ID (clickable link to external URL) |
+| Type | JIRA / GitHub / ServiceNow badge |
+| Title | Ticket title |
+| Status | To Do, In Progress, Done, Blocked, Open, New |
+| Priority | Critical, High, Medium, Low |
+| Entity Type | Certificate, Endpoint, Application, Device, Software |
+| Entity Name | Name of the affected asset |
+| Assignee | Assigned person |
+| Created | Timestamp |
+
+#### Filters
+
+Search by title, ticket ID, entity name, or assignee. Filter by status, priority, entity type, or ticket platform.
+
 ---
 
 ## Database Setup (MariaDB)
@@ -1033,8 +1433,60 @@ pool: {
 | `Device` | `devices` | IoT/industrial devices from DigiCert Device Trust Manager |
 | `CbomImport` | `cbom_imports` | CycloneDX CBOM file import records |
 | `SyncLog` | `sync_logs` | Audit trail of every sync run (scheduled or manual) |
+| `CryptoPolicy` | `crypto_policies` | Cryptographic compliance policies with JSON-serialised rules |
+| `Ticket` | `tickets` | Remediation tickets created via JIRA, GitHub, or ServiceNow |
+| `TicketConnector` | `ticket_connectors` | JIRA / GitHub / ServiceNow connector credentials and defaults |
 
 > All five discovery tables and `sync_logs` have an `integration_id` foreign key referencing `integrations.id` with `ON DELETE CASCADE` — deleting an integration removes all its discovered data and sync history.
+
+#### Crypto Policy Table Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `name` | `VARCHAR(255)` | Policy name |
+| `description` | `TEXT` | Policy description with NIST reference |
+| `severity` | `ENUM` | `High`, `Medium`, `Low` |
+| `status` | `ENUM` | `active`, `draft` |
+| `operator` | `ENUM` | `AND`, `OR` |
+| `rules` | `JSON` | Array of `PolicyRule` objects (serialised as JSON string) |
+| `preset_id` | `VARCHAR(50)` | ID of the preset template (nullable) |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
+
+#### Ticket Table Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `ticket_id` | `VARCHAR(100)` | Platform-specific ID (e.g. `CRYPTO-1245`, `#342`, `INC0012345`) |
+| `type` | `ENUM` | `JIRA`, `GitHub`, `ServiceNow` |
+| `title` | `VARCHAR(500)` | Ticket title |
+| `description` | `TEXT` | Full description |
+| `status` | `VARCHAR(50)` | `To Do`, `In Progress`, `Done`, `Blocked`, `Open`, `New` |
+| `priority` | `VARCHAR(20)` | `Critical`, `High`, `Medium`, `Low` |
+| `severity` | `VARCHAR(20)` | `Critical`, `High`, `Medium`, `Low` |
+| `entity_type` | `VARCHAR(50)` | `Certificate`, `Endpoint`, `Application`, `Device`, `Software` |
+| `entity_name` | `VARCHAR(255)` | Name of the affected asset |
+| `assignee` | `VARCHAR(255)` | Assigned person (display name for JIRA) |
+| `labels` | `JSON` | Array of label strings |
+| `external_url` | `VARCHAR(500)` | URL to the ticket on the external platform |
+| `platform_details` | `JSON` | Platform-specific metadata / error details |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
+
+#### Ticket Connector Table Schema
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `type` | `VARCHAR(20)` | `JIRA`, `GitHub`, `ServiceNow` |
+| `name` | `VARCHAR(255)` | User-given name |
+| `base_url` | `VARCHAR(500)` | Platform base URL |
+| `enabled` | `BOOLEAN` | Whether the connector is active |
+| `config` | `JSON` | Platform-specific credentials and defaults (serialised) |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
 
 #### Integration Table Schema
 
@@ -1372,6 +1824,153 @@ curl -X DELETE http://localhost:3001/api/certificates/integration/<integrationId
 
 ---
 
+## Policies REST API
+
+The backend exposes a full CRUD REST API for cryptographic policies, mounted at `/api/policies`.
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/policies` | List all policies (newest first) |
+| `GET` | `/api/policies/:id` | Get a single policy by ID |
+| `POST` | `/api/policies` | Create a new policy |
+| `POST` | `/api/policies/bulk` | Bulk create (used by preset seeding) |
+| `PUT` | `/api/policies/:id` | Update a policy |
+| `DELETE` | `/api/policies/:id` | Delete a single policy |
+| `DELETE` | `/api/policies/all` | Delete all policies |
+
+### Create Policy — Request Body
+
+```json
+{
+  "name": "No SHA-1 Usage",
+  "description": "SHA-1 algorithm is prohibited across all systems.",
+  "severity": "High",
+  "status": "active",
+  "operator": "AND",
+  "rules": [
+    { "asset": "certificate", "field": "signatureAlgorithm", "condition": "not-contains", "value": "SHA-1" },
+    { "asset": "certificate", "field": "hashFunction", "condition": "not-equals", "value": "SHA-1" }
+  ]
+}
+```
+
+### Example Requests
+
+```bash
+# List all policies
+curl http://localhost:3001/api/policies
+
+# Create a policy
+curl -X POST http://localhost:3001/api/policies \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "PQC Readiness", "severity": "Medium", "status": "active", "operator": "AND", "rules": [{ "asset": "cbom-component", "field": "quantumSafe", "condition": "equals", "value": "true" }] }'
+
+# Toggle status
+curl -X PUT http://localhost:3001/api/policies/<id> \
+  -H "Content-Type: application/json" \
+  -d '{ "status": "draft" }'
+
+# Delete
+curl -X DELETE http://localhost:3001/api/policies/<id>
+```
+
+---
+
+## Tickets REST API
+
+The backend exposes CRUD for remediation tickets at `/api/tickets`. When creating a ticket, the backend automatically calls the external platform API (JIRA, GitHub, or ServiceNow) if a connector is configured and enabled.
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/tickets` | List all tickets (newest first) |
+| `GET` | `/api/tickets/:id` | Get a single ticket |
+| `POST` | `/api/tickets` | Create a ticket (calls external API if connector available) |
+| `PUT` | `/api/tickets/:id` | Update a ticket |
+| `DELETE` | `/api/tickets/:id` | Delete a single ticket |
+| `DELETE` | `/api/tickets/all` | Delete all tickets |
+
+### Create Ticket — Request Body
+
+```json
+{
+  "type": "JIRA",
+  "title": "High Risk: Non-quantum-safe certificate for *.example.com",
+  "description": "RSA-2048 certificate needs PQC migration...",
+  "priority": "High",
+  "severity": "High",
+  "entityType": "Certificate",
+  "entityName": "*.example.com",
+  "assignee": "John Smith",
+  "labels": ["cryptography", "security"],
+  "project": "CRYPTO",
+  "issueType": "Bug"
+}
+```
+
+### Ticket Creation Flow
+
+When `POST /api/tickets` is called:
+
+1. **JIRA** — looks up the enabled JIRA connector, calls the JIRA Cloud REST API (`POST /rest/api/3/issue`), stores the returned `key` (e.g. `CRYPTO-42`) as `ticketId` and the `self` URL as `externalUrl`
+2. **GitHub** — looks up the enabled GitHub connector, calls the GitHub Issues API (`POST /repos/{owner}/{repo}/issues`), stores `#<number>` as `ticketId` and the `html_url` as `externalUrl`
+3. **ServiceNow** — looks up the enabled ServiceNow connector, calls the ServiceNow Table API (`POST /api/now/table/incident`), stores the `number` (e.g. `INC0012345`) as `ticketId`
+
+If the external API call fails, the ticket is still stored locally with error details in `platformDetails`.
+
+If no connector is configured, a synthetic ticket ID is generated (e.g. `CRYPTO-1234`, `#1234`, `INC-1234`).
+
+---
+
+## Ticket Connectors REST API
+
+The ticket connectors API manages JIRA, GitHub, and ServiceNow integration credentials. Each connector stores platform-specific configuration and default values.
+
+### CRUD Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/ticket-connectors` | List all connectors |
+| `GET` | `/api/ticket-connectors/:id` | Get a single connector |
+| `POST` | `/api/ticket-connectors` | Create / upsert a connector |
+| `PUT` | `/api/ticket-connectors/:id` | Update a connector |
+| `PATCH` | `/api/ticket-connectors/:id/toggle` | Toggle enabled/disabled |
+| `DELETE` | `/api/ticket-connectors/:id` | Delete a connector |
+
+### Platform-Specific Endpoints
+
+#### JIRA
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/ticket-connectors/jira/test` | Test JIRA connection (requires `baseUrl`, `email`, `apiToken`) |
+| `GET` | `/api/ticket-connectors/jira/projects` | List JIRA projects for the configured connector |
+| `GET` | `/api/ticket-connectors/jira/boards?project=KEY` | List JIRA boards filtered by project |
+| `GET` | `/api/ticket-connectors/jira/issue-types?project=KEY` | List issue types for a project |
+| `GET` | `/api/ticket-connectors/jira/assignable?project=KEY` | List assignable users for a project |
+| `GET` | `/api/ticket-connectors/jira/users?q=...` | Search JIRA users by name/email |
+
+#### GitHub
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/ticket-connectors/github/test` | Test GitHub connection (requires `token`) |
+| `GET` | `/api/ticket-connectors/github/repos` | List repositories for the configured token |
+| `GET` | `/api/ticket-connectors/github/orgs` | List organizations for the authenticated user |
+| `GET` | `/api/ticket-connectors/github/repos-by-owner?owner=X` | List repositories for a specific owner/org |
+| `GET` | `/api/ticket-connectors/github/collaborators?owner=X&repo=Y` | List collaborators for a repo |
+
+#### ServiceNow
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/ticket-connectors/servicenow/test` | Test ServiceNow connection (requires `baseUrl`, `username`, `password`) |
+
+---
+
 ## Sync Scheduler
 
 The backend includes a cron-based sync scheduler that automatically pulls data from external integrations on a configurable schedule. It uses **`node-cron`** for in-process cron job scheduling — no external daemon or message queue required.
@@ -1431,7 +2030,7 @@ Each integration `templateType` maps to a connector in the `CONNECTOR_REGISTRY`:
 | `digicert-dtm` | `fetchDevices()` | `devices` | DigiCert DTM (Devices) |
 | `cbom-import` | `fetchCbomImports()` | `cbom_imports` | CBOM Import (CBOM Files) |
 
-> **Simulated data**: Connectors currently return realistic simulated data so the full pipeline can be exercised end-to-end without real external API credentials. Replace the `fetch*` functions with real API calls when ready.
+> **Simulated fallback**: Connectors in `connectors.ts` return simulated data when used without real credentials. Three integration types (**DigiCert TLM**, **GitHub CBOM Import**, and **Network TLS Scanner**) have production-grade connectors that call real external APIs — see [Real Connectors](#real-connectors).
 
 ### Sync Execution Lifecycle (7 Steps)
 
@@ -1596,7 +2195,7 @@ The Redux store is configured in `frontend/src/store/store.ts` and wrapped aroun
 
 ```
 frontend/src/store/
-├── store.ts                 — configureStore with 9 API reducers + middleware
+├── store.ts                 — configureStore with API reducers + middleware
 ├── index.ts                 — barrel exports
 └── api/
     ├── integrationsApi.ts   — Integrations CRUD (8 hooks)
@@ -1607,6 +2206,8 @@ frontend/src/store/
     ├── cbomImportsApi.ts    — CBOM Imports CRUD (8 hooks)
     ├── syncLogsApi.ts       — Sync Logs (4 hooks)
     ├── schedulerApi.ts      — Scheduler status & control (3 hooks)
+    ├── policiesApi.ts       — Policies CRUD (6 hooks)
+    ├── trackingApi.ts       — Tickets + Ticket Connectors + JIRA/GitHub/ServiceNow helpers
     └── index.ts             — re-exports all hooks + types
 ```
 
@@ -1658,7 +2259,54 @@ The `schedulerApi` slice provides hooks for monitoring and controlling the cron 
 | `useStopSchedulerMutation()` | Mutation | Stop all cron jobs |
 | `useRestartSchedulerMutation()` | Mutation | Restart scheduler — stops all, reloads from DB |
 
-> All 55 hooks (48 discovery + 8 integrations + 4 sync logs + 3 scheduler — some shared with integrations) are re-exported from `frontend/src/store/api/index.ts` and can be imported from `../../store`.
+> All hooks are re-exported from `frontend/src/store/api/index.ts` and can be imported from `../../store`.
+
+### Policies API Hooks
+
+The `policiesApi` slice provides CRUD hooks for cryptographic policies:
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useGetPoliciesQuery()` | Query | Fetch all policies |
+| `useGetPolicyQuery(id)` | Query | Fetch a single policy |
+| `useCreatePolicyMutation()` | Mutation | Create a new policy |
+| `useBulkCreatePoliciesMutation()` | Mutation | Bulk create (preset seeding) |
+| `useUpdatePolicyMutation()` | Mutation | Update a policy |
+| `useDeletePolicyMutation()` | Mutation | Delete a policy |
+
+### Tracking API Hooks
+
+The `trackingApi` slice provides hooks for tickets and ticket connectors:
+
+**Tickets:**
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useGetTicketsQuery()` | Query | Fetch all remediation tickets |
+| `useGetTicketQuery(id)` | Query | Fetch a single ticket |
+| `useCreateTicketMutation()` | Mutation | Create a ticket (calls external API) |
+| `useUpdateTicketMutation()` | Mutation | Update a ticket |
+| `useDeleteTicketMutation()` | Mutation | Delete a ticket |
+
+**Ticket Connectors:**
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useGetConnectorsQuery()` | Query | Fetch all ticket connectors |
+| `useCreateConnectorMutation()` | Mutation | Create a connector |
+| `useUpdateConnectorMutation()` | Mutation | Update a connector |
+| `useToggleConnectorMutation()` | Mutation | Toggle enabled/disabled |
+| `useDeleteConnectorMutation()` | Mutation | Delete a connector |
+| `useTestJiraConnectionMutation()` | Mutation | Test JIRA credentials |
+| `useTestGitHubConnectionMutation()` | Mutation | Test GitHub token |
+| `useTestServiceNowConnectionMutation()` | Mutation | Test ServiceNow credentials |
+| `useGetJiraProjectsQuery()` | Query | List JIRA projects |
+| `useLazyGetJiraIssueTypesQuery()` | Lazy Query | Load issue types for a project |
+| `useLazyGetJiraAssignableUsersQuery()` | Lazy Query | Load assignable users for a project |
+| `useLazyGetJiraBoardsQuery()` | Lazy Query | Load boards for a project |
+| `useLazyGetGitHubOrgsQuery()` | Lazy Query | Load GitHub organizations |
+| `useLazyGetGitHubReposByOwnerQuery()` | Lazy Query | Load repos for an owner/org |
+| `useLazyGetGitHubCollaboratorsQuery()` | Lazy Query | Load collaborators for a repo |
 
 ### Cache Invalidation Strategy
 
@@ -1669,7 +2317,7 @@ RTK Query uses **tags** for automatic cache invalidation across all 9 API slices
 - Mutations (create, bulk create, update, delete) **invalidate** both the specific tag and the list tag
 - This means any list query auto-refetches after any mutation — no manual refetch needed
 
-**Tag types:** `Integration`, `Certificate`, `Endpoint`, `Software`, `Device`, `CbomImport`, `SyncLog`, `Scheduler`
+**Tag types:** `Integration`, `Certificate`, `Endpoint`, `Software`, `Device`, `CbomImport`, `SyncLog`, `Scheduler`, `Policy`, `Ticket`, `TicketConnector`
 
 ### Usage in Components
 
@@ -2327,6 +2975,242 @@ This project implements the **CycloneDX 1.7** specification for Cryptographic Bi
 - [CycloneDX CBOM Guide](https://cyclonedx.org/capabilities/cbom/)
 - [IBM sonar-cryptography](https://github.com/cbomkit/sonar-cryptography)
 - [NIST Post-Quantum Cryptography](https://csrc.nist.gov/projects/post-quantum-cryptography)
+
+---
+
+## 17. xBOM — Unified Software + Cryptographic Bill of Materials
+
+### 17.1 Concept
+
+**xBOM** merges a **Software Bill of Materials (SBOM)** with a **Cryptographic Bill of Materials (CBOM)** into a single CycloneDX document. This unified view links every software dependency to the cryptographic algorithms it uses, providing complete visibility into both supply-chain vulnerabilities and quantum readiness in one artefact.
+
+| Layer | Source | Content |
+|-------|--------|---------|
+| **SBOM** | [Trivy](https://github.com/aquasecurity/trivy) (Aqua Security) | Packages, licenses, CVEs |
+| **CBOM** | CBOM Analyser (this project) | Algorithms, protocols, keys, certificates |
+| **Cross-references** | Merge engine | Links between software components and crypto assets |
+
+### 17.2 Architecture
+
+```
+Repository/directory
+     │
+     ├── Trivy scan ──► SBOM (CycloneDX JSON)
+     │                         │
+     ├── CBOM Analyser ──► CBOM (CycloneDX JSON)
+     │                         │
+     └───────┬─────────────────┘
+             ▼
+      xBOM Merge Service
+             │
+             ▼
+      xBOM (unified CycloneDX)
+        ├── components[]          (software packages)
+        ├── cryptoAssets[]        (crypto primitives)
+        ├── vulnerabilities[]     (CVEs from Trivy)
+        ├── crossReferences[]     (software ↔ crypto links)
+        └── thirdPartyLibraries[] (crypto-aware deps)
+```
+
+### 17.3 Cross-Reference Linking Strategies
+
+The merge engine builds relational links between SBOM components and CBOM crypto assets using three strategies:
+
+| Strategy | Key | How it works |
+|----------|-----|-------------|
+| **Dependency Manifest** | `dependency-manifest` | Matches CBOM third-party library PURLs against SBOM component PURLs |
+| **File Co-location** | `file-co-location` | When a crypto asset's source file path falls inside a component's directory |
+| **Dependency Graph** | `dependency-graph` | CBOM dependency refs that match SBOM component bom-refs |
+
+### 17.4 REST API
+
+All endpoints are mounted at `/api/xbom`.
+
+#### GET `/api/xbom/status`
+
+Check Trivy availability and xBOM service health.
+
+**Response:**
+```json
+{
+  "success": true,
+  "trivyInstalled": true,
+  "trivyVersion": "0.58.0",
+  "storedXBOMs": 3,
+  "capabilities": {
+    "sbomGeneration": true,
+    "cbomGeneration": true,
+    "xbomMerge": true
+  }
+}
+```
+
+#### POST `/api/xbom/generate`
+
+Generate an xBOM by scanning a local repository/directory. Runs Trivy for SBOM + CBOM Analyser for CBOM, then merges.
+
+**Request body:**
+```json
+{
+  "repoPath": "/path/to/repo",
+  "mode": "full",
+  "repoUrl": "https://github.com/owner/repo",
+  "branch": "main",
+  "excludePatterns": ["node_modules", "vendor"]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `repoPath` | string | Yes | Path to local repository or directory |
+| `mode` | string | No | `full` (default), `sbom-only`, or `cbom-only` |
+| `sbomJson` | string | No | Pre-supplied SBOM JSON (skip Trivy) |
+| `cbomJson` | string | No | Pre-supplied CBOM JSON (skip scanner) |
+| `repoUrl` | string | No | Repository URL for metadata |
+| `branch` | string | No | Branch name for metadata |
+| `excludePatterns` | string[] | No | Glob patterns to exclude |
+
+**Response:** `{ success, message, xbom, analytics }`
+
+#### POST `/api/xbom/merge`
+
+Merge pre-existing SBOM + CBOM documents. Accepts JSON body or multipart file upload (fields: `sbomFile`, `cbomFile`).
+
+**JSON body:**
+```json
+{
+  "sbom": { "bomFormat": "CycloneDX", "components": [...] },
+  "cbom": { "bomFormat": "CycloneDX", "cryptoAssets": [...] },
+  "repoUrl": "https://github.com/owner/repo"
+}
+```
+
+**Response:** `{ success, message, xbom, analytics }`
+
+#### GET `/api/xbom/list`
+
+List stored xBOMs with summary metadata.
+
+**Response:**
+```json
+{
+  "success": true,
+  "xboms": [
+    {
+      "id": "abc123",
+      "component": "my-app",
+      "timestamp": "2025-01-15T10:30:00Z",
+      "softwareComponents": 142,
+      "cryptoAssets": 23,
+      "vulnerabilities": 7,
+      "crossReferences": 15
+    }
+  ]
+}
+```
+
+#### GET `/api/xbom/:id`
+
+Retrieve a specific xBOM with computed analytics (quantum readiness, compliance, vulnerability summary).
+
+**Response:** `{ success, xbom, analytics }`
+
+#### GET `/api/xbom/:id/download`
+
+Download the xBOM as a JSON file (`Content-Disposition: attachment`).
+
+#### DELETE `/api/xbom/:id`
+
+Delete a stored xBOM.
+
+### 17.5 Frontend Page
+
+The **xBOM** page is accessible from the sidebar under **Tools → xBOM** and provides:
+
+| View | Description |
+|------|-------------|
+| **Status cards** | Trivy availability, stored xBOM count, SBOM/CBOM capability status |
+| **Generate form** | Scan a local repo path; select mode (full / SBOM-only / CBOM-only) |
+| **Merge form** | Paste or upload existing SBOM + CBOM JSON files to merge |
+| **Stored xBOMs list** | Table of previously generated xBOMs with view/delete actions |
+
+Clicking an xBOM opens the **Detail View** with five tabs:
+
+| Tab | Content |
+|-----|---------|
+| **Overview** | Summary cards, quantum readiness scores, vulnerability breakdown |
+| **Software** | Table of all SBOM components (name, version, type, PURL, licenses) |
+| **Crypto Assets** | Table of all CBOM crypto assets (algorithm, primitive, quantum safety, source file) |
+| **Vulnerabilities** | CVEs from Trivy with severity, score, description, recommendation |
+| **Cross-References** | Relational links between software and crypto, grouped by link method |
+
+### 17.6 RTK Query Hooks
+
+```typescript
+import {
+  useGetXBOMStatusQuery,
+  useGenerateXBOMMutation,
+  useMergeXBOMMutation,
+  useGetXBOMListQuery,
+  useGetXBOMQuery,
+  useDeleteXBOMMutation,
+} from './store/api';
+```
+
+### 17.7 GitHub Actions Workflow
+
+The `.github/workflows/xbom.yml` workflow automates xBOM generation in CI:
+
+```yaml
+name: xBOM (Unified SBOM + CBOM)
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      scan-path: { default: '.' }
+      trivy-severity: { default: 'CRITICAL,HIGH,MEDIUM,LOW' }
+```
+
+**Steps:**
+1. **Checkout** — clone repository
+2. **Trivy SBOM** — `aquasecurity/trivy-action` → `sbom.json`
+3. **CBOM Scan** — CBOM Analyser action → `cbom.json`
+4. **Merge** — `actions/github-script` merges both into `xbom.json` with cross-references and analytics
+5. **Job Summary** — tables showing component counts, quantum readiness, vulnerability breakdown
+6. **Upload Artifacts** — `xbom.json`, `sbom.json`, `cbom.json` (90-day retention)
+
+**Workflow outputs:**
+`total-components`, `total-crypto-assets`, `total-vulnerabilities`, `total-cross-references`, `readiness-score`, `quantum-safe`, `not-quantum-safe`, `vuln-critical`, `vuln-high`
+
+### 17.8 Trivy Integration
+
+The backend Trivy scanner (`backend/src/services/trivyScanner.ts`) wraps the Trivy CLI:
+
+| Function | Description |
+|----------|-------------|
+| `isTrivyInstalled()` | Checks if `trivy` is on `$PATH` |
+| `getTrivyVersion()` | Returns installed Trivy version |
+| `runTrivyScan(options)` | Runs `trivy fs --format cyclonedx` with severity filter, 5-min timeout |
+| `parseSBOMFile(input)` | Parses CycloneDX JSON from string or file path |
+
+If Trivy is not installed, the xBOM API gracefully degrades — SBOM generation is unavailable but CBOM-only mode and manual merge still work.
+
+### 17.9 File Reference
+
+| File | Purpose |
+|------|---------|
+| `backend/src/types/sbom.types.ts` | Trivy CycloneDX SBOM type definitions |
+| `backend/src/types/xbom.types.ts` | Unified xBOM type definitions |
+| `backend/src/services/trivyScanner.ts` | Trivy CLI integration |
+| `backend/src/services/xbomMergeService.ts` | SBOM + CBOM → xBOM merge with cross-references |
+| `backend/src/routes/xbomRoutes.ts` | 7 REST API endpoints |
+| `.github/workflows/xbom.yml` | CI workflow for automated xBOM generation |
+| `frontend/src/pages/XBOMPage.tsx` | xBOM list, generate, merge, and detail views |
+| `frontend/src/pages/XBOMPage.module.scss` | Styles for xBOM page |
+| `frontend/src/store/api/xbomApi.ts` | RTK Query API slice with 6 hooks |
 
 ---
 
