@@ -100,6 +100,7 @@ router.post('/xbom/generate', async (req: Request, res: Response) => {
       specVersion,
       sbomJson,
       cbomJson,
+      externalTools,
     }: XBOMGenerateRequest = req.body;
 
     if (!repoPath && !sbomJson && !cbomJson) {
@@ -139,7 +140,7 @@ router.post('/xbom/generate', async (req: Request, res: Response) => {
       } else if (repoPath) {
         // Run CBOM scanner
         console.log(`[xBOM] Running CBOM scanner on ${repoPath}...`);
-        cbom = await runFullScan(repoPath, undefined, repository);
+        cbom = await runFullScan(repoPath, undefined, repository, externalTools);
       }
     }
 

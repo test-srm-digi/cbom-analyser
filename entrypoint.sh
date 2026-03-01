@@ -25,6 +25,12 @@ if [ "$EXCLUDE_PATTERNS" = "default" ]; then
   EXCLUDE_PATTERNS="$DEFAULT_EXCLUDE_PATTERNS"
 fi
 
+# External tool configuration (from env vars set by action.yml)
+ENABLE_CODEQL="${ENABLE_CODEQL:-true}"
+ENABLE_CBOMKIT_THEIA="${ENABLE_CBOMKIT_THEIA:-true}"
+ENABLE_CRYPTO_ANALYSIS="${ENABLE_CRYPTO_ANALYSIS:-true}"
+CODEQL_LANGUAGE="${CODEQL_LANGUAGE:-java}"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -57,6 +63,12 @@ if [ -n "$SONAR_HOST_URL" ] && [ -n "$SONAR_TOKEN" ]; then
 else
   echo -e "${BLUE}🔬 Scanner: regex (set sonar-host-url + sonar-token to enable sonar-cryptography)${NC}"
 fi
+
+# Display external tool configuration
+echo -e "${BLUE}🛠  External Tools:${NC}"
+[ "$ENABLE_CODEQL" = "true" ] && echo -e "${BLUE}    CodeQL: enabled (language: ${CODEQL_LANGUAGE})${NC}" || echo -e "${BLUE}    CodeQL: disabled${NC}"
+[ "$ENABLE_CBOMKIT_THEIA" = "true" ] && echo -e "${BLUE}    cbomkit-theia: enabled${NC}" || echo -e "${BLUE}    cbomkit-theia: disabled${NC}"
+[ "$ENABLE_CRYPTO_ANALYSIS" = "true" ] && echo -e "${BLUE}    CryptoAnalysis: enabled${NC}" || echo -e "${BLUE}    CryptoAnalysis: disabled${NC}"
 echo ""
 
 # Start the backend server in background
@@ -87,7 +99,14 @@ echo ""
 REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
 BRANCH="${GITHUB_REF_NAME}"
 
-# Build the request JSON with optional excludePatterns + repo metadata
+# Build the request JSON with optional excludePatterns + repo metadata + external tools
+EXTERNAL_TOOLS=$(jq -n \
+  --argjson codeql "$([ "$ENABLE_CODEQL" = "true" ] && echo true || echo false)" \
+  --argjson cbomkit "$([ "$ENABLE_CBOMKIT_THEIA" = "true" ] && echo true || echo false)" \
+  --argjson crypto "$([ "$ENABLE_CRYPTO_ANALYSIS" = "true" ] && echo true || echo false)" \
+  --arg lang "$CODEQL_LANGUAGE" \
+  '{enableCodeQL: $codeql, enableCbomkitTheia: $cbomkit, enableCryptoAnalysis: $crypto, codeqlLanguage: $lang}')
+
 if [ -n "$EXCLUDE_PATTERNS" ]; then
   # Convert comma-separated patterns to JSON array
   EXCLUDE_JSON=$(echo "$EXCLUDE_PATTERNS" | tr ',' '\n' | jq -R . | jq -s .)
@@ -96,13 +115,15 @@ if [ -n "$EXCLUDE_PATTERNS" ]; then
     --argjson exclude "$EXCLUDE_JSON" \
     --arg repoUrl "$REPO_URL" \
     --arg branch "$BRANCH" \
-    '{repoPath: $path, excludePatterns: $exclude, repoUrl: $repoUrl, branch: $branch}')
+    --argjson externalTools "$EXTERNAL_TOOLS" \
+    '{repoPath: $path, excludePatterns: $exclude, repoUrl: $repoUrl, branch: $branch, externalTools: $externalTools}')
 else
   REQUEST_BODY=$(jq -n \
     --arg path "$FULL_SCAN_PATH" \
     --arg repoUrl "$REPO_URL" \
     --arg branch "$BRANCH" \
-    '{repoPath: $path, repoUrl: $repoUrl, branch: $branch}')
+    --argjson externalTools "$EXTERNAL_TOOLS" \
+    '{repoPath: $path, repoUrl: $repoUrl, branch: $branch, externalTools: $externalTools}')
 fi
 
 SCAN_RESULT=$(curl -s -X POST http://localhost:3001/api/scan-code/full \

@@ -18,6 +18,7 @@ import {
   QuantumSafetyStatus,
   CryptoDependency,
   CBOMRepository,
+  ExternalToolOptions,
 } from '../types';
 import { enrichAssetWithPQCData, calculateReadinessScore, checkNISTPQCCompliance, syncQuantumSafetyWithVerdict } from './pqcRiskEngine';
 import { scanNetworkCrypto, networkResultToCBOMAsset } from './networkScanner';
@@ -681,6 +682,7 @@ export async function runFullScan(
   repoPath: string,
   networkHosts?: string[],
   repository?: CBOMRepository,
+  externalToolOptions?: ExternalToolOptions,
 ): Promise<CBOMDocument> {
   // 1. Code scan (sonar or regex fallback)
   const codeCBOM = await runSonarCryptoScan(repoPath, undefined, repository);
@@ -737,7 +739,7 @@ export async function runFullScan(
   // 5. External tool scanning (Phase 2A/3) — CodeQL, cbomkit-theia, CryptoAnalysis
   let externalAssets: CryptoAsset[] = [];
   try {
-    externalAssets = await runExternalToolScans(repoPath);
+    externalAssets = await runExternalToolScans(repoPath, externalToolOptions);
     console.log(`External tool scans found ${externalAssets.length} crypto assets`);
   } catch (err) {
     console.warn('External tool scans failed (non-blocking):', (err as Error).message);

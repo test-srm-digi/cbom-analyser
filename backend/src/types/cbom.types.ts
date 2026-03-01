@@ -341,6 +341,21 @@ export interface NetworkScanResponse {
   error?: string;
 }
 
+/**
+ * Configuration for external cryptographic analysis tools.
+ * All tools are optional — they fail gracefully if not installed.
+ */
+export interface ExternalToolOptions {
+  /** Enable CodeQL data-flow analysis (default: true when available) */
+  enableCodeQL?: boolean;
+  /** Enable IBM cbomkit-theia container/filesystem scanner (default: true when available) */
+  enableCbomkitTheia?: boolean;
+  /** Enable CryptoAnalysis typestate analysis for Java (default: true when available) */
+  enableCryptoAnalysis?: boolean;
+  /** CodeQL target language (default: 'java') */
+  codeqlLanguage?: string;
+}
+
 export interface ScanCodeRequest {
   repoPath: string;
   language?: 'java' | 'python';
@@ -350,6 +365,8 @@ export interface ScanCodeRequest {
   repoUrl?: string;
   /** Branch name where the scan was performed */
   branch?: string;
+  /** External tool configuration (CodeQL, cbomkit-theia, CryptoAnalysis) */
+  externalTools?: ExternalToolOptions;
 }
 
 /** Default patterns to exclude test files */

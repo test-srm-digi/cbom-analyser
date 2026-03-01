@@ -337,6 +337,10 @@ jobs:
           scan-path: \${{ github.event.inputs.scan-path || '${opts.scanPath}' }}
           exclude-patterns: '${opts.excludePatterns}'
           fail-on-vulnerable: 'false'
+          enable-codeql: 'true'
+          enable-cbomkit-theia: 'true'
+          enable-crypto-analysis: 'true'
+          codeql-language: 'java'
 
       # Step 3: Merge → xBOM
       - name: Merge SBOM + CBOM → xBOM
@@ -411,6 +415,13 @@ function GenerateForm() {
   const [success, setSuccess] = useState("");
   const [generatedXbom, setGeneratedXbom] = useState<XBOMDocument | null>(null);
 
+  /* ── External tool toggles ── */
+  const [enableCodeQL, setEnableCodeQL] = useState(true);
+  const [enableCbomkitTheia, setEnableCbomkitTheia] = useState(true);
+  const [enableCryptoAnalysis, setEnableCryptoAnalysis] = useState(true);
+  const [codeqlLanguage, setCodeqlLanguage] = useState("java");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
   /* ── GitHub Actions workflow snippet ── */
   const [showWorkflow, setShowWorkflow] = useState(false);
   const [wfBranches, setWfBranches] = useState("main");
@@ -452,6 +463,12 @@ function GenerateForm() {
         mode,
         specVersion,
         branch: branch.trim() || undefined,
+        externalTools: {
+          enableCodeQL,
+          enableCbomkitTheia,
+          enableCryptoAnalysis,
+          codeqlLanguage,
+        },
       }).unwrap();
       if (res.success) {
         setSuccess(
@@ -682,6 +699,67 @@ function GenerateForm() {
             <option value="1.7">CycloneDX 1.7</option>
           </select>
         </div>
+      </div>
+
+      {/* ── Advanced: External Analysis Tools ── */}
+      <div style={{ marginTop: 12 }}>
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--dc1-primary)', fontSize: 12, fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: 4, padding: 0,
+          }}
+        >
+          <span style={{ transform: showAdvanced ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▶</span>
+          Advanced: External Analysis Tools
+        </button>
+
+        {showAdvanced && (
+          <div style={{
+            marginTop: 8, padding: '12px 16px', borderRadius: 8,
+            border: '1px solid var(--dc1-border)', background: 'var(--dc1-bg-card, #fff)',
+          }}>
+            <p style={{ fontSize: 11, color: 'var(--dc1-text-muted)', margin: '0 0 10px 0' }}>
+              Enable/disable external cryptographic analysis tools. Tools are auto-detected — disabled tools are skipped gracefully.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+                <input type="checkbox" checked={enableCodeQL} onChange={(e) => setEnableCodeQL(e.target.checked)} />
+                <span style={{ fontWeight: 600 }}>CodeQL</span>
+                <span style={{ color: 'var(--dc1-text-muted)', fontSize: 11 }}>— data-flow crypto analysis</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+                <input type="checkbox" checked={enableCbomkitTheia} onChange={(e) => setEnableCbomkitTheia(e.target.checked)} />
+                <span style={{ fontWeight: 600 }}>cbomkit-theia</span>
+                <span style={{ color: 'var(--dc1-text-muted)', fontSize: 11 }}>— IBM filesystem scanner</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+                <input type="checkbox" checked={enableCryptoAnalysis} onChange={(e) => setEnableCryptoAnalysis(e.target.checked)} />
+                <span style={{ fontWeight: 600 }}>CryptoAnalysis</span>
+                <span style={{ color: 'var(--dc1-text-muted)', fontSize: 11 }}>— Java JCA/JCE typestate</span>
+              </label>
+              {enableCodeQL && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                  <label style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>CodeQL Language:</label>
+                  <select
+                    value={codeqlLanguage}
+                    onChange={(e) => setCodeqlLanguage(e.target.value)}
+                    style={{ fontSize: 12, padding: '2px 6px' }}
+                  >
+                    <option value="java">Java</option>
+                    <option value="python">Python</option>
+                    <option value="javascript">JavaScript</option>
+                    <option value="csharp">C#</option>
+                    <option value="cpp">C/C++</option>
+                    <option value="go">Go</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {error && (

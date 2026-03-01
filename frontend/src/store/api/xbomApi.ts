@@ -47,6 +47,13 @@ interface XBOMGetResponse {
 
 /* ── Request types ──────────────────────────────── */
 
+export interface ExternalToolOptions {
+  enableCodeQL?: boolean;
+  enableCbomkitTheia?: boolean;
+  enableCryptoAnalysis?: boolean;
+  codeqlLanguage?: string;
+}
+
 export interface XBOMGenerateRequest {
   repoPath: string;
   mode?: 'full' | 'sbom-only' | 'cbom-only';
@@ -56,6 +63,7 @@ export interface XBOMGenerateRequest {
   specVersion?: '1.6' | '1.7';
   sbomJson?: string;
   cbomJson?: string;
+  externalTools?: ExternalToolOptions;
 }
 
 export interface XBOMMergeRequest {

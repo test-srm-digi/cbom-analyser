@@ -8,9 +8,10 @@ import {
   runFullScan,
   calculateReadinessScore,
   checkNISTPQCCompliance,
+  checkToolAvailability,
 } from '../services';
 import { cbomStore } from './cbomRoutes';
-import { ScanCodeRequest } from '../types';
+import { ScanCodeRequest, ExternalToolOptions } from '../types';
 import { CBOMRepository } from '../types/cbom.types';
 
 const router = Router();
@@ -39,6 +40,28 @@ async function resolveRepository(
   if (repoUrl) return { url: repoUrl, branch };
   return detectGitInfo(repoPath);
 }
+
+/**
+ * GET /api/scan-code/tools
+ * Check availability of external cryptographic analysis tools.
+ */
+router.get('/scan-code/tools', async (_req: Request, res: Response) => {
+  try {
+    const availability = await checkToolAvailability();
+    res.json({
+      success: true,
+      tools: {
+        codeql: { available: availability.codeql, description: 'GitHub CodeQL — data-flow crypto analysis' },
+        cbomkitTheia: { available: availability.cbomkitTheia, description: 'IBM cbomkit-theia — container/filesystem crypto scanner' },
+        cryptoAnalysis: { available: availability.cryptoAnalysis, description: 'CogniCrypt CryptoAnalysis — Java JCA/JCE typestate analysis' },
+        keytool: { available: availability.keytool, description: 'Java keytool — certificate/keystore inspection' },
+        openssl: { available: availability.openssl, description: 'OpenSSL — TLS/certificate analysis' },
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: (error as Error).message });
+  }
+});
 
 /**
  * POST /api/scan-code
@@ -133,7 +156,7 @@ router.post('/scan-code/regex', async (req: Request, res: Response) => {
  */
 router.post('/scan-code/full', async (req: Request, res: Response) => {
   try {
-    const { repoPath, networkHosts, excludePatterns, repoUrl, branch }: ScanCodeRequest & { networkHosts?: string[] } = req.body;
+    const { repoPath, networkHosts, excludePatterns, repoUrl, branch, externalTools }: ScanCodeRequest & { networkHosts?: string[] } = req.body;
 
     if (!repoPath) {
       res.status(400).json({ success: false, error: 'repoPath is required' });
@@ -141,7 +164,7 @@ router.post('/scan-code/full', async (req: Request, res: Response) => {
     }
 
     const repository = await resolveRepository(repoPath, repoUrl, branch);
-    const cbom = await runFullScan(repoPath, networkHosts, repository);
+    const cbom = await runFullScan(repoPath, networkHosts, repository, externalTools);
 
     // Safety-net: ensure repository metadata is always present on the final CBOM
     if (repository && !cbom.metadata.repository) {

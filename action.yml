@@ -38,6 +38,22 @@ inputs:
     description: 'SonarQube authentication token. Required when sonar-host-url is set.'
     required: false
     default: ''
+  enable-codeql:
+    description: 'Enable CodeQL data-flow analysis for resolving dynamic crypto arguments (requires codeql CLI in PATH)'
+    required: false
+    default: 'true'
+  enable-cbomkit-theia:
+    description: 'Enable IBM cbomkit-theia container/filesystem crypto scanner (requires cbomkit-theia CLI in PATH)'
+    required: false
+    default: 'true'
+  enable-crypto-analysis:
+    description: 'Enable CogniCrypt CryptoAnalysis Java JCA/JCE typestate analysis (requires CryptoAnalysis CLI in PATH)'
+    required: false
+    default: 'true'
+  codeql-language:
+    description: 'Target language for CodeQL analysis (java, python, javascript, etc.)'
+    required: false
+    default: 'java'
 
 outputs:
   readiness-score:
@@ -59,6 +75,10 @@ runs:
   env:
     SONAR_HOST_URL: ${{ inputs.sonar-host-url }}
     SONAR_TOKEN: ${{ inputs.sonar-token }}
+    ENABLE_CODEQL: ${{ inputs.enable-codeql }}
+    ENABLE_CBOMKIT_THEIA: ${{ inputs.enable-cbomkit-theia }}
+    ENABLE_CRYPTO_ANALYSIS: ${{ inputs.enable-crypto-analysis }}
+    CODEQL_LANGUAGE: ${{ inputs.codeql-language }}
   args:
     - ${{ inputs.fail-on-vulnerable }}
     - ${{ inputs.output-format }}
