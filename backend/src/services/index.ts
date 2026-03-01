@@ -1,5 +1,5 @@
 export { scanNetworkCrypto, networkResultToCBOMAsset, scanMultipleHosts } from './networkScanner';
-export { enrichAssetWithPQCData, calculateReadinessScore, checkNISTPQCCompliance, classifyAlgorithm, getPQCAlgorithms, syncQuantumSafetyWithVerdict } from './pqcRiskEngine';
+export { enrichAssetWithPQCData, calculateReadinessScore, checkNISTPQCCompliance, classifyAlgorithm, getPQCAlgorithms, syncQuantumSafetyWithVerdict, isInformationalAsset, filterInformationalAssets } from './pqcRiskEngine';
 export { parseCBOMFile, createEmptyCBOM, mergeCBOMs, runSonarCryptoScan, runRegexCryptoScan, runFullScan } from './scannerAggregator';
 export { getAISuggestion, getProjectInsight } from './bedrockService';
 export type { ProjectInsightRequest, ProjectInsightResponse } from './bedrockService';
@@ -10,3 +10,6 @@ export type { SyncResult } from './syncExecutor';
 export { initScheduler, scheduleJob, removeJob, onScheduleChanged, onIntegrationDeleted, onIntegrationToggled, stopAllJobs, getSchedulerStatus } from './syncScheduler';
 export { CONNECTOR_REGISTRY } from './connectors';
 export type { ConnectorResult, ConnectorConfig } from './connectors';
+export { scanCertificateFiles } from './scanner/certificateFileScanner';
+export { runExternalToolScans, checkToolAvailability, deduplicateExternalAssets } from './scanner/externalToolIntegration';
+export { resolveVariableBackward } from './scanner/scannerUtils';

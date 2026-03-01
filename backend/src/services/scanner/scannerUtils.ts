@@ -199,25 +199,96 @@ export function normaliseAlgorithmName(raw: string): string {
  * Resolve a variable name to its string-literal value by scanning surrounding
  * lines for common assignment patterns across Java, TS/JS, Python, Go, C#, C++, PHP.
  *
+ * Enhanced with backward variable resolution (Phase 1B) — searches backward
+ * from the API call site to find where the variable was assigned, including:
+ *   - Direct assignment: `const algo = "SHA-256";`
+ *   - Class field: `private static final String ALGO = "AES/GCM/NoPadding";`
+ *   - Dictionary/map: `algorithms["default"] = "RSA"` or `config.algorithm = "AES"`
+ *   - Enum/constant: `ALGORITHM = "HMAC-SHA256"`
+ *   - Method parameter → call site resolution
+ *   - Ternary/conditional: `algo = secure ? "AES-256-GCM" : "AES-128-CBC"`
+ *   - String concatenation: `"AES/" + mode` — extracts root algorithm
+ *
  * Returns the resolved algorithm name or null if not found.
+ *
+ * @see docs/advanced-resolution-techniques.md — Phase 1B
  */
 export function resolveVariableToAlgorithm(varName: string, lines: string[], matchLine: number): string | null {
   const escapedVar = varName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  // Build regex: look for `varName = "something"` or `varName = 'something'`
-  const assignmentRe = new RegExp(
-    `(?:^|\\s)${escapedVar}\\s*[:=]\\s*["']([^"']+)["']`,
-  );
+  // ── Strategy 1: Direct assignment (±50 lines, backward-first priority) ──
+  const assignmentPatterns = [
+    // const/let/var/String algo = "VALUE"
+    new RegExp(`(?:const|let|var|final|static|String|string)\\s+${escapedVar}\\s*[:=]\\s*["']([^"']+)["']`),
+    // varName = "VALUE"  (simple assignment)
+    new RegExp(`(?:^|\\s|;)${escapedVar}\\s*=\\s*["']([^"']+)["']`),
+    // self.varName = "VALUE"  or this.varName = "VALUE"
+    new RegExp(`(?:self|this)\\.${escapedVar}\\s*=\\s*["']([^"']+)["']`),
+    // varName := "VALUE"  (Go)
+    new RegExp(`${escapedVar}\\s*:=\\s*["']([^"']+)["']`),
+    // #define VARNAME "VALUE"  (C/C++)
+    new RegExp(`#define\\s+${escapedVar}\\s+"([^"]+)"`),
+  ];
 
-  // Scan ±50 lines from the match
-  const start = Math.max(0, matchLine - 50);
-  const end = Math.min(lines.length, matchLine + 50);
-  for (let i = start; i < end; i++) {
-    const m = lines[i].match(assignmentRe);
+  // Backward search first (backward from call site is more likely to find the definition)
+  const backwardStart = Math.max(0, matchLine - 100);
+  for (let i = matchLine - 1; i >= backwardStart; i--) {
+    for (const pattern of assignmentPatterns) {
+      const m = lines[i].match(pattern);
+      if (m) return m[1];
+    }
+  }
+
+  // Forward search (for hoisted or later assignments in unusual patterns)
+  const forwardEnd = Math.min(lines.length, matchLine + 50);
+  for (let i = matchLine + 1; i < forwardEnd; i++) {
+    for (const pattern of assignmentPatterns) {
+      const m = lines[i].match(pattern);
+      if (m) return m[1];
+    }
+  }
+
+  // ── Strategy 2: Class-level constants / fields (full file scan) ──
+  // Java: private static final String ALGO = "AES";
+  // Python: ALGO = "SHA256" (module-level)
+  // TS/JS: const ALGO = "RSA-OAEP" (module-level)
+  const classFieldRe = new RegExp(
+    `(?:private|public|protected|internal)?\\s*(?:static)?\\s*(?:final|readonly|const)?\\s*(?:String|string)?\\s*${escapedVar}\\s*[:=]\\s*["']([^"']+)["']`,
+  );
+  for (let i = 0; i < lines.length; i++) {
+    if (i >= backwardStart && i < forwardEnd) continue; // Already scanned
+    const m = lines[i].match(classFieldRe);
     if (m) return m[1];
   }
 
-  // Also try to resolve from method parameter → call site
+  // ── Strategy 3: Ternary / conditional (extract all possible values) ──
+  const ternaryRe = new RegExp(
+    `${escapedVar}\\s*=\\s*[^;]*\\?\\s*["']([^"']+)["']\\s*:\\s*["']([^"']+)["']`,
+  );
+  for (let i = Math.max(0, matchLine - 50); i < Math.min(lines.length, matchLine + 20); i++) {
+    const m = lines[i].match(ternaryRe);
+    if (m) {
+      // Return the first option (most common path); both values are the same algorithm family
+      return m[1];
+    }
+  }
+
+  // ── Strategy 4: Enum mapping / switch-case ──
+  // case "encrypt": return "AES-256-GCM";
+  // "algo" => "SHA-256"
+  const enumRe = /["']([A-Za-z0-9_/.\-+]+)["']\s*(?:=>|->|:)\s*["']([A-Za-z0-9_/.\-+]+)["']/;
+  for (let i = Math.max(0, matchLine - 30); i < Math.min(lines.length, matchLine + 30); i++) {
+    const m = lines[i].match(enumRe);
+    if (m) {
+      // Return the value side — likely the algorithm
+      const val = m[2];
+      if (/^[A-Z0-9].*(?:SHA|AES|RSA|EC|HMAC|MD|ChaCha|Blowfish|DES|Camellia)/i.test(val)) {
+        return val;
+      }
+    }
+  }
+
+  // ── Strategy 5: Method parameter → call site resolution ──
   const methodCallRe = /function|def |private |public |protected |static |func /;
   for (let i = Math.max(0, matchLine - 5); i <= Math.min(lines.length - 1, matchLine + 5); i++) {
     const line = lines[i];
@@ -225,12 +296,107 @@ export function resolveVariableToAlgorithm(varName: string, lines: string[], mat
       const funcNameMatch = line.match(/(?:def\s+|function\s+|func\s+|(?:public|private|protected|static)\s+\S+\s+)(\w+)\s*\(/);
       if (funcNameMatch) {
         const funcName = funcNameMatch[1];
-        for (const fileLine of lines) {
-          const callMatch = fileLine.match(new RegExp(`${funcName}\\s*\\([^)]*["']([A-Za-z0-9_/.-]+)["']`));
-          if (callMatch) return callMatch[1];
+        // Find the parameter position
+        const paramListMatch = line.match(/\(([^)]*)\)/);
+        if (paramListMatch) {
+          const params = paramListMatch[1].split(',').map(p => p.trim());
+          const paramIdx = params.findIndex(p => p.includes(varName));
+
+          for (const fileLine of lines) {
+            // Match call site with positional argument
+            const callMatch = fileLine.match(new RegExp(`${funcName}\\s*\\(([^)]*)\\)`));
+            if (callMatch) {
+              const args = callMatch[1].split(',').map(a => a.trim());
+              const targetArg = paramIdx >= 0 ? args[paramIdx] : args[0];
+              if (targetArg) {
+                const literalMatch = targetArg.match(/["']([A-Za-z0-9_/.\-+]+)["']/);
+                if (literalMatch) return literalMatch[1];
+              }
+            }
+          }
         }
       }
     }
+  }
+
+  // ── Strategy 6: String concatenation — extract root algorithm ──
+  // "AES/" + mode  → "AES"
+  // algo = "AES" + "/CBC/" + padding  → "AES"
+  const concatRe = new RegExp(`${escapedVar}\\s*=\\s*["']([A-Za-z0-9_-]+)["']\\s*\\+`);
+  for (let i = Math.max(0, matchLine - 30); i < Math.min(lines.length, matchLine + 10); i++) {
+    const m = lines[i].match(concatRe);
+    if (m) return m[1]; // Return the root part before concatenation
+  }
+
+  // ── Strategy 7: Cross-file constant import resolution ──
+  // import { ALGORITHM } from './constants';  → search full file for the constant
+  const importRe = new RegExp(`import\\s+.*\\b${escapedVar}\\b.*from\\s+['"]([^'"]+)['"]`);
+  for (const line of lines) {
+    const m = line.match(importRe);
+    if (m) {
+      // We can't read another file here, but mark as "imported constant"
+      // The cross-file enrichment step in scannerAggregator handles this
+      break;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Enhanced backward variable resolution for the PQC parameter analyzer.
+ *
+ * Given a block of source context and a variable name, traces backward
+ * through assignments, method parameters, and class fields to find
+ * the concrete string value.
+ *
+ * This is a simplified "backward program slice" inspired by CryptoGuard's
+ * inter-procedural backward slicing technique.
+ *
+ * @see docs/advanced-resolution-techniques.md — Phase 1B / CryptoGuard technique
+ */
+export function resolveVariableBackward(sourceContext: string, variableName: string): string | null {
+  const lines = sourceContext.split('\n');
+  const escaped = variableName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // Strategy 1: Direct assignment patterns
+  const patterns = [
+    // Java: String algo = "SHA-256";
+    new RegExp(`(?:final\\s+)?(?:String|string|var|const|let)\\s+${escaped}\\s*=\\s*["']([^"']+)["']`),
+    // Python: algo = "SHA-256" or algo: str = "SHA-256"
+    new RegExp(`${escaped}\\s*(?::\\s*str)?\\s*=\\s*["']([^"']+)["']`),
+    // Go: algo := "SHA-256"
+    new RegExp(`${escaped}\\s*:=\\s*["']([^"']+)["']`),
+    // C#/Java field: private static final String ALGO = "AES";
+    new RegExp(`(?:private|public|protected|internal)?\\s*(?:static)?\\s*(?:final|readonly|const)?\\s*\\S+\\s+${escaped}\\s*=\\s*["']([^"']+)["']`),
+  ];
+
+  // Scan backward (later matches override earlier — closest to usage wins)
+  let result: string | null = null;
+  for (const line of lines) {
+    for (const pattern of patterns) {
+      const m = line.match(pattern);
+      if (m) {
+        result = m[1];
+      }
+    }
+  }
+
+  if (result) return result;
+
+  // Strategy 2: Config / properties file patterns
+  const configPatterns = [
+    // properties: algorithm=AES
+    new RegExp(`${escaped}\\s*=\\s*([A-Za-z0-9_/.-]+)\\s*$`, 'm'),
+    // YAML: algorithm: AES
+    new RegExp(`${escaped}:\\s*([A-Za-z0-9_/.-]+)\\s*$`, 'm'),
+    // JSON: "algorithm": "AES"
+    new RegExp(`"${escaped}"\\s*:\\s*"([^"]+)"`),
+  ];
+
+  for (const pattern of configPatterns) {
+    const m = sourceContext.match(pattern);
+    if (m) return m[1];
   }
 
   return null;

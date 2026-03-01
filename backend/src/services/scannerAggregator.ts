@@ -29,6 +29,8 @@ import { CryptoPattern, SKIP_FILE_PATTERNS } from './scanner/scannerTypes';
 import { globToRegex, shouldExcludeFile, normaliseAlgorithmName, resolveVariableToAlgorithm, filterFalsePositives } from './scanner/scannerUtils';
 import { scanNearbyContext } from './scanner/contextScanners';
 import { allCryptoPatterns, allConfigPatterns, CONFIG_FILENAMES } from './scanner/patterns';
+import { scanCertificateFiles } from './scanner/certificateFileScanner';
+import { runExternalToolScans, deduplicateExternalAssets } from './scanner/externalToolIntegration';
 
 const execAsync = promisify(exec);
 
@@ -723,17 +725,42 @@ export async function runFullScan(
     }
   }
 
-  // 4. Merge all assets
-  const merged = mergeCBOMs(codeCBOM, ...depAssets, ...networkAssets);
+  // 4. Certificate file scanning (Phase 1A) — parse .pem/.crt/.der files
+  let certAssets: CryptoAsset[] = [];
+  try {
+    certAssets = await scanCertificateFiles(repoPath);
+    console.log(`Certificate file scan found ${certAssets.length} crypto assets`);
+  } catch (err) {
+    console.warn('Certificate file scan failed (non-blocking):', (err as Error).message);
+  }
 
-  // 5. Smart PQC parameter analysis — promote/demote CONDITIONAL assets
+  // 5. External tool scanning (Phase 2A/3) — CodeQL, cbomkit-theia, CryptoAnalysis
+  let externalAssets: CryptoAsset[] = [];
+  try {
+    externalAssets = await runExternalToolScans(repoPath);
+    console.log(`External tool scans found ${externalAssets.length} crypto assets`);
+  } catch (err) {
+    console.warn('External tool scans failed (non-blocking):', (err as Error).message);
+  }
+
+  // 6. Merge all assets
+  const merged = mergeCBOMs(codeCBOM, ...depAssets, ...networkAssets, ...certAssets);
+
+  // 7. Deduplicate external tool findings against existing assets
+  if (externalAssets.length > 0) {
+    const uniqueExternal = deduplicateExternalAssets(merged.cryptoAssets, externalAssets);
+    merged.cryptoAssets.push(...uniqueExternal);
+    console.log(`External tools: ${externalAssets.length} total, ${uniqueExternal.length} unique (${externalAssets.length - uniqueExternal.length} duplicates merged)`);
+  }
+
+  // 8. Smart PQC parameter analysis — promote/demote CONDITIONAL assets
   merged.cryptoAssets = analyzeAllConditionalAssets(merged.cryptoAssets, repoPath);
 
-  // 6. Safety-net: sync quantumSafety column with pqcVerdict
+  // 9. Safety-net: sync quantumSafety column with pqcVerdict
   //    (catches any ordering/overwrite issues from enrichment → analysis pipeline)
   merged.cryptoAssets = syncQuantumSafetyWithVerdict(merged.cryptoAssets);
 
-  // 7. Final false-positive filter (removes HashMap, HashSet, etc.)
+  // 10. Final false-positive filter (removes HashMap, HashSet, etc.)
   merged.cryptoAssets = filterFalsePositives(merged.cryptoAssets);
 
   return merged;

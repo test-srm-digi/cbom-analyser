@@ -194,8 +194,8 @@ export interface CryptoAsset {
   provider?: string;
   /** Definitive PQC readiness verdict based on actual parameter analysis */
   pqcVerdict?: PQCVerdictDetail;
-  /** Source of detection: sonar, regex, dependency, network */
-  detectionSource?: 'sonar' | 'regex' | 'dependency' | 'network';
+  /** Source of detection: sonar, regex, dependency, network, certificate, codeql, cbomkit-theia, cryptoanalysis */
+  detectionSource?: 'sonar' | 'regex' | 'dependency' | 'network' | 'certificate' | 'codeql' | 'cbomkit-theia' | 'cryptoanalysis';
 }
 
 // ─── CBOM Component ──────────────────────────────────────────────────────────
