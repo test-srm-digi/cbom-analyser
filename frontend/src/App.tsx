@@ -12,6 +12,7 @@ import DiscoveryPage from "./pages/discovery";
 import RepoOverviewPage from "./pages/discovery/RepoOverviewPage";
 import type { DiscoveryTab } from "./pages/discovery/types";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import XBOMPage from "./pages/XBOMPage";
 import { ShieldHalf, Tablet, FileSignature } from "lucide-react";
 import {
   CBOMDocument,
@@ -44,6 +45,7 @@ const PAGE_TO_PATH: Record<NavPage, string> = {
   "cbom-detail": "/discovery/cbom-imports/detail",
   "repo-overview": "/discovery/cbom-imports/repo",
   network: "/network",
+  xbom: "/xbom",
   settings: "/settings",
   "private-ca": "/private-ca",
   "device-trust": "/device-trust",
@@ -176,6 +178,8 @@ export default function App() {
         );
       case "network":
         return <NetworkPage />;
+      case "xbom":
+        return <XBOMPage />;
       // case 'violations':
       //   return <ViolationsPage cbom={cbom} onUpload={triggerUpload} onLoadSample={loadSampleData} />;
       case "tracking":
@@ -211,6 +215,7 @@ export default function App() {
               setActivePage("repo-overview");
             }}
             onGoToIntegrations={() => setActivePage("integrations")}
+            onGoToXBOM={() => setActivePage("xbom")}
           />
         );
       case "cbom-detail":

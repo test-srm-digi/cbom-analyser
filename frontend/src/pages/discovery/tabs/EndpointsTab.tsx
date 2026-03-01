@@ -10,6 +10,7 @@ import { useGetEndpointsQuery, useBulkCreateEndpointsMutation, useDeleteAllEndpo
 import type { DiscoveryEndpoint, StatCardConfig } from '../types';
 import { evaluateSingleEndpointPolicies } from '../../policies';
 import type { CbomPolicyResult } from '../../policies';
+import Pagination from '../../../components/Pagination';
 import s from '../components/shared.module.scss';
 
 interface Props {
@@ -31,6 +32,10 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
   const [deleteAll, { isLoading: isResetLoading }] = useDeleteAllEndpointsMutation();
   const data = apiData;
   const loaded = data.length > 0;
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Data from a real integration has integrationId set — hide reset for integration-sourced data
   const isSampleData = loaded && data.every((e) => !e.integrationId);
@@ -118,6 +123,16 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
         e.cipherSuite.toLowerCase().includes(q),
     );
   }, [search, data]);
+
+  // Reset page when filter changes
+  const filteredLen = filtered.length;
+  const [prevFilteredLen, setPrevFilteredLen] = useState(filteredLen);
+  if (filteredLen !== prevFilteredLen) { setPrevFilteredLen(filteredLen); setPage(1); }
+
+  const paged = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
 
   const stats: StatCardConfig[] = [
     { title: 'Total Endpoints',   value: total,       sub: 'Discovered via Network TLS Scanner',                                         variant: 'default' },
@@ -250,7 +265,7 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
             </tr>
           </thead>
           <tbody>
-            {filtered.map((ep) => {
+            {paged.map((ep) => {
               const sg = suggestions[ep.id];
               const isExpanded = expandedId === ep.id && sg && !sg.loading;
               return (
@@ -308,6 +323,13 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
             })}
           </tbody>
         </table>
+        <Pagination
+          page={page}
+          total={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(sz) => { setPageSize(sz); setPage(1); }}
+        />
       </div>
 
       {/* Create Ticket Modal */}

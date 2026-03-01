@@ -360,3 +360,82 @@ export interface Integration {
   createdAt: string;
   errorMessage?: string;
 }
+
+// ─── xBOM (Unified SBOM + CBOM) Types ────────────────────────────────────────
+
+export interface SBOMComponent {
+  'bom-ref'?: string;
+  type: string;
+  name: string;
+  version?: string;
+  group?: string;
+  purl?: string;
+  description?: string;
+  scope?: string;
+  licenses?: { license?: { id?: string; name?: string }; expression?: string }[];
+  properties?: { name: string; value: string }[];
+}
+
+export interface SBOMVulnerability {
+  id: string;
+  source?: { name: string; url?: string };
+  ratings?: { severity?: string; score?: number; method?: string }[];
+  description?: string;
+  recommendation?: string;
+  affects?: { ref: string }[];
+}
+
+export interface XBOMCrossReference {
+  softwareRef: string;
+  cryptoRefs: string[];
+  linkMethod: string;
+}
+
+export interface VulnerabilitySummary {
+  total: number;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  info: number;
+}
+
+export interface XBOMAnalytics {
+  quantumReadiness: QuantumReadinessScore;
+  compliance: ComplianceSummary;
+  vulnerabilitySummary: VulnerabilitySummary;
+  totalSoftwareComponents: number;
+  totalCryptoAssets: number;
+  totalCrossReferences: number;
+}
+
+export interface XBOMDocument {
+  bomFormat: string;
+  specVersion: string;
+  serialNumber: string;
+  version: number;
+  metadata: {
+    timestamp: string;
+    tools: { vendor: string; name: string; version: string }[];
+    component?: { name: string; version?: string; type: string };
+    repository?: { url: string; branch?: string };
+  };
+  components: SBOMComponent[];
+  cryptoAssets: CryptoAsset[];
+  dependencies: { ref: string; dependsOn?: string[] }[];
+  vulnerabilities: SBOMVulnerability[];
+  crossReferences: XBOMCrossReference[];
+  thirdPartyLibraries?: ThirdPartyCryptoLibrary[];
+}
+
+export interface XBOMListItem {
+  id: string;
+  component: string;
+  timestamp: string;
+  softwareComponents: number;
+  cryptoAssets: number;
+  vulnerabilities: number;
+  crossReferences: number;
+  repository?: { url: string; branch?: string };
+}
+

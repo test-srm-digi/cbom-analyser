@@ -200,14 +200,64 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
         helpText: "Automatically attach the CBOM report to GitHub releases",
       },
 
-      // ── Generate Workflow Button ──
+      // ── SBOM / xBOM Generation ──
       {
-        key: "workflowYaml",
-        label: "Generate Workflow YAML",
-        type: "generate-btn",
+        key: "_bomExtensionsHeader",
+        label: "BOM Extensions",
+        type: "section-header",
         required: false,
-        helpText:
-          "Generate a ready-to-use GitHub Actions workflow based on your configuration",
+        helpText: "Optionally include SBOM and/or xBOM (unified) artifact generation alongside the CBOM",
+      },
+      {
+        key: "includeSbom",
+        label: "Include SBOM (Software Bill of Materials)",
+        type: "checkbox",
+        required: false,
+        defaultValue: "false",
+        helpText: "Run Trivy to generate a CycloneDX SBOM with software components and vulnerability data",
+      },
+      {
+        key: "trivySeverity",
+        label: "Trivy Severity Filter",
+        type: "multi-select",
+        required: false,
+        helpText: "Only report vulnerabilities at these severity levels",
+        defaultValue: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN",
+        options: [
+          { value: "CRITICAL", label: "Critical" },
+          { value: "HIGH", label: "High" },
+          { value: "MEDIUM", label: "Medium" },
+          { value: "LOW", label: "Low" },
+          { value: "UNKNOWN", label: "Unknown" },
+        ],
+        visibleWhen: { field: "includeSbom", values: ["true"] },
+      },
+      {
+        key: "sbomArtifactName",
+        label: "SBOM Artifact Name",
+        type: "text",
+        required: false,
+        placeholder: "sbom-report",
+        helpText: "Name of the SBOM artifact (default: sbom-report)",
+        visibleWhen: { field: "includeSbom", values: ["true"] },
+      },
+      {
+        key: "includeXbom",
+        label: "Generate unified xBOM (SBOM + CBOM merged)",
+        type: "checkbox",
+        required: false,
+        defaultValue: "false",
+        helpText: "Merge the SBOM and CBOM into a single xBOM artifact with cross-references between software components and crypto assets",
+        visibleWhen: { field: "includeSbom", values: ["true"] },
+      },
+      {
+        key: "xbomArtifactName",
+        label: "xBOM Artifact Name",
+        type: "text",
+        required: false,
+        placeholder: "xbom-report",
+        helpText: "Name of the unified xBOM artifact (default: xbom-report)",
+        visibleWhen: { field: "includeXbom", values: ["true"] },
       },
 
       // ── Advanced Settings ──
@@ -246,6 +296,22 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
         required: false,
         defaultValue: "true",
         helpText: "If the scanner encounters errors, fail the workflow run",
+      },
+
+      // ── Generate Workflow Button (outside collapsed section) ──
+      {
+        key: "_generateSection",
+        label: "",
+        type: "section-header",
+        required: false,
+      },
+      {
+        key: "workflowYaml",
+        label: "Generate Workflow YAML",
+        type: "generate-btn",
+        required: false,
+        helpText:
+          "Generate a ready-to-use GitHub Actions workflow based on your configuration",
       },
     ],
     hideScope: true,

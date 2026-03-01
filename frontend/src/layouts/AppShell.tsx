@@ -1,5 +1,7 @@
 import { useState, useEffect, ReactNode } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import digicertIcon from "../assets/images/digicert-icon.svg";
+import digicertLogo from "../assets/images/digicert-logo.svg";
 import {
   faGauge,
   faDiagramProject,
@@ -57,7 +59,8 @@ export type NavPage =
   /* Other products */
   | "private-ca"
   | "device-trust"
-  | "document-trust";
+  | "document-trust"
+  | "xbom";
 
 interface Props {
   activePage: NavPage;
@@ -82,6 +85,7 @@ const mainNavItems: NavItem[] = [
     children: [
       { id: "dashboard", label: "CBOM Analyzer", icon: faGrid2 },
       { id: "network", label: "Network Scanner", icon: faBullseyeArrow },
+      { id: "xbom" as NavPage, label: "xBOM", icon: faTableCells },
     ],
   },
   // { id: 'violations', label: 'Violations', icon: faTriangleExclamation },
@@ -98,7 +102,7 @@ const mainNavItems: NavItem[] = [
       { id: "discovery-endpoints", label: "Endpoints", icon: faWifi },
       // { id: "discovery-software", label: "Software", icon: faBox },
       { id: "discovery-devices", label: "Devices", icon: faMicrochip },
-      { id: "discovery-cbom-imports", label: "CBOM Imports", icon: faFileCode },
+      { id: "discovery-cbom-imports", label: "BOM Imports", icon: faFileCode },
     ],
   },
   { id: "integrations", label: "Integrations", icon: faPlug },
@@ -209,10 +213,12 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
     <div className="dc1-shell">
       {/* ── Sidebar ─────────────────────────────────── */}
       <aside className="dc1-sidebar">
-        {/* Brand */}
+        {/* Product header */}
         <div className="dc1-sidebar-brand">
-          <span className="dc1-brand-text">digicert</span>
-          <span className="dc1-brand-one">ONE</span>
+          <div className="dc1-brand-icon-box">
+            <img src={digicertIcon} alt="" />
+          </div>
+          <span className="dc1-brand-product">QUANTUM READINESS ADVISOR</span>
         </div>
 
         {/* Scrollable area */}
@@ -351,6 +357,12 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
               </div>
             );
           })}
+        </div>
+
+        {/* Footer */}
+        <div className="dc1-sidebar-footer">
+          <img src={digicertLogo} alt="digicert" className="dc1-footer-logo" />
+          <span className="dc1-footer-one">ONE</span>
         </div>
       </aside>
 

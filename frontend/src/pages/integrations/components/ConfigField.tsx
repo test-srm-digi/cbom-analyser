@@ -36,6 +36,13 @@ function generateFullWorkflowYaml(values: Record<string, string>): string {
   const languages = sonarEnabled ? (values.language || '').split(',').map((l) => l.trim()).filter(Boolean) : [];
   const isSarif = outputFormat === 'sarif';
 
+  // SBOM & xBOM options
+  const includeSbom = values.includeSbom === 'true';
+  const includeXbom = includeSbom && values.includeXbom === 'true';
+  const trivySeverity = values.trivySeverity || 'CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN';
+  const sbomArtifactName = values.sbomArtifactName || 'sbom-report';
+  const xbomArtifactName = values.xbomArtifactName || 'xbom-report';
+
   const branchList = branches.map((b) => `${b}`).join(', ');
 
   // Build trigger block
@@ -145,22 +152,134 @@ function generateFullWorkflowYaml(values: Record<string, string>): string {
           GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
 ` : '';
 
+  // ── Workflow name ──
+  let wfName = 'CBOM Scan';
+  if (includeXbom) wfName = 'xBOM — Unified SBOM + CBOM';
+  else if (includeSbom) wfName = 'CBOM + SBOM Scan';
+  else if (sonarEnabled) wfName = 'CBOM Security Scan';
+
+  // ── SBOM step (Trivy) ──
+  const sbomStep = includeSbom ? `
+      # ── SBOM: Install Trivy & generate Software BOM ──
+      - name: Install & Run Trivy (SBOM + Vulnerabilities)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -yqq wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -qq && sudo apt-get install -yqq trivy
+          trivy version
+          trivy fs \\
+            --format cyclonedx \\
+            --output sbom.json \\
+            --severity "${trivySeverity}" \\
+            --scanners vuln,license \\
+            "."
+` : '';
+
+  // ── SBOM artifact upload ──
+  const sbomUpload = includeSbom ? `
+      - name: Upload SBOM Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${sbomArtifactName}
+          path: sbom.json
+          retention-days: ${retentionDays}
+` : '';
+
+  // ── xBOM merge step ──
+  const xbomMergeStep = includeXbom ? `
+      # ── xBOM: Merge SBOM + CBOM into unified BOM ──
+      - name: Merge SBOM + CBOM → xBOM
+        uses: actions/github-script@v7
+        id: merge
+        with:
+          script: |
+            const fs = require('fs');
+            const sbom = JSON.parse(fs.readFileSync('sbom.json', 'utf-8'));
+            const cbomRaw = JSON.parse(fs.readFileSync('cbom.json', 'utf-8'));
+            const cbom = cbomRaw.cbom || cbomRaw;
+
+            // Build cross-references map
+            const crossRefs = [];
+            const sComps = sbom.components || [];
+            const cAssets = (cbom.components || []).filter(c => c['crypto:properties'] || c.type === 'crypto-asset');
+            for (const sc of sComps) {
+              const related = cAssets.filter(ca =>
+                (ca.name || '').toLowerCase().includes((sc.name || '').toLowerCase().split('/').pop()) ||
+                (sc.purl || '').includes((ca.name || '').split('/').pop())
+              );
+              if (related.length > 0) {
+                crossRefs.push({
+                  softwareRef: sc['bom-ref'] || sc.name,
+                  softwareName: sc.name,
+                  softwareVersion: sc.version || 'unknown',
+                  cryptoRefs: related.map(r => ({
+                    ref: r['bom-ref'] || r.name,
+                    name: r.name,
+                    algorithm: (r['crypto:properties'] || {}).algorithmName || r.name,
+                    relationship: 'uses'
+                  }))
+                });
+              }
+            }
+
+            const xbom = {
+              bomFormat: 'CycloneDX',
+              specVersion: sbom.specVersion || '1.6',
+              serialNumber: 'urn:uuid:' + require('crypto').randomUUID(),
+              version: 1,
+              metadata: {
+                timestamp: new Date().toISOString(),
+                tools: [
+                  ...(sbom.metadata?.tools?.components || sbom.metadata?.tools || []),
+                  { vendor: 'QuantumGuard', name: 'CBOM Analyser', version: '1.0.0' }
+                ],
+                component: sbom.metadata?.component,
+                repository: { url: process.env.GITHUB_REPOSITORY || '' }
+              },
+              components: sComps,
+              cryptoAssets: cAssets,
+              dependencies: [...(sbom.dependencies || []), ...(cbom.dependencies || [])],
+              vulnerabilities: sbom.vulnerabilities || [],
+              crossReferences: crossRefs
+            };
+
+            fs.writeFileSync('xbom.json', JSON.stringify(xbom, null, 2));
+            core.summary
+              .addHeading('xBOM Summary')
+              .addTable([
+                [{data: 'Metric', header: true}, {data: 'Count', header: true}],
+                ['Software Components', String(sComps.length)],
+                ['Crypto Assets', String(cAssets.length)],
+                ['Vulnerabilities', String((sbom.vulnerabilities || []).length)],
+                ['Cross-References', String(crossRefs.length)],
+              ])
+              .write();
+
+      - name: Upload xBOM Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${xbomArtifactName}
+          path: xbom.json
+          retention-days: ${retentionDays}
+` : '';
+
   return `# ──────────────────────────────────────────────────────────
-# CBOM (Cryptographic Bill of Materials) Scanner
+# ${includeXbom ? 'xBOM (Unified SBOM + CBOM)' : includeSbom ? 'CBOM + SBOM' : 'CBOM (Cryptographic Bill of Materials)'} Scanner
 # Generated by QuantumGuard CBOM Hub
 # ──────────────────────────────────────────────────────────
-name: ${sonarEnabled ? 'CBOM Security Scan' : 'CBOM Scan'}
+name: ${wfName}
 
 ${onBlock}
 ${permLines}
 
 jobs:
-  cbom-scan:
+  ${includeXbom ? 'xbom' : 'cbom'}-scan:
     runs-on: ${runsOn}
 
     steps:
       - uses: actions/checkout@v4
-${buildSteps}
+${buildSteps}${sbomStep}
       - name: Run QuantumGuard CBOM Scanner
         id: cbom
         uses: test-srm-digi/cbom-analyser@main
@@ -173,7 +292,7 @@ ${withLines.join('\n')}
           name: ${artifactName}
           path: cbom.json
           retention-days: ${retentionDays}
-${sarifUpload}${releaseStep}`;
+${sarifUpload}${sbomUpload}${xbomMergeStep}${releaseStep}`;
 }
 
 function getBuildStep(language: string): string {
@@ -230,6 +349,10 @@ export default function ConfigField({ field, value, onChange, allValues = {}, on
 
   /* ── Section Header ─────────────────────────────────────── */
   if (field.type === 'section-header') {
+    // Invisible separator — used only to break out of a collapsed section scope
+    if (!field.label) {
+      return null;
+    }
     return (
       <div className={s.sectionHeaderField} onClick={() => onToggleSection?.(field.key)}>
         <div className={s.sectionHeaderLeft}>
