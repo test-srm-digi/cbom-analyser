@@ -45,6 +45,11 @@ interface ToolAvailability {
  */
 let cachedAvailability: ToolAvailability | null = null;
 
+/** Reset the cached availability so that newly-installed tools are detected. */
+export function resetToolAvailabilityCache(): void {
+  cachedAvailability = null;
+}
+
 export async function checkToolAvailability(): Promise<ToolAvailability> {
   if (cachedAvailability) return cachedAvailability;
 

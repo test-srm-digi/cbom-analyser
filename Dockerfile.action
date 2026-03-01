@@ -1,7 +1,7 @@
 # Dockerfile for GitHub Action
 FROM node:20-alpine
 
-# Install dependencies for scanning + Java + sonar-scanner
+# Install dependencies for scanning + Java + sonar-scanner + crypto tools
 RUN apk add --no-cache \
   bash \
   curl \
@@ -10,7 +10,9 @@ RUN apk add --no-cache \
   findutils \
   grep \
   openjdk17-jre-headless \
-  unzip
+  unzip \
+  openssl \
+  gcompat
 
 # Install sonar-scanner CLI (used when SONAR_HOST_URL + SONAR_TOKEN are set)
 # Use the generic zip (no bundled JRE) — the bundled linux JRE is glibc and won't run on Alpine

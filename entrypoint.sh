@@ -71,6 +71,67 @@ echo -e "${BLUE}🛠  External Tools:${NC}"
 [ "$ENABLE_CRYPTO_ANALYSIS" = "true" ] && echo -e "${BLUE}    CryptoAnalysis: enabled${NC}" || echo -e "${BLUE}    CryptoAnalysis: disabled${NC}"
 echo ""
 
+# ── Install external analysis tools (runtime download, before server start) ──
+TOOLS_DIR="/opt/cbom-tools"
+mkdir -p "$TOOLS_DIR"
+
+# CodeQL CLI (glibc binary — gcompat must be installed in Dockerfile)
+if [ "$ENABLE_CODEQL" = "true" ] && ! command -v codeql &>/dev/null; then
+  echo -e "${YELLOW}⬇  Downloading CodeQL CLI...${NC}"
+  CODEQL_VERSION="v2.20.1"
+  if curl -fsSL "https://github.com/github/codeql-cli-binaries/releases/download/${CODEQL_VERSION}/codeql-linux64.zip" \
+        -o /tmp/codeql.zip 2>/dev/null; then
+    unzip -q /tmp/codeql.zip -d "$TOOLS_DIR" 2>/dev/null
+    if [ -x "$TOOLS_DIR/codeql/codeql" ]; then
+      ln -sf "$TOOLS_DIR/codeql/codeql" /usr/local/bin/codeql
+      echo -e "${GREEN}   ✓ CodeQL ${CODEQL_VERSION} installed${NC}"
+    else
+      echo -e "${YELLOW}   ⚠ CodeQL extraction failed (non-blocking)${NC}"
+    fi
+    rm -f /tmp/codeql.zip
+  else
+    echo -e "${YELLOW}   ⚠ CodeQL download failed (non-blocking)${NC}"
+  fi
+fi
+
+# cbomkit-theia (Go static binary)
+if [ "$ENABLE_CBOMKIT_THEIA" = "true" ] && ! command -v cbomkit-theia &>/dev/null && ! command -v cbomkit &>/dev/null; then
+  echo -e "${YELLOW}⬇  Downloading cbomkit-theia...${NC}"
+  CBOMKIT_DL_URL="https://github.com/IBM/cbomkit-theia/releases/latest/download/cbomkit-theia-linux-amd64"
+  if curl -fsSL "$CBOMKIT_DL_URL" -o "$TOOLS_DIR/cbomkit-theia" 2>/dev/null; then
+    chmod +x "$TOOLS_DIR/cbomkit-theia"
+    ln -sf "$TOOLS_DIR/cbomkit-theia" /usr/local/bin/cbomkit-theia
+    # Quick smoke test
+    if cbomkit-theia --version &>/dev/null 2>&1 || cbomkit-theia version &>/dev/null 2>&1; then
+      echo -e "${GREEN}   ✓ cbomkit-theia installed${NC}"
+    else
+      echo -e "${YELLOW}   ⚠ cbomkit-theia binary not compatible (non-blocking)${NC}"
+      rm -f /usr/local/bin/cbomkit-theia
+    fi
+  else
+    echo -e "${YELLOW}   ⚠ cbomkit-theia download failed (non-blocking)${NC}"
+  fi
+fi
+
+# CryptoAnalysis (Java JAR — uses already-installed JRE)
+if [ "$ENABLE_CRYPTO_ANALYSIS" = "true" ] && ! command -v CryptoAnalysis &>/dev/null; then
+  echo -e "${YELLOW}⬇  Downloading CryptoAnalysis...${NC}"
+  CRYPTO_ANALYSIS_VERSION="3.0.1"
+  JAR_URL="https://github.com/CROSSINGTUD/CryptoAnalysis/releases/download/${CRYPTO_ANALYSIS_VERSION}/CryptoAnalysis-${CRYPTO_ANALYSIS_VERSION}-jar-with-dependencies.jar"
+  if curl -fsSL "$JAR_URL" -o "$TOOLS_DIR/CryptoAnalysis.jar" 2>/dev/null; then
+    cat > /usr/local/bin/CryptoAnalysis << 'WRAPPER'
+#!/bin/bash
+exec java -jar /opt/cbom-tools/CryptoAnalysis.jar "$@"
+WRAPPER
+    chmod +x /usr/local/bin/CryptoAnalysis
+    echo -e "${GREEN}   ✓ CryptoAnalysis ${CRYPTO_ANALYSIS_VERSION} installed${NC}"
+  else
+    echo -e "${YELLOW}   ⚠ CryptoAnalysis download failed (non-blocking)${NC}"
+  fi
+fi
+
+echo ""
+
 # Start the backend server in background
 cd /app
 node dist/index.js &

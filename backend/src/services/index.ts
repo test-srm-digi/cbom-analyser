@@ -11,5 +11,5 @@ export { initScheduler, scheduleJob, removeJob, onScheduleChanged, onIntegration
 export { CONNECTOR_REGISTRY } from './connectors';
 export type { ConnectorResult, ConnectorConfig } from './connectors';
 export { scanCertificateFiles } from './scanner/certificateFileScanner';
-export { runExternalToolScans, checkToolAvailability, deduplicateExternalAssets } from './scanner/externalToolIntegration';
+export { runExternalToolScans, checkToolAvailability, deduplicateExternalAssets, resetToolAvailabilityCache } from './scanner/externalToolIntegration';
 export { resolveVariableBackward } from './scanner/scannerUtils';
