@@ -102,17 +102,15 @@ export async function runCodeQLAnalysis(
       fs.writeFileSync(path.join(queryDir, filename), content);
     }
 
-    // Write qlpack.yml — use libraryPathDependencies so CodeQL resolves
-    // codeql/java-all from the bundled packs shipped with the CodeQL bundle.
-    // The bundle (from github/codeql-action releases) includes all standard
-    // packs in <codeql-root>/qlpacks/, which --search-path discovers.
-    // Do NOT use `dependencies` format — that triggers registry download
-    // via `codeql pack install` which may fetch an incompatible version.
+    // Write qlpack.yml — use `dependencies` format (modern CodeQL ≥ 2.14).
+    // The bundled codeql/java-all pack ships inside <bundle>/qlpacks/.
+    // We resolve it locally via `codeql pack install --additional-packs`
+    // (below) so CodeQL never hits the remote package registry.
     fs.writeFileSync(path.join(queryDir, 'qlpack.yml'), [
       'name: cbom-crypto-queries',
       'version: 0.0.1',
-      'libraryPathDependencies:',
-      '  - codeql/java-all',
+      'dependencies:',
+      '  codeql/java-all: "*"',
     ].join('\n'));
 
     // Resolve CodeQL home directory for --search-path.
@@ -142,6 +140,21 @@ export async function runCodeQLAnalysis(
           'See: https://docs.github.com/en/code-security/codeql-cli/getting-started-with-the-codeql-cli/setting-up-the-codeql-cli',
         );
       }
+    }
+
+    // Install query pack dependencies from the local bundle.
+    // --additional-packs tells CodeQL to look in the bundle directory before
+    // falling back to the GitHub Container Registry, so this works offline.
+    const additionalPacksFlag = codeqlHome ? `--additional-packs="${codeqlHome}"` : '';
+    try {
+      const installCmd = `codeql pack install ${additionalPacksFlag} "${queryDir}" 2>&1`;
+      console.log('CodeQL: installing query pack dependencies...');
+      const { stdout: installOut } = await execAsync(installCmd, { timeout: 120000 });
+      console.log(`CodeQL: pack install completed — ${(installOut || '').trim().slice(-200)}`);
+    } catch (err: any) {
+      const detail = err?.stdout || err?.stderr || err?.message || '';
+      console.warn(`CodeQL: pack install warning — ${detail.slice(0, 300)}`);
+      // Continue — analyze may still resolve packs via --search-path
     }
 
     // Step 1: Create CodeQL database
@@ -223,7 +236,6 @@ export async function runCodeQLAnalysis(
     // --search-path tells CodeQL where to find the bundled java-all library packs.
     // --additional-packs gives priority to the bundle root for pack resolution.
     const sarifOutput = path.join(tmpDir, 'results.sarif');
-    const additionalPacksFlag = codeqlHome ? `--additional-packs="${codeqlHome}"` : '';
     console.log('CodeQL: running crypto analysis queries...');
     try {
       const analyzeCmd = `codeql database analyze "${dbDir}" "${queryDir}" --format=sarifv2.1.0 --output="${sarifOutput}" ${searchPathFlag} ${additionalPacksFlag} 2>&1`;
