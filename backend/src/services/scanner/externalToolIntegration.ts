@@ -9,8 +9,6 @@
 export {
   checkToolAvailability,
   resetToolAvailabilityCache,
-  runCodeQLAnalysis,
-  CODEQL_QUERIES,
   runCbomkitTheia,
   runExternalToolScans,
   deduplicateExternalAssets,
@@ -20,9 +18,6 @@ export {
 
 export type {
   ToolAvailability,
-  SARIFResult,
-  SARIFRun,
-  SARIFReport,
   CbomkitComponent,
   CbomkitOutput,
 } from './external';

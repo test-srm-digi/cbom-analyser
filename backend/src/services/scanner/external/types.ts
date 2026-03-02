@@ -5,31 +5,9 @@
 // ─── Tool Availability ──────────────────────────────────────────────────────
 
 export interface ToolAvailability {
-  codeql: boolean;
   cbomkitTheia: boolean;
   keytool: boolean;
   openssl: boolean;
-}
-
-// ─── SARIF Types (shared by CodeQL) ─────────────────────────────────────────
-
-export interface SARIFResult {
-  ruleId: string;
-  message: { text: string };
-  locations: Array<{
-    physicalLocation: {
-      artifactLocation: { uri: string };
-      region: { startLine: number; startColumn?: number };
-    };
-  }>;
-}
-
-export interface SARIFRun {
-  results: SARIFResult[];
-}
-
-export interface SARIFReport {
-  runs: SARIFRun[];
 }
 
 // ─── cbomkit-theia Types ────────────────────────────────────────────────────

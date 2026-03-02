@@ -1,10 +1,10 @@
 # Dockerfile for GitHub Action
-# Use Debian-based image (not Alpine) — CodeQL and Java tools require glibc
+# Use Debian-based image — Java tools require glibc
 FROM node:20-slim
 
 # Install dependencies for scanning + Java JDK + sonar-scanner + crypto tools
-# JDK (not JRE) is needed so Maven/Gradle can compile Java projects for
-# CodeQL data-flow analysis.
+# JDK (not JRE) is needed so Maven/Gradle can build Java projects, and for
+# keytool certificate/keystore inspection.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   bash \
   curl \

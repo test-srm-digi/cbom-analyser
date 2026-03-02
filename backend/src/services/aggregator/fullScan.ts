@@ -80,7 +80,7 @@ export async function runFullScan(
     console.warn('Certificate file scan failed (non-blocking):', (err as Error).message);
   }
 
-  // 5. External tool scanning (Phase 2A/3) — CodeQL, cbomkit-theia
+  // 5. External tool scanning (Phase 3) — cbomkit-theia
   let externalAssets: CryptoAsset[] = [];
   try {
     externalAssets = await runExternalToolScans(repoPath, externalToolOptions);

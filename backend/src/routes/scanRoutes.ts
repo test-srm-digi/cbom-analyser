@@ -51,7 +51,6 @@ router.get('/scan-code/tools', async (_req: Request, res: Response) => {
     res.json({
       success: true,
       tools: {
-        codeql: { available: availability.codeql, description: 'GitHub CodeQL — data-flow crypto analysis' },
         cbomkitTheia: { available: availability.cbomkitTheia, description: 'IBM cbomkit-theia — container/filesystem crypto scanner' },
         keytool: { available: availability.keytool, description: 'Java keytool — certificate/keystore inspection' },
         openssl: { available: availability.openssl, description: 'OpenSSL — TLS/certificate analysis' },

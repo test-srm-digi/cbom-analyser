@@ -26,9 +26,7 @@ if [ "$EXCLUDE_PATTERNS" = "default" ]; then
 fi
 
 # External tool configuration (from env vars set by action.yml)
-ENABLE_CODEQL="${ENABLE_CODEQL:-true}"
 ENABLE_CBOMKIT_THEIA="${ENABLE_CBOMKIT_THEIA:-true}"
-CODEQL_LANGUAGE="${CODEQL_LANGUAGE:-java}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -65,7 +63,6 @@ fi
 
 # Display external tool configuration
 echo -e "${BLUE}🛠  External Tools:${NC}"
-[ "$ENABLE_CODEQL" = "true" ] && echo -e "${BLUE}    CodeQL: enabled (language: ${CODEQL_LANGUAGE})${NC}" || echo -e "${BLUE}    CodeQL: disabled${NC}"
 [ "$ENABLE_CBOMKIT_THEIA" = "true" ] && echo -e "${BLUE}    cbomkit-theia: enabled${NC}" || echo -e "${BLUE}    cbomkit-theia: disabled${NC}"
 echo ""
 
@@ -74,36 +71,11 @@ TOOLS_DIR="/opt/cbom-tools"
 mkdir -p "$TOOLS_DIR"
 
 # CodeQL CLI (glibc binary — gcompat must be installed in Dockerfile)
-if [ "$ENABLE_CODEQL" = "true" ] && ! command -v codeql &>/dev/null; then
-  # Download the official CodeQL BUNDLE (CLI + all standard QL packs).
-  # The CLI-only download from github/codeql-cli-binaries does NOT include
-  # the standard packs (codeql/java-all, etc.), causing analysis to fail.
-  # See: https://docs.github.com/en/code-security/codeql-cli/getting-started-with-the-codeql-cli/setting-up-the-codeql-cli
-  CODEQL_VERSION="v2.24.2"
-  echo -e "${YELLOW}⬇  Downloading CodeQL bundle ${CODEQL_VERSION} (CLI + QL packs)...${NC}"
-  BUNDLE_URL="https://github.com/github/codeql-action/releases/download/codeql-bundle-${CODEQL_VERSION}/codeql-bundle-linux64.tar.gz"
-  if curl -fsSL "$BUNDLE_URL" -o /tmp/codeql-bundle.tar.gz 2>/dev/null; then
-    tar -xzf /tmp/codeql-bundle.tar.gz -C "$TOOLS_DIR" 2>/dev/null
-    if [ -x "$TOOLS_DIR/codeql/codeql" ]; then
-      # Add to PATH instead of symlinking.  When invoked via a symlink at
-      # /usr/local/bin/codeql the binary resolves its location as /usr/local/bin/
-      # and fails to find the bundled qlpacks/ directory next to it.
-      export PATH="$TOOLS_DIR/codeql:$PATH"
-      echo -e "${GREEN}   ✓ CodeQL bundle ${CODEQL_VERSION} installed${NC}"
-      # Verify bundled packs are present
-      if [ -d "$TOOLS_DIR/codeql/qlpacks/codeql/java-all" ]; then
-        echo -e "${GREEN}   ✓ Bundled QL packs verified (codeql/java-all present)${NC}"
-      else
-        echo -e "${YELLOW}   ⚠ Bundled QL packs not found at expected location${NC}"
-      fi
-    else
-      echo -e "${YELLOW}   ⚠ CodeQL extraction failed (non-blocking)${NC}"
-    fi
-    rm -f /tmp/codeql-bundle.tar.gz
-  else
-    echo -e "${YELLOW}   ⚠ CodeQL bundle download failed (non-blocking)${NC}"
-  fi
-fi
+# CodeQL removed — its crypto-detection capabilities (getInstance() calls with
+# string literal arguments across 11 JCA classes) are fully covered by the
+# regex scanner's extractAlgorithm + resolveVariable patterns with 7-strategy
+# variable resolution (backward/forward scan, class constants, ternary,
+# enum mapping, method parameter tracing, string concatenation, cross-file imports).
 
 # cbomkit-theia (Go project — no pre-built binaries, requires Go toolchain)
 if [ "$ENABLE_CBOMKIT_THEIA" = "true" ] && ! command -v cbomkit-theia &>/dev/null && ! command -v cbomkit &>/dev/null; then
@@ -121,43 +93,6 @@ if [ "$ENABLE_CBOMKIT_THEIA" = "true" ] && ! command -v cbomkit-theia &>/dev/nul
 fi
 
 echo ""
-
-# ── Try to compile Java project for deeper analysis (CodeQL) ──
-JAVA_BUILD_SUCCESS=false
-if [ -f "$FULL_SCAN_PATH/pom.xml" ] || [ -f "$FULL_SCAN_PATH/build.gradle" ] || [ -f "$FULL_SCAN_PATH/build.gradle.kts" ]; then
-  echo -e "${YELLOW}📦 Java project detected — attempting compilation for deep analysis...${NC}"
-  if [ -f "$FULL_SCAN_PATH/mvnw" ]; then
-    chmod +x "$FULL_SCAN_PATH/mvnw" 2>/dev/null
-    if COMPILE_OUT=$(cd "$FULL_SCAN_PATH" && ./mvnw compile -DskipTests -B 2>&1); then
-      JAVA_BUILD_SUCCESS=true
-    else
-      echo "   Maven compile error (last 5 lines):"
-      echo "$COMPILE_OUT" | tail -5 | sed 's/^/   /'
-    fi
-  elif [ -f "$FULL_SCAN_PATH/gradlew" ]; then
-    chmod +x "$FULL_SCAN_PATH/gradlew" 2>/dev/null
-    if COMPILE_OUT=$(cd "$FULL_SCAN_PATH" && ./gradlew compileJava --no-daemon 2>&1); then
-      JAVA_BUILD_SUCCESS=true
-    else
-      echo "   Gradle compile error (last 5 lines):"
-      echo "$COMPILE_OUT" | tail -5 | sed 's/^/   /'
-    fi
-  elif command -v mvn &>/dev/null && [ -f "$FULL_SCAN_PATH/pom.xml" ]; then
-    if COMPILE_OUT=$(cd "$FULL_SCAN_PATH" && mvn compile -DskipTests -B 2>&1); then
-      JAVA_BUILD_SUCCESS=true
-    else
-      echo "   Maven compile error (last 5 lines):"
-      echo "$COMPILE_OUT" | tail -5 | sed 's/^/   /'
-    fi
-  fi
-
-  if [ "$JAVA_BUILD_SUCCESS" = "true" ]; then
-    echo -e "${GREEN}   ✓ Java project compiled — CodeQL will use compiled classes${NC}"
-  else
-    echo -e "${YELLOW}   ⚠ Java compilation skipped/failed — CodeQL will use source-only mode${NC}"
-  fi
-  echo ""
-fi
 
 # Start the backend server in background
 cd /app
@@ -189,10 +124,8 @@ BRANCH="${GITHUB_REF_NAME}"
 
 # Build the request JSON with optional excludePatterns + repo metadata + external tools
 EXTERNAL_TOOLS=$(jq -n \
-  --argjson codeql "$([ "$ENABLE_CODEQL" = "true" ] && echo true || echo false)" \
   --argjson cbomkit "$([ "$ENABLE_CBOMKIT_THEIA" = "true" ] && echo true || echo false)" \
-  --arg lang "$CODEQL_LANGUAGE" \
-  '{enableCodeQL: $codeql, enableCbomkitTheia: $cbomkit, codeqlLanguage: $lang}')
+  '{enableCbomkitTheia: $cbomkit}')
 
 if [ -n "$EXCLUDE_PATTERNS" ]; then
   # Convert comma-separated patterns to JSON array

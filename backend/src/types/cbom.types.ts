@@ -194,8 +194,8 @@ export interface CryptoAsset {
   provider?: string;
   /** Definitive PQC readiness verdict based on actual parameter analysis */
   pqcVerdict?: PQCVerdictDetail;
-  /** Source of detection: sonar, regex, dependency, network, certificate, codeql, cbomkit-theia */
-  detectionSource?: 'sonar' | 'regex' | 'dependency' | 'network' | 'certificate' | 'codeql' | 'cbomkit-theia';
+  /** Source of detection: sonar, regex, dependency, network, certificate, cbomkit-theia */
+  detectionSource?: 'sonar' | 'regex' | 'dependency' | 'network' | 'certificate' | 'cbomkit-theia';
 }
 
 // ─── CBOM Component ──────────────────────────────────────────────────────────
@@ -346,12 +346,8 @@ export interface NetworkScanResponse {
  * All tools are optional — they fail gracefully if not installed.
  */
 export interface ExternalToolOptions {
-  /** Enable CodeQL data-flow analysis (default: true when available) */
-  enableCodeQL?: boolean;
   /** Enable IBM cbomkit-theia container/filesystem scanner (default: true when available) */
   enableCbomkitTheia?: boolean;
-  /** CodeQL target language (default: 'java') */
-  codeqlLanguage?: string;
 }
 
 export interface ScanCodeRequest {
@@ -363,7 +359,7 @@ export interface ScanCodeRequest {
   repoUrl?: string;
   /** Branch name where the scan was performed */
   branch?: string;
-  /** External tool configuration (CodeQL, cbomkit-theia) */
+  /** External tool configuration (cbomkit-theia) */
   externalTools?: ExternalToolOptions;
 }
 

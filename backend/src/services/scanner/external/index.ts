@@ -7,20 +7,15 @@
 import type { CryptoAsset } from '../../../types';
 import { normaliseAlgorithmName } from '../scannerUtils';
 import { checkToolAvailability } from './availability';
-import { runCodeQLAnalysis } from './codeql';
 import { runCbomkitTheia } from './cbomkitTheia';
 
 // ─── Re-exports ─────────────────────────────────────────────────────────────
 
 export { checkToolAvailability, resetToolAvailabilityCache } from './availability';
-export { runCodeQLAnalysis, CODEQL_QUERIES } from './codeql';
 export { runCbomkitTheia } from './cbomkitTheia';
 export { findFilesRecursive, findBuildTarget } from './utils';
 export type {
   ToolAvailability,
-  SARIFResult,
-  SARIFRun,
-  SARIFReport,
   CbomkitComponent,
   CbomkitOutput,
 } from './types';
@@ -38,9 +33,7 @@ export type {
 export async function runExternalToolScans(
   repoPath: string,
   options?: {
-    enableCodeQL?: boolean;
     enableCbomkitTheia?: boolean;
-    codeqlLanguage?: string;
   },
 ): Promise<CryptoAsset[]> {
   const allAssets: CryptoAsset[] = [];
@@ -48,16 +41,6 @@ export async function runExternalToolScans(
 
   // Run tools in parallel where possible
   const promises: Promise<CryptoAsset[]>[] = [];
-
-  if ((options?.enableCodeQL !== false) && availability.codeql) {
-    promises.push(
-      runCodeQLAnalysis(repoPath, options?.codeqlLanguage)
-        .catch(err => {
-          console.warn('CodeQL scan failed:', (err as Error).message);
-          return [] as CryptoAsset[];
-        })
-    );
-  }
 
   if ((options?.enableCbomkitTheia !== false) && availability.cbomkitTheia) {
     promises.push(

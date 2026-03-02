@@ -29,7 +29,7 @@ The application then evaluates every cryptographic asset against **Post-Quantum 
 | **Network TLS Scanner** | Scan live endpoints for TLS/cipher details |
 | **xBOM Unified BOMs** | Merge SBOM + CBOM into a single document with cross-references |
 | **Third-Party Dependency Scanning** | Detect crypto libraries in Maven, npm, pip, Go dependencies |
-| **External Tool Integration** | Optional CodeQL, cbomkit-theia, CryptoAnalysis subprocess scanners |
+| **External Tool Integration** | Optional cbomkit-theia subprocess scanner |
 | **PQC Risk Engine** | Flag quantum-vulnerable algorithms with NIST-approved replacements |
 | **Enhanced Variable Resolution** | 7-strategy backward variable resolution for dynamic crypto arguments |
 | **Cryptographic Policies** | Define compliance rules with 10 NIST SP 800-57 presets |
@@ -55,7 +55,7 @@ The application then evaluates every cryptographic asset against **Post-Quantum 
 | **Cryptographic Policies** | ❌ | ❌ | ✅ |
 | **100+ Algorithm PQC Database** | ❌ | ❌ | ✅ |
 | **Certificate File Parsing** | ❌ | ❌ | ✅ |
-| **External Tool Integration** | ❌ | ❌ | ✅ (CodeQL, cbomkit-theia, CryptoAnalysis) |
+| **External Tool Integration** | ❌ | ❌ | ✅ (cbomkit-theia) |
 
 ---
 
@@ -94,7 +94,7 @@ All detailed documentation is organized in the [`docs/`](docs/) folder:
 | [Architecture](docs/architecture.md) | System architecture, project structure, tech stack, sync scheduler, RTK Query |
 | [PQC Standards](docs/pqc-standards.md) | Quantum threat, CycloneDX 1.7 spec, asset types, safety classification |
 | [PQC Classification Analysis](docs/pqc-classification-analysis.md) | Deep analysis of conditional/unknown assets, resolution strategies |
-| [Advanced Resolution Techniques](docs/advanced-resolution-techniques.md) | External tool research, implementation roadmap, certificate parsing, CodeQL integration |
+| [Advanced Resolution Techniques](docs/advanced-resolution-techniques.md) | External tool research, implementation roadmap, certificate parsing, variable resolution |
 | [xBOM](docs/xbom.md) | Unified SBOM + CBOM — Trivy integration, merge engine, CI pipeline |
 
 **External:**
