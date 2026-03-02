@@ -97,21 +97,15 @@ export async function runCodeQLAnalysis(
     const queryDir = path.join(tmpDir, 'queries');
     fs.mkdirSync(queryDir, { recursive: true });
 
-    // Write custom queries
+    // Write custom queries — standalone .ql files (no qlpack.yml).
+    // Without a qlpack.yml, CodeQL treats these as standalone queries and
+    // resolves `import java` through the bundle's built-in search path
+    // (the binary automatically discovers packs bundled alongside it).
+    // A qlpack.yml with `dependencies` would trigger the package-cache
+    // resolution system, which doesn't reliably find bundled packs.
     for (const [filename, content] of Object.entries(CODEQL_QUERIES)) {
       fs.writeFileSync(path.join(queryDir, filename), content);
     }
-
-    // Write qlpack.yml — use `dependencies` format (modern CodeQL ≥ 2.14).
-    // The bundled codeql/java-all pack ships inside <bundle>/qlpacks/.
-    // We resolve it locally via `codeql pack install --additional-packs`
-    // (below) so CodeQL never hits the remote package registry.
-    fs.writeFileSync(path.join(queryDir, 'qlpack.yml'), [
-      'name: cbom-crypto-queries',
-      'version: 0.0.1',
-      'dependencies:',
-      '  codeql/java-all: "*"',
-    ].join('\n'));
 
     // Resolve CodeQL home directory for --search-path.
     // The bundle extracts to e.g. /opt/cbom-tools/codeql/ with packs in qlpacks/.
@@ -140,21 +134,6 @@ export async function runCodeQLAnalysis(
           'See: https://docs.github.com/en/code-security/codeql-cli/getting-started-with-the-codeql-cli/setting-up-the-codeql-cli',
         );
       }
-    }
-
-    // Install query pack dependencies from the local bundle.
-    // --additional-packs tells CodeQL to look in the bundle directory before
-    // falling back to the GitHub Container Registry, so this works offline.
-    const additionalPacksFlag = codeqlHome ? `--additional-packs="${codeqlHome}"` : '';
-    try {
-      const installCmd = `codeql pack install ${additionalPacksFlag} "${queryDir}" 2>&1`;
-      console.log('CodeQL: installing query pack dependencies...');
-      const { stdout: installOut } = await execAsync(installCmd, { timeout: 120000 });
-      console.log(`CodeQL: pack install completed — ${(installOut || '').trim().slice(-200)}`);
-    } catch (err: any) {
-      const detail = err?.stdout || err?.stderr || err?.message || '';
-      console.warn(`CodeQL: pack install warning — ${detail.slice(0, 300)}`);
-      // Continue — analyze may still resolve packs via --search-path
     }
 
     // Step 1: Create CodeQL database
@@ -233,12 +212,16 @@ export async function runCodeQLAnalysis(
     if (!dbCreated) return [];
 
     // Step 2: Run queries
-    // --search-path tells CodeQL where to find the bundled java-all library packs.
-    // --additional-packs gives priority to the bundle root for pack resolution.
+    // Pass each .ql file individually to avoid qlpack.yml detection.
+    // --search-path tells CodeQL where to look for library packs (belt-and-suspenders;
+    // the bundled binary already knows about its own packs).
     const sarifOutput = path.join(tmpDir, 'results.sarif');
+    const queryFiles = Object.keys(CODEQL_QUERIES)
+      .map(f => `"${path.join(queryDir, f)}"`)
+      .join(' ');
     console.log('CodeQL: running crypto analysis queries...');
     try {
-      const analyzeCmd = `codeql database analyze "${dbDir}" "${queryDir}" --format=sarifv2.1.0 --output="${sarifOutput}" ${searchPathFlag} ${additionalPacksFlag} 2>&1`;
+      const analyzeCmd = `codeql database analyze "${dbDir}" ${queryFiles} --format=sarifv2.1.0 --output="${sarifOutput}" ${searchPathFlag} 2>&1`;
       console.log(`CodeQL: ${analyzeCmd}`);
       const { stdout: analyzeOut } = await execAsync(analyzeCmd, { timeout: 600000 });
       console.log(`CodeQL: analyze completed — ${analyzeOut.slice(-200)}`);
