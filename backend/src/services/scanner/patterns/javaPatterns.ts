@@ -196,4 +196,77 @@ export const javaPatterns: CryptoPattern[] = [
   { pattern: /new\s+PBEKeySpec\s*\(/g, algorithm: 'PBE', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.KEYGEN },
   { pattern: /new\s+DHParameterSpec\s*\(/g, algorithm: 'Diffie-Hellman', primitive: CryptoPrimitive.KEY_AGREEMENT, cryptoFunction: CryptoFunction.KEY_EXCHANGE },
   { pattern: /new\s+ECGenParameterSpec\s*\(\s*"([^"]+)"/g, algorithm: 'EC-Curve', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.KEYGEN, extractAlgorithm: true },
+
+  // ════════════════════════════════════════════════════════════════════════
+  // ── CrySL-equivalent constraint & misuse detection patterns ───────────
+  // ════════════════════════════════════════════════════════════════════════
+  // These patterns replicate the key findings of CogniCryptSAST / CrySL
+  // typestate analysis without requiring compiled .class files.
+
+  // ── Insecure pseudo-random: java.util.Random instead of SecureRandom ──
+  { pattern: /new\s+Random\s*\(\s*\)/g, algorithm: 'java.util.Random', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, scanContext: true },
+  { pattern: /(?:java\.util\.)?Random\s+\w+\s*=\s*new\s+Random\s*\(/g, algorithm: 'java.util.Random', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, scanContext: true },
+  { pattern: /ThreadLocalRandom\.current\s*\(\s*\)/g, algorithm: 'ThreadLocalRandom', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, scanContext: true },
+  { pattern: /Math\.random\s*\(\s*\)/g, algorithm: 'Math.random', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, scanContext: true },
+
+  // ── NullCipher (no actual encryption!) ──
+  { pattern: /new\s+NullCipher\s*\(/g, algorithm: 'NullCipher', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT, scanContext: true },
+
+  // ── Deprecated/weak key specs (CrySL ConstraintError equivalents) ──
+  { pattern: /new\s+DESKeySpec\s*\(/g, algorithm: 'DES', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.KEYGEN },
+  { pattern: /new\s+DESedeKeySpec\s*\(/g, algorithm: '3DES', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.KEYGEN },
+
+  // ── RSA key-size parameters (explicit RSAKeyGenParameterSpec) ──
+  { pattern: /new\s+RSAKeyGenParameterSpec\s*\(\s*(\d+)/g, algorithm: 'RSA', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.KEYGEN, extractAlgorithm: true },
+
+  // ── DSA parameter spec ──
+  { pattern: /new\s+DSAParameterSpec\s*\(/g, algorithm: 'DSA', primitive: CryptoPrimitive.SIGNATURE, cryptoFunction: CryptoFunction.KEYGEN, scanContext: true },
+
+  // ── Hardcoded/static IV detection (CrySL RequiredPredicateError) ──
+  // Catches: new IvParameterSpec(new byte[]{...}) — hardcoded IV bytes
+  { pattern: /new\s+IvParameterSpec\s*\(\s*new\s+byte\s*\[?\s*\]?\s*\{/g, algorithm: 'Hardcoded-IV', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT, scanContext: true },
+  // Catches: new IvParameterSpec("...".getBytes()) — string-derived IV
+  { pattern: /new\s+IvParameterSpec\s*\(\s*"[^"]*"\.getBytes/g, algorithm: 'Hardcoded-IV', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT, scanContext: true },
+
+  // ── SecureRandom with static seed (CrySL NeverTypeOfError) ──
+  { pattern: /new\s+SecureRandom\s*\(\s*new\s+byte\s*\[?\s*\]?\s*\{/g, algorithm: 'SecureRandom-StaticSeed', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.KEYGEN, scanContext: true },
+  { pattern: /new\s+SecureRandom\s*\(\s*"[^"]*"\.getBytes/g, algorithm: 'SecureRandom-StaticSeed', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.KEYGEN, scanContext: true },
+  { pattern: /\.setSeed\s*\(\s*new\s+byte\s*\[?\s*\]?\s*\{/g, algorithm: 'SecureRandom-StaticSeed', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.KEYGEN, scanContext: true },
+
+  // ── Insecure TLS/SSL protocol versions (CrySL ConstraintError) ──
+  { pattern: /SSLContext\.getInstance\s*\(\s*"SSL"\s*\)/g, algorithm: 'SSLv3', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
+  { pattern: /SSLContext\.getInstance\s*\(\s*"SSLv3"\s*\)/g, algorithm: 'SSLv3', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
+  { pattern: /SSLContext\.getInstance\s*\(\s*"TLSv1"\s*\)/g, algorithm: 'TLSv1.0', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
+  { pattern: /SSLContext\.getInstance\s*\(\s*"TLSv1\.1"\s*\)/g, algorithm: 'TLSv1.1', primitive: CryptoPrimitive.OTHER, cryptoFunction: CryptoFunction.OTHER, assetType: AssetType.PROTOCOL },
+
+  // ── ECB mode in Cipher transform string (CrySL ConstraintError: insecure mode) ──
+  { pattern: /Cipher\.getInstance\s*\(\s*"[^"]*\/ECB\/[^"]*"/g, algorithm: 'ECB-Mode', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT, scanContext: true },
+
+  // ── NoPadding with CBC (padding oracle vulnerability) ──
+  { pattern: /Cipher\.getInstance\s*\(\s*"[^"]*\/CBC\/NoPadding"/g, algorithm: 'CBC-NoPadding', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT, scanContext: true },
+
+  // ── Additional BouncyCastle deprecated/weak engines not yet covered ──
+  { pattern: /new\s+RC2Engine\s*\(/g, algorithm: 'RC2', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT },
+
+  // ── Weak hash algorithms via BouncyCastle ──
+  { pattern: /new\s+MD2Digest\s*\(/g, algorithm: 'MD2', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
+  { pattern: /new\s+MD4Digest\s*\(/g, algorithm: 'MD4', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
+
+  // ── PBE without strong KDF (CrySL ConstraintError) ──
+  { pattern: /Cipher\.getInstance\s*\(\s*"PBEWith([^"]+)"/g, algorithm: 'PBE', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.ENCRYPT, extractAlgorithm: true },
+
+  // ── Deprecated Apache Commons Codec / custom Base64 (not crypto per se, but CrySL flags these) ──
+  { pattern: /MessageDigest\.getInstance\s*\(\s*"MD5"\s*\)/g, algorithm: 'MD5', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
+  { pattern: /MessageDigest\.getInstance\s*\(\s*"MD2"\s*\)/g, algorithm: 'MD2', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
+  { pattern: /MessageDigest\.getInstance\s*\(\s*"SHA-?1"\s*\)/g, algorithm: 'SHA-1', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
+
+  // ── Password in String (CrySL NeverTypeOfError: char[] required, not String) ──
+  { pattern: /new\s+PBEKeySpec\s*\(\s*\w+\.toCharArray\s*\(\s*\)/g, algorithm: 'PBE', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.KEYGEN, scanContext: true },
+
+  // ── OAEP without explicit hash (defaults to SHA-1 in older JDKs) ──
+  { pattern: /new\s+OAEPParameterSpec\s*\(/g, algorithm: 'RSA-OAEP', primitive: CryptoPrimitive.PKE, cryptoFunction: CryptoFunction.ENCRYPT, scanContext: true },
+
+  // ── Cipher.getInstance without mode/padding (defaults to ECB in most providers!) ──
+  // Captures "AES" alone (no slash → no mode specified → provider default = ECB)
+  { pattern: /Cipher\.getInstance\s*\(\s*"(AES|DES|DESede|Blowfish|RC2)"\s*\)/g, algorithm: 'ECB-Mode', primitive: CryptoPrimitive.BLOCK_CIPHER, cryptoFunction: CryptoFunction.ENCRYPT, extractAlgorithm: true, scanContext: true },
 ];

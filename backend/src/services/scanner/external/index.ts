@@ -9,14 +9,12 @@ import { normaliseAlgorithmName } from '../scannerUtils';
 import { checkToolAvailability } from './availability';
 import { runCodeQLAnalysis } from './codeql';
 import { runCbomkitTheia } from './cbomkitTheia';
-import { runCryptoAnalysis } from './cryptoAnalysis';
 
 // ─── Re-exports ─────────────────────────────────────────────────────────────
 
 export { checkToolAvailability, resetToolAvailabilityCache } from './availability';
 export { runCodeQLAnalysis, CODEQL_QUERIES } from './codeql';
 export { runCbomkitTheia } from './cbomkitTheia';
-export { runCryptoAnalysis } from './cryptoAnalysis';
 export { findFilesRecursive, findBuildTarget } from './utils';
 export type {
   ToolAvailability,
@@ -25,7 +23,6 @@ export type {
   SARIFReport,
   CbomkitComponent,
   CbomkitOutput,
-  CryptoAnalysisResult,
 } from './types';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -43,7 +40,6 @@ export async function runExternalToolScans(
   options?: {
     enableCodeQL?: boolean;
     enableCbomkitTheia?: boolean;
-    enableCryptoAnalysis?: boolean;
     codeqlLanguage?: string;
   },
 ): Promise<CryptoAsset[]> {
@@ -68,16 +64,6 @@ export async function runExternalToolScans(
       runCbomkitTheia(repoPath)
         .catch(err => {
           console.warn('cbomkit-theia scan failed:', (err as Error).message);
-          return [] as CryptoAsset[];
-        })
-    );
-  }
-
-  if ((options?.enableCryptoAnalysis !== false) && availability.cryptoAnalysis) {
-    promises.push(
-      runCryptoAnalysis(repoPath)
-        .catch(err => {
-          console.warn('CryptoAnalysis scan failed:', (err as Error).message);
           return [] as CryptoAsset[];
         })
     );

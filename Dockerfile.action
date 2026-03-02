@@ -4,7 +4,7 @@ FROM node:20-slim
 
 # Install dependencies for scanning + Java JDK + sonar-scanner + crypto tools
 # JDK (not JRE) is needed so Maven/Gradle can compile Java projects for
-# CodeQL data-flow analysis and CryptoAnalysis typestate analysis.
+# CodeQL data-flow analysis.
 RUN apt-get update && apt-get install -y --no-install-recommends \
   bash \
   curl \

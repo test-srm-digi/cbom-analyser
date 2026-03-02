@@ -12,7 +12,6 @@ export {
   runCodeQLAnalysis,
   CODEQL_QUERIES,
   runCbomkitTheia,
-  runCryptoAnalysis,
   runExternalToolScans,
   deduplicateExternalAssets,
   findFilesRecursive,
@@ -26,5 +25,4 @@ export type {
   SARIFReport,
   CbomkitComponent,
   CbomkitOutput,
-  CryptoAnalysisResult,
 } from './external';

@@ -30,7 +30,6 @@ export async function checkToolAvailability(): Promise<ToolAvailability> {
   cachedAvailability = {
     codeql: check('codeql'),
     cbomkitTheia: check('cbomkit-theia') || check('cbomkit'),
-    cryptoAnalysis: check('CryptoAnalysis') || check('crypto-analysis'),
     keytool: check('keytool'),
     openssl: check('openssl'),
   };

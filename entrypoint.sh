@@ -28,7 +28,6 @@ fi
 # External tool configuration (from env vars set by action.yml)
 ENABLE_CODEQL="${ENABLE_CODEQL:-true}"
 ENABLE_CBOMKIT_THEIA="${ENABLE_CBOMKIT_THEIA:-true}"
-ENABLE_CRYPTO_ANALYSIS="${ENABLE_CRYPTO_ANALYSIS:-true}"
 CODEQL_LANGUAGE="${CODEQL_LANGUAGE:-java}"
 
 # Colors for output
@@ -68,7 +67,6 @@ fi
 echo -e "${BLUE}🛠  External Tools:${NC}"
 [ "$ENABLE_CODEQL" = "true" ] && echo -e "${BLUE}    CodeQL: enabled (language: ${CODEQL_LANGUAGE})${NC}" || echo -e "${BLUE}    CodeQL: disabled${NC}"
 [ "$ENABLE_CBOMKIT_THEIA" = "true" ] && echo -e "${BLUE}    cbomkit-theia: enabled${NC}" || echo -e "${BLUE}    cbomkit-theia: disabled${NC}"
-[ "$ENABLE_CRYPTO_ANALYSIS" = "true" ] && echo -e "${BLUE}    CryptoAnalysis: enabled${NC}" || echo -e "${BLUE}    CryptoAnalysis: disabled${NC}"
 echo ""
 
 # ── Install external analysis tools (runtime download, before server start) ──
@@ -122,34 +120,9 @@ if [ "$ENABLE_CBOMKIT_THEIA" = "true" ] && ! command -v cbomkit-theia &>/dev/nul
   fi
 fi
 
-# CryptoAnalysis (HeadlessJavaScanner — Java JAR, uses already-installed JRE)
-if [ "$ENABLE_CRYPTO_ANALYSIS" = "true" ] && ! command -v CryptoAnalysis &>/dev/null; then
-  echo -e "${YELLOW}⬇  Downloading CryptoAnalysis (HeadlessJavaScanner)...${NC}"
-  CRYPTO_ANALYSIS_VERSION="5.0.1"
-  JAR_URL="https://github.com/CROSSINGTUD/CryptoAnalysis/releases/download/${CRYPTO_ANALYSIS_VERSION}/HeadlessJavaScanner-${CRYPTO_ANALYSIS_VERSION}-jar-with-dependencies.jar"
-  RULES_URL="https://github.com/CROSSINGTUD/CryptoAnalysis/releases/download/${CRYPTO_ANALYSIS_VERSION}/JavaCryptographicArchitecture.zip"
-  if curl -fsSL "$JAR_URL" -o "$TOOLS_DIR/HeadlessJavaScanner.jar" 2>/dev/null; then
-    # Also download CrySL rules for JCA
-    if curl -fsSL "$RULES_URL" -o /tmp/jca-rules.zip 2>/dev/null; then
-      mkdir -p "$TOOLS_DIR/crysl-rules"
-      unzip -qo /tmp/jca-rules.zip -d "$TOOLS_DIR/crysl-rules" 2>/dev/null
-      rm -f /tmp/jca-rules.zip
-      echo -e "${GREEN}   ✓ CrySL rules downloaded${NC}"
-    fi
-    cat > /usr/local/bin/CryptoAnalysis << 'WRAPPER'
-#!/bin/bash
-exec java -jar /opt/cbom-tools/HeadlessJavaScanner.jar "$@"
-WRAPPER
-    chmod +x /usr/local/bin/CryptoAnalysis
-    echo -e "${GREEN}   ✓ CryptoAnalysis (HeadlessJavaScanner) v${CRYPTO_ANALYSIS_VERSION} installed${NC}"
-  else
-    echo -e "${YELLOW}   ⚠ CryptoAnalysis download failed (non-blocking)${NC}"
-  fi
-fi
-
 echo ""
 
-# ── Try to compile Java project for deeper analysis (CodeQL + CryptoAnalysis) ──
+# ── Try to compile Java project for deeper analysis (CodeQL) ──
 JAVA_BUILD_SUCCESS=false
 if [ -f "$FULL_SCAN_PATH/pom.xml" ] || [ -f "$FULL_SCAN_PATH/build.gradle" ] || [ -f "$FULL_SCAN_PATH/build.gradle.kts" ]; then
   echo -e "${YELLOW}📦 Java project detected — attempting compilation for deep analysis...${NC}"
@@ -179,7 +152,7 @@ if [ -f "$FULL_SCAN_PATH/pom.xml" ] || [ -f "$FULL_SCAN_PATH/build.gradle" ] || 
   fi
 
   if [ "$JAVA_BUILD_SUCCESS" = "true" ]; then
-    echo -e "${GREEN}   ✓ Java project compiled — CodeQL and CryptoAnalysis will use compiled classes${NC}"
+    echo -e "${GREEN}   ✓ Java project compiled — CodeQL will use compiled classes${NC}"
   else
     echo -e "${YELLOW}   ⚠ Java compilation skipped/failed — CodeQL will use source-only mode${NC}"
   fi
@@ -218,9 +191,8 @@ BRANCH="${GITHUB_REF_NAME}"
 EXTERNAL_TOOLS=$(jq -n \
   --argjson codeql "$([ "$ENABLE_CODEQL" = "true" ] && echo true || echo false)" \
   --argjson cbomkit "$([ "$ENABLE_CBOMKIT_THEIA" = "true" ] && echo true || echo false)" \
-  --argjson crypto "$([ "$ENABLE_CRYPTO_ANALYSIS" = "true" ] && echo true || echo false)" \
   --arg lang "$CODEQL_LANGUAGE" \
-  '{enableCodeQL: $codeql, enableCbomkitTheia: $cbomkit, enableCryptoAnalysis: $crypto, codeqlLanguage: $lang}')
+  '{enableCodeQL: $codeql, enableCbomkitTheia: $cbomkit, codeqlLanguage: $lang}')
 
 if [ -n "$EXCLUDE_PATTERNS" ]; then
   # Convert comma-separated patterns to JSON array
