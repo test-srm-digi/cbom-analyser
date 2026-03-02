@@ -177,7 +177,8 @@ function scanConfigFiles(
 ): void {
   try {
     const configNameArgs = CONFIG_FILENAMES.map(n => `-name "${n}"`).join(' -o ');
-    const { stdout: configFiles } = require('child_process').execSync(
+    // execSync returns the stdout string directly (not { stdout })
+    const configFiles = require('child_process').execSync(
       `find "${repoPath}" -type d \\( ` +
         `-name node_modules -o -name dist -o -name build -o -name .git ` +
         `-o -name target -o -name out -o -name vendor ` +
@@ -189,9 +190,9 @@ function scanConfigFiles(
         `-o ${configNameArgs} ` +
       `\\) -print | head -500`,
       { timeout: 30000, encoding: 'utf-8' }
-    );
+    ) as string;
 
-    const configFileList = (configFiles as string).trim().split('\n').filter(Boolean);
+    const configFileList = configFiles.trim().split('\n').filter(Boolean);
 
     for (const cfgPath of configFileList) {
       const relativePath = path.relative(repoPath, cfgPath);

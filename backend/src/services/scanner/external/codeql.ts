@@ -102,13 +102,17 @@ export async function runCodeQLAnalysis(
       fs.writeFileSync(path.join(queryDir, filename), content);
     }
 
-    // Write qlpack.yml with modern `dependencies` format.
-    // We then run `codeql pack install` to resolve & download codeql/java-all.
+    // Write qlpack.yml — use libraryPathDependencies so CodeQL resolves
+    // codeql/java-all from the bundled packs shipped with the CLI.
+    // Using `dependencies: codeql/java-all: "*"` would download the
+    // latest version from the registry which may be incompatible with
+    // the installed CLI (e.g. v8.x packs use nullable `?` syntax that
+    // older CLI versions cannot parse).
     fs.writeFileSync(path.join(queryDir, 'qlpack.yml'), [
       'name: cbom-crypto-queries',
       'version: 0.0.1',
-      'dependencies:',
-      '  codeql/java-all: "*"',
+      'libraryPathDependencies:',
+      '  - codeql/java-all',
     ].join('\n'));
 
     // Resolve CodeQL home for --search-path (still useful for bundled packs)
@@ -122,24 +126,21 @@ export async function runCodeQLAnalysis(
     }
     const searchPathFlag = codeqlHome ? `--search-path="${codeqlHome}"` : '';
 
-    // Install query pack dependencies (downloads codeql/java-all from registry)
-    console.log('CodeQL: installing query pack dependencies...');
-    try {
-      const installCmd = `codeql pack install "${queryDir}" ${searchPathFlag} 2>&1`;
-      const { stdout: installOut } = await execAsync(installCmd, { timeout: 120000 });
-      console.log(`CodeQL: pack install completed — ${installOut.slice(-200).trim()}`);
-    } catch (packErr: any) {
-      // Try without --search-path in case it interferes
+    // libraryPathDependencies resolves from bundled packs — no `codeql pack install` needed.
+    // Verify the bundled pack is discoverable via the search path.
+    if (codeqlHome) {
       try {
-        const { stdout: installOut } = await execAsync(
-          `codeql pack install "${queryDir}" 2>&1`,
-          { timeout: 120000 },
+        const { stdout: resolvedPacks } = await execAsync(
+          `codeql resolve qlpacks ${searchPathFlag} 2>/dev/null | grep java-all || true`,
+          { timeout: 15000 },
         );
-        console.log(`CodeQL: pack install completed (no search-path) — ${installOut.slice(-200).trim()}`);
-      } catch (packErr2: any) {
-        const detail = packErr2?.stdout || packErr2?.stderr || packErr2?.message || '';
-        console.warn(`CodeQL: pack install failed — ${detail.slice(0, 300)}`);
-        console.warn('CodeQL: analysis may fail if codeql/java-all is not bundled');
+        if (resolvedPacks.trim()) {
+          console.log(`CodeQL: bundled pack found — ${resolvedPacks.trim().split('\n')[0]}`);
+        } else {
+          console.log('CodeQL: codeql/java-all not found in search path — analysis may fail');
+        }
+      } catch {
+        // Non-blocking — analysis will still attempt
       }
     }
 
