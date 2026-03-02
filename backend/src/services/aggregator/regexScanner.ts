@@ -14,8 +14,10 @@ import {
   AssetType,
   QuantumSafetyStatus,
   CBOMRepository,
+  PQCReadinessVerdict,
+  ComplianceStatus,
 } from '../../types';
-import { enrichAssetWithPQCData } from '../pqcRiskEngine';
+import { enrichAssetWithPQCData, classifyAlgorithm } from '../pqcRiskEngine';
 import { SKIP_FILE_PATTERNS } from '../scanner/scannerTypes';
 import {
   shouldExcludeFile,
@@ -157,6 +159,11 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
     enrichBouncyCastleProviders(cbom, fileList, repoPath, excludePatterns);
     enrichX509Assets(cbom, fileList, repoPath, excludePatterns);
     enrichWebCryptoAssets(cbom, fileList, repoPath, excludePatterns);
+
+    // ── Provider-to-algorithm resolution ────────────────────────────────────
+    // Trace BouncyCastle provider registrations to the actual algorithms used
+    // through them, resolving CONDITIONAL → definitive safety status.
+    resolveProviderAssets(cbom);
   } catch (error) {
     console.error('Regex scan error:', (error as Error).message);
   }
@@ -258,7 +265,9 @@ function enrichBouncyCastleProviders(
 ): void {
   const bcFallbackMsg = 'BouncyCastle provider registered/referenced but no specific algorithm usage found in this file.';
   const bcProviderAssets = cbom.cryptoAssets.filter(
-    a => a.name === 'BouncyCastle-Provider' && a.description?.startsWith(bcFallbackMsg),
+    a => a.name === 'BouncyCastle-Provider' &&
+         (a.description?.startsWith(bcFallbackMsg) ||
+          a.description?.startsWith(`[INFORMATIONAL] ${bcFallbackMsg}`)),
   );
 
   if (bcProviderAssets.length === 0) return;
@@ -438,4 +447,202 @@ function enrichWebCryptoAssets(
       Object.assign(wcAsset, enriched);
     }
   }
+}
+
+// ─── Provider-to-algorithm resolution ───────────────────────────────────────
+//
+// IBM-style trace: instead of reporting BouncyCastle provider registration as a
+// "conditional" finding, resolve it to the actual algorithms used through the
+// provider and adopt their worst-case quantum safety.
+//
+// Two data sources:
+//  1) Same-file crypto assets already classified in the CBOM
+//  2) Algorithm names extracted from the context-scanner description
+
+/** BC utility class names that are NOT algorithm names — filter these out. */
+const BC_NON_ALGO_NAMES = new Set([
+  'JcaContentSignerBuilder', 'JcaDigestCalculatorProviderBuilder',
+  'JcaX509CertificateConverter', 'JcaX509v3CertificateBuilder',
+  'JcePBESecretKeyDecryptorBuilder', 'JcePKCSPBEInputDecryptorProviderBuilder',
+  'BcRSAContentVerifierProviderBuilder', 'BcECContentVerifierProviderBuilder',
+  'PEMParser', 'PEMKeyPair', 'JcePEMDecryptorProviderBuilder', 'JcaPEMKeyConverter',
+  'PKCS10/CSR', 'X509v3CertificateBuilder', 'getSigAlgName()',
+]);
+
+/**
+ * Resolve every BouncyCastle-Provider asset from CONDITIONAL to a definitive
+ * quantum-safety status by tracing which real algorithms the provider is used with.
+ */
+function resolveProviderAssets(cbom: CBOMDocument): void {
+  const bcProviders = cbom.cryptoAssets.filter(
+    a => a.name === 'BouncyCastle-Provider' && a.quantumSafety === QuantumSafetyStatus.CONDITIONAL,
+  );
+  if (bcProviders.length === 0) return;
+
+  // ── Build a look-up of classified algorithms per file ─────────────────
+  const algosByFile = new Map<string, CryptoAsset[]>();
+  for (const a of cbom.cryptoAssets) {
+    if (a.name === 'BouncyCastle-Provider' || a.name === 'SecureRandom') continue;
+    const fn = a.location?.fileName;
+    if (!fn) continue;
+    let list = algosByFile.get(fn);
+    if (!list) { list = []; algosByFile.set(fn, list); }
+    list.push(a);
+  }
+
+  // ── Collect all NOT_QUANTUM_SAFE algorithm names across the whole project
+  //    (used as fallback for files where no same-file algos are found) ────
+  const projectNotSafe = new Set<string>();
+  for (const a of cbom.cryptoAssets) {
+    if (a.quantumSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE) {
+      projectNotSafe.add(a.name);
+    }
+  }
+
+  for (const bc of bcProviders) {
+    const fileName = bc.location?.fileName ?? '';
+
+    // ── Source 1: same-file assets already in the CBOM ──────────────────
+    const sameFile = (algosByFile.get(fileName) ?? []).filter(
+      a => a.quantumSafety !== QuantumSafetyStatus.UNKNOWN,
+    );
+
+    // ── Source 2: algorithm names from the description ───────────────────
+    const descAlgos = extractAlgosFromDescription(bc.description ?? '');
+
+    // Merge: real classified algorithms + description-only algorithms
+    const notSafeAlgos: string[] = [];
+    const safeAlgos: string[] = [];
+    const conditionalAlgos: string[] = [];
+
+    // Classify same-file assets
+    for (const a of sameFile) {
+      if (a.quantumSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE) {
+        if (!notSafeAlgos.includes(a.name)) notSafeAlgos.push(a.name);
+      } else if (a.quantumSafety === QuantumSafetyStatus.QUANTUM_SAFE) {
+        if (!safeAlgos.includes(a.name)) safeAlgos.push(a.name);
+      } else if (a.quantumSafety === QuantumSafetyStatus.CONDITIONAL) {
+        if (!conditionalAlgos.includes(a.name)) conditionalAlgos.push(a.name);
+      }
+    }
+
+    // Classify description-only algorithms not already covered
+    const coveredNames = new Set([...notSafeAlgos, ...safeAlgos, ...conditionalAlgos]);
+    for (const algoName of descAlgos) {
+      if (coveredNames.has(algoName)) continue;
+      const profile = classifyAlgorithm(algoName);
+      if (profile.quantumSafety === QuantumSafetyStatus.NOT_QUANTUM_SAFE) {
+        notSafeAlgos.push(algoName);
+      } else if (profile.quantumSafety === QuantumSafetyStatus.QUANTUM_SAFE) {
+        safeAlgos.push(algoName);
+      } else if (profile.quantumSafety === QuantumSafetyStatus.CONDITIONAL) {
+        conditionalAlgos.push(algoName);
+      }
+      coveredNames.add(algoName);
+    }
+
+    // ── Determine resolved safety ───────────────────────────────────────
+    const hasNotSafe = notSafeAlgos.length > 0;
+    const allSafe = safeAlgos.length > 0 && notSafeAlgos.length === 0 && conditionalAlgos.length === 0;
+    const totalAlgos = notSafeAlgos.length + safeAlgos.length + conditionalAlgos.length;
+
+    if (hasNotSafe) {
+      bc.quantumSafety = QuantumSafetyStatus.NOT_QUANTUM_SAFE;
+      bc.complianceStatus = ComplianceStatus.NOT_COMPLIANT;
+      bc.pqcVerdict = {
+        verdict: PQCReadinessVerdict.NOT_PQC_READY,
+        confidence: 85,
+        reasons: [
+          `BouncyCastle provider used with quantum-vulnerable algorithm(s): ${notSafeAlgos.join(', ')}.`,
+          ...(safeAlgos.length > 0 ? [`Also used with quantum-safe algorithm(s): ${safeAlgos.join(', ')}.`] : []),
+          'Each algorithm is classified separately as an individual finding.',
+        ],
+        recommendation: `Migrate ${notSafeAlgos.join(', ')} to post-quantum alternatives (ML-KEM, ML-DSA, SLH-DSA).`,
+      };
+      bc.description = `[RESOLVED] BouncyCastle provider → NOT quantum-safe. Vulnerable algorithms: ${notSafeAlgos.join(', ')}.`
+        + (safeAlgos.length > 0 ? ` Safe algorithms: ${safeAlgos.join(', ')}.` : '');
+    } else if (allSafe) {
+      bc.quantumSafety = QuantumSafetyStatus.QUANTUM_SAFE;
+      bc.complianceStatus = ComplianceStatus.COMPLIANT;
+      bc.pqcVerdict = {
+        verdict: PQCReadinessVerdict.PQC_READY,
+        confidence: 85,
+        reasons: [
+          `BouncyCastle provider used exclusively with quantum-safe algorithm(s): ${safeAlgos.join(', ')}.`,
+        ],
+        recommendation: 'No migration needed.',
+      };
+      bc.description = `[RESOLVED] BouncyCastle provider → quantum-safe. Algorithms: ${safeAlgos.join(', ')}.`;
+    } else if (notSafeAlgos.length === 0 && safeAlgos.length === 0 && projectNotSafe.size > 0) {
+      // No definitive algorithm usage in same file (only conditional or none) —
+      // but project uses vulnerable algos, so the provider likely enables them.
+      const topUnsafe = [...projectNotSafe].slice(0, 5).join(', ');
+      bc.quantumSafety = QuantumSafetyStatus.NOT_QUANTUM_SAFE;
+      bc.complianceStatus = ComplianceStatus.NOT_COMPLIANT;
+      bc.pqcVerdict = {
+        verdict: PQCReadinessVerdict.NOT_PQC_READY,
+        confidence: 60,
+        reasons: [
+          'No direct algorithm usage found in this file, but BouncyCastle provider enables vulnerable algorithms used elsewhere in the project.',
+          `Project-wide vulnerable algorithms: ${topUnsafe}${projectNotSafe.size > 5 ? ` (+${projectNotSafe.size - 5} more)` : ''}.`,
+        ],
+        recommendation: 'Review whether this provider registration enables quantum-vulnerable algorithms in other files.',
+      };
+      bc.description = `[RESOLVED] BouncyCastle provider registered — no direct usage in this file, but project uses vulnerable algorithms (${topUnsafe}).`;
+    }
+    // else: totalAlgos === 0 && no project-wide unsafe → stays CONDITIONAL (unlikely)
+  }
+}
+
+/**
+ * Extract real algorithm names from a BC-Provider description string.
+ * Filters out BC utility class names and extracts algorithm arguments
+ * from patterns like `JcaContentSignerBuilder(SHA256WithRSA)`.
+ */
+function extractAlgosFromDescription(desc: string): string[] {
+  // Match the algorithm list portion of the description
+  const listPatterns = [
+    /Algorithms? (?:used through it|found in same file)\s*:\s*([^.]+)\./,
+    /Cross-file scan found BC usage[^:]*:\s*([^.]+)\./,
+    /Project-wide algorithms detected\s*:\s*([^.]+)\./,
+    /Vulnerable algorithms\s*:\s*([^.]+)\./,
+  ];
+
+  const rawAlgos: string[] = [];
+  for (const re of listPatterns) {
+    const m = desc.match(re);
+    if (m) {
+      rawAlgos.push(...m[1].split(',').map(s => s.trim()).filter(s => s.length > 0));
+    }
+  }
+
+  // Post-process: extract real algo names from BC class patterns
+  const cleaned: string[] = [];
+  for (const raw of rawAlgos) {
+    // e.g. "JcaContentSignerBuilder(SHA256WithRSA)" → extract "SHA256WithRSA"
+    const classArgMatch = raw.match(/^(\w+)\((.+)\)$/);
+    if (classArgMatch) {
+      const className = classArgMatch[1];
+      const arg = classArgMatch[2].trim();
+      if (BC_NON_ALGO_NAMES.has(className) && arg && !/^[a-z]/.test(arg)) {
+        // The argument IS the algorithm (e.g., SHA256WithRSA)
+        cleaned.push(arg);
+      } else if (!BC_NON_ALGO_NAMES.has(className)) {
+        cleaned.push(raw); // Not a known BC class — keep whole thing
+      }
+      // else: known BC class with a non-algo argument (e.g., variable name) — skip
+      continue;
+    }
+
+    // Filter out BC utility class names
+    const baseName = raw.split('(')[0].trim();
+    if (BC_NON_ALGO_NAMES.has(baseName)) continue;
+
+    // Skip bc.* sub-package hints (e.g., "bc.pqc", "bc.tls")
+    if (raw.startsWith('bc.')) continue;
+
+    cleaned.push(raw);
+  }
+
+  return [...new Set(cleaned)];
 }
