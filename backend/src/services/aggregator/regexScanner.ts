@@ -100,6 +100,7 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
 
             // Determine the asset name: use extracted capture group when available,
             // normalise it, then fall back to the static algorithm name.
+            // Always normalise to ensure canonical casing (e.g. "scrypt" → "Scrypt").
             let assetName = algorithm;
             let resolved = false;
             if (extractAlgorithm && match[1]) {
@@ -113,6 +114,11 @@ export async function runRegexCryptoScan(repoPath: string, excludePatterns?: str
                 resolved = true;
               }
               // else keep the generic fallback name (e.g. "KeyPairGenerator")
+            }
+
+            // Always normalise static algorithm names for consistent casing
+            if (!resolved) {
+              assetName = normaliseAlgorithmName(assetName);
             }
 
             // Build description based on detection type
@@ -223,6 +229,8 @@ function scanConfigFiles(
             let assetName = algorithm;
             if (extractAlgorithm && match[1]) {
               assetName = normaliseAlgorithmName(match[1]);
+            } else {
+              assetName = normaliseAlgorithmName(assetName);
             }
 
             const asset: CryptoAsset = {
@@ -470,6 +478,13 @@ const RESOLVABLE_CONDITIONAL_NAMES = new Set([
   'X.509', 'WebCrypto',
   'PBE', 'PKCS12', 'PKCS#12', 'JKS', 'JCEKS', 'PEM', 'PKCS8',
   'KeyPairGenerator', 'KeyFactory', 'Digital-Signature',
+  // PQC libraries & generic categories — resolve to actual algorithms
+  'liboqs', 'PQC', 'PQC-KEM', 'PQC-Signature',
+  // Key type names — resolve to underlying algorithm
+  'SecretKey', 'PrivateKey', 'PublicKey',
+  // Library names — resolve to algorithms used through them
+  'Elliptic-Curves', 'noble-hashes', 'noble-curves',
+  'OpenPGP', 'SSH',
 ]);
 
 /** Non-algorithm utility class names — filter these out of description parsing. */
@@ -483,6 +498,12 @@ const NON_ALGO_NAMES = new Set([
   'KeyStore:PKCS12', 'KeyStore:JKS', 'KeyStore:JCEKS',
   'RSAPublicKey', 'RSAPrivateKey', 'ECPublicKey', 'ECPrivateKey',
   'EdDSAPublicKey', 'EdDSAPrivateKey',
+  // Key type names
+  'SecretKey', 'PrivateKey', 'PublicKey',
+  // PQC generic categories
+  'PQC', 'PQC-KEM', 'PQC-Signature',
+  // Library names
+  'liboqs', 'Elliptic-Curves', 'noble-hashes', 'noble-curves',
 ]);
 
 /** Map key-type words found in descriptions to their quantum-safety classification. */
@@ -493,12 +514,17 @@ const KEY_TYPE_TO_ALGO: Record<string, string> = {
 };
 
 /**
- * Resolve every CONDITIONAL crypto asset that represents a provider, library,
- * format, or utility to a definitive quantum-safety status.
+ * Resolve every crypto asset that represents a provider, library, format,
+ * generic category, or utility to a definitive quantum-safety status based
+ * on the actual algorithms used in the same file.
+ *
+ * Covers: BouncyCastle-Provider, WebCrypto, X.509, liboqs, PQC, PQC-KEM,
+ * PQC-Signature, key types (PrivateKey, PublicKey, SecretKey), etc.
  */
 function resolveConditionalAssets(cbom: CBOMDocument): void {
+  // Pick up ALL assets with resolvable names, regardless of current safety
   const targets = cbom.cryptoAssets.filter(
-    a => a.quantumSafety === QuantumSafetyStatus.CONDITIONAL && RESOLVABLE_CONDITIONAL_NAMES.has(a.name),
+    a => RESOLVABLE_CONDITIONAL_NAMES.has(a.name),
   );
   if (targets.length === 0) return;
 
@@ -506,7 +532,7 @@ function resolveConditionalAssets(cbom: CBOMDocument): void {
   const algosByFile = new Map<string, CryptoAsset[]>();
   for (const a of cbom.cryptoAssets) {
     if (RESOLVABLE_CONDITIONAL_NAMES.has(a.name)) continue;
-    if (a.name === 'SecureRandom') continue;
+    if (a.name === 'SecureRandom' || a.name === 'CSPRNG') continue;
     const fn = a.location?.fileName;
     if (!fn) continue;
     let list = algosByFile.get(fn);

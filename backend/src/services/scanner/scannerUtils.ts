@@ -44,6 +44,12 @@ const FALSE_POSITIVE_NAMES: Set<string> = new Set([
   // ── Go maps ──
   'map',
 
+  // ── Weak (non-cryptographic) PRNGs — not crypto assets ──
+  'java.util.random',     // LCG — predictable, not cryptographic
+  'threadlocalrandom',    // concurrent PRNG — not cryptographic
+  'math.random',          // JS/Java Math.random() — not cryptographic
+  'splittablerandom',     // parallel PRNG — not cryptographic
+
   // ── General non-crypto terms ──
   'hashcode',
   'gethashcode',
@@ -141,20 +147,66 @@ export function shouldExcludeFile(filePath: string, excludePatterns: string[]): 
  *  - "HmacSHA256" → "HMAC-SHA256"
  *  - "SHA256withRSA" → "SHA256withRSA" (leave composite signatures as-is)
  *  - "PBKDF2WithHmacSHA256" → "PBKDF2"
- *  - "aes-256-gcm" → "AES" (OpenSSL cipher names)
+ *  - "aes-256-gcm" → "AES-256-GCM" (OpenSSL cipher names → canonical casing)
  *  - "sha256" → "SHA-256"
+ *  - "scrypt" → "Scrypt"       (case normalisation)
+ *  - "rsa" → "RSA"             (case normalisation)
+ *  - "md5" → "MD5"             (case normalisation)
+ *  - "sha1" → "SHA-1"          (case normalisation)
+ *  - "GCM" → "AES-GCM"        (standalone mode → full algorithm)
+ *  - "ec" → "EC"               (case normalisation)
  */
 export function normaliseAlgorithmName(raw: string): string {
   let name = raw.trim();
+
+  // ── Already well-formed names — return as-is ──
+  // ChaCha20-Poly1305 and similar complete AEAD names — preserve
+  if (/^ChaCha20/i.test(name)) return name;
+
+  // HMAC-SHA variants: normalise to canonical "HMAC-SHA-XXX" form
+  // "HMAC-SHA256" → "HMAC-SHA-256", "HMAC-SHA-256" → "HMAC-SHA-256" (no-op)
+  const hmacDashMatch = name.match(/^HMAC[-_](SHA|MD)[-_]?(\d+)$/i);
+  if (hmacDashMatch) {
+    const hashFamily = hmacDashMatch[1].toUpperCase();
+    const digits = hmacDashMatch[2];
+    return `HMAC-${hashFamily}-${digits}`;
+  }
 
   // Cipher transforms: "AES/CBC/PKCS5Padding" → "AES"
   if (name.includes('/') && !name.startsWith('crypto/')) {
     name = name.split('/')[0];
   }
 
-  // HmacSHA256 → HMAC-SHA256
-  const hmacMatch = name.match(/^Hmac(.+)$/i);
-  if (hmacMatch) {
+  // ── Case-normalisation for well-known bare algorithm names ──
+  const CASE_NORMALISATION: Record<string, string> = {
+    'scrypt': 'Scrypt',
+    'rsa': 'RSA',
+    'ec': 'EC',
+    'md5': 'MD5',
+    'sha1': 'SHA-1',
+    'sha256': 'SHA-256',
+    'sha384': 'SHA-384',
+    'sha512': 'SHA-512',
+    'aes': 'AES',
+    'des': 'DES',
+    'hmac': 'HMAC',
+    'ecdsa': 'ECDSA',
+    'ecdh': 'ECDH',
+    'dsa': 'DSA',
+  };
+  const lower = name.toLowerCase();
+  if (CASE_NORMALISATION[lower]) {
+    return CASE_NORMALISATION[lower];
+  }
+
+  // ── Standalone block-cipher modes → full algorithm name ──
+  if (/^GCM$/i.test(name)) return 'AES-GCM';
+  if (/^CBC$/i.test(name)) return 'AES-CBC';
+  if (/^CTR$/i.test(name)) return 'AES-CTR';
+
+  // HmacSHA256 → HMAC-SHA256  (only match UNSEPARATED form like "HmacSHA256")
+  const hmacMatch = name.match(/^Hmac([A-Za-z0-9]+)$/i);
+  if (hmacMatch && !name.includes('-')) {
     const inner = hmacMatch[1].replace(/^sha/i, 'SHA-').replace(/^md/i, 'MD');
     return `HMAC-${inner}`;
   }
@@ -170,10 +222,21 @@ export function normaliseAlgorithmName(raw: string): string {
     return `SHA-${shaMatch[1]}`;
   }
 
-  // OpenSSL cipher string: "aes-256-gcm" → "AES"
-  const opensslCipherMatch = name.match(/^(aes|des|rc4|rc2|chacha20|blowfish|camellia|aria|sm4)[-_]/i);
-  if (opensslCipherMatch) {
-    return opensslCipherMatch[1].toUpperCase();
+  // Composite signatures: "SHA256withRSA" / "SHA256WithRSA" → "SHA256withRSA"
+  // Normalise to lowercase "with" (Java convention)
+  const compositeMatch = name.match(/^(SHA\d+)(With|WITH)(\w+)$/);
+  if (compositeMatch) {
+    return `${compositeMatch[1]}with${compositeMatch[3]}`;
+  }
+
+  // OpenSSL cipher string: "aes-256-gcm" → "AES-256-GCM" (canonical casing)
+  // Only match lowercase OpenSSL-format strings, not already-canonical names
+  const opensslCipherMatch = name.match(/^(aes|des|rc4|rc2|blowfish|camellia|aria|sm4)[-_](.+)$/i);
+  if (opensslCipherMatch && name !== name.toUpperCase()) {
+    // Preserve full structure with canonical casing
+    const base = opensslCipherMatch[1].toUpperCase();
+    const suffix = opensslCipherMatch[2].toUpperCase();
+    return `${base}-${suffix}`;
   }
 
   // Go crypto package path: "crypto/aes" → "AES"
