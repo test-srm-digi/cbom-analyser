@@ -77,20 +77,30 @@ mkdir -p "$TOOLS_DIR"
 
 # CodeQL CLI (glibc binary — gcompat must be installed in Dockerfile)
 if [ "$ENABLE_CODEQL" = "true" ] && ! command -v codeql &>/dev/null; then
-  echo -e "${YELLOW}⬇  Downloading CodeQL CLI...${NC}"
-  CODEQL_VERSION="v2.20.1"
-  if curl -fsSL "https://github.com/github/codeql-cli-binaries/releases/download/${CODEQL_VERSION}/codeql-linux64.zip" \
-        -o /tmp/codeql.zip 2>/dev/null; then
-    unzip -q /tmp/codeql.zip -d "$TOOLS_DIR" 2>/dev/null
+  # Download the official CodeQL BUNDLE (CLI + all standard QL packs).
+  # The CLI-only download from github/codeql-cli-binaries does NOT include
+  # the standard packs (codeql/java-all, etc.), causing analysis to fail.
+  # See: https://docs.github.com/en/code-security/codeql-cli/getting-started-with-the-codeql-cli/setting-up-the-codeql-cli
+  CODEQL_VERSION="v2.24.2"
+  echo -e "${YELLOW}⬇  Downloading CodeQL bundle ${CODEQL_VERSION} (CLI + QL packs)...${NC}"
+  BUNDLE_URL="https://github.com/github/codeql-action/releases/download/codeql-bundle-${CODEQL_VERSION}/codeql-bundle-linux64.tar.gz"
+  if curl -fsSL "$BUNDLE_URL" -o /tmp/codeql-bundle.tar.gz 2>/dev/null; then
+    tar -xzf /tmp/codeql-bundle.tar.gz -C "$TOOLS_DIR" 2>/dev/null
     if [ -x "$TOOLS_DIR/codeql/codeql" ]; then
       ln -sf "$TOOLS_DIR/codeql/codeql" /usr/local/bin/codeql
-      echo -e "${GREEN}   ✓ CodeQL ${CODEQL_VERSION} installed${NC}"
+      echo -e "${GREEN}   ✓ CodeQL bundle ${CODEQL_VERSION} installed${NC}"
+      # Verify bundled packs are present
+      if [ -d "$TOOLS_DIR/codeql/qlpacks/codeql/java-all" ]; then
+        echo -e "${GREEN}   ✓ Bundled QL packs verified (codeql/java-all present)${NC}"
+      else
+        echo -e "${YELLOW}   ⚠ Bundled QL packs not found at expected location${NC}"
+      fi
     else
       echo -e "${YELLOW}   ⚠ CodeQL extraction failed (non-blocking)${NC}"
     fi
-    rm -f /tmp/codeql.zip
+    rm -f /tmp/codeql-bundle.tar.gz
   else
-    echo -e "${YELLOW}   ⚠ CodeQL download failed (non-blocking)${NC}"
+    echo -e "${YELLOW}   ⚠ CodeQL bundle download failed (non-blocking)${NC}"
   fi
 fi
 

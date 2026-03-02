@@ -1284,6 +1284,14 @@ $_pqc-review: $warning-200;
   height: 16px;
 }
 
+// ── Combined Actions cell (AI Fix + Create Ticket) ────────
+.actionsCell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
 // ── Create Ticket button (per-row action) ─────────────────
 .ticketBtn {
   display: inline-flex;

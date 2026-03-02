@@ -306,7 +306,7 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
   const resizingCol = useRef<{ idx: number; startX: number; startW: number } | null>(null);
 
   // Per-column minimum widths (index-matched to colgroup order)
-  const COL_MIN: Record<number, number> = { 0: 120, 1: 170, 2: 100, 3: 140, 4: 170, 5: 100, 6: 120, 7: 240, 8: 110 };
+  const COL_MIN: Record<number, number> = { 0: 120, 1: 170, 2: 100, 3: 140, 4: 170, 5: 100, 6: 120, 7: 280 };
 
   /* ── Policy evaluation per asset ──────────────────────── */
   const { data: dbPolicies = [] } = useGetPoliciesQuery();
@@ -799,7 +799,6 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
             <col style={{ width: colWidths[4] || COL_MIN[4], minWidth: COL_MIN[4] }} />
             <col style={{ width: colWidths[5] || COL_MIN[5], minWidth: COL_MIN[5] }} />
             <col style={{ width: colWidths[6] || COL_MIN[6], minWidth: COL_MIN[6] }} />
-            <col style={{ width: colWidths[7] || COL_MIN[7], minWidth: COL_MIN[7] }} />
           </colgroup>
           <thead className={s.thead}>
             <tr>
@@ -834,13 +833,8 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
               <th className={s.thAi}>
                 <span className={s.thAiInner}>
                   <Sparkles className={s.aiSparkle} />
-                  <span className={s.aiLabel}>AI Suggested Fix</span>
+                  <span className={s.aiLabel}>Actions</span>
                 </span>
-                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 7)} />
-              </th>
-              <th className={s.th}>
-                Actions
-                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 8)} />
               </th>
             </tr>
           </thead>
@@ -951,7 +945,7 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                   />
                 </td>
 
-                {/* Suggested Fix */}
+                {/* Actions: AI Fix + Create Ticket */}
                 <td className={s.td} style={{ minWidth: 260 }}>
                   {(() => {
                     const sg = suggestions[asset.id];
@@ -1007,6 +1001,41 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                           {sg.collapsed && (
                             <p className={s.suggTextCollapsed}>{sg.fix}</p>
                           )}
+
+                          {/* Create Ticket in result view */}
+                          {asset.quantumSafety !== QuantumSafetyStatus.QUANTUM_SAFE && (
+                            <button
+                              className={s.ticketBtn}
+                              style={{ marginTop: 8 }}
+                              title="Create remediation ticket"
+                              onClick={() => {
+                                const ghMatch = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+                                const effectiveBranch = branch === 'custom' ? customBranch : branch;
+                                setTicketCtx({
+                                  entityType: 'Software',
+                                  entityName: asset.name,
+                                  quantumSafe: asset.quantumSafety === 'quantum-safe',
+                                  problemStatement: `Cryptographic asset "${asset.name}" is classified as ${getStatusLabel(asset.quantumSafety)}.${asset.keyLength ? ` Key length: ${asset.keyLength}-bit.` : ''}${asset.cryptoProperties?.algorithmProperties?.primitive ? ` Primitive: ${asset.cryptoProperties.algorithmProperties.primitive}.` : ''}`,
+                                  details: {
+                                    algorithm: asset.name,
+                                    keyLength: asset.keyLength != null ? String(asset.keyLength) : undefined,
+                                    primitive: asset.cryptoProperties?.algorithmProperties?.primitive,
+                                    quantumSafety: asset.quantumSafety,
+                                    pqcVerdict: asset.pqcVerdict?.verdict,
+                                    location: asset.location ? `${asset.location.fileName}${asset.location.lineNumber ? ':' + asset.location.lineNumber : ''}` : undefined,
+                                    source: asset.provider,
+                                  },
+                                  severity: asset.quantumSafety === 'not-quantum-safe' ? 'Critical' : asset.quantumSafety === 'conditional' ? 'High' : 'Medium',
+                                  aiSuggestion: sg?.fix,
+                                  githubRepo: ghMatch ? ghMatch[1] : undefined,
+                                  githubBranch: effectiveBranch || undefined,
+                                });
+                              }}
+                            >
+                              <Ticket className={s.ticketBtnIcon} />
+                              Create Ticket
+                            </button>
+                          )}
                         </div>
                       );
                     }
@@ -1014,23 +1043,51 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                     /* ---------- Error ---------- */
                     if (sg?.error) {
                       return (
-                        <button
-                          onClick={() => fetchSuggestion(asset)}
-                          className={s.retryBtn}
-                        >
-                          <Sparkles className={s.retryIcon} /> Retry
-                        </button>
+                        <div className={s.actionsCell}>
+                          <button
+                            onClick={() => fetchSuggestion(asset)}
+                            className={s.retryBtn}
+                          >
+                            <Sparkles className={s.retryIcon} /> Retry
+                          </button>
+                          {asset.quantumSafety !== QuantumSafetyStatus.QUANTUM_SAFE && (
+                            <button
+                              className={s.ticketBtn}
+                              title="Create remediation ticket"
+                              onClick={() => {
+                                const ghMatch = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+                                const effectiveBranch = branch === 'custom' ? customBranch : branch;
+                                setTicketCtx({
+                                  entityType: 'Software',
+                                  entityName: asset.name,
+                                  quantumSafe: asset.quantumSafety === 'quantum-safe',
+                                  problemStatement: `Cryptographic asset "${asset.name}" is classified as ${getStatusLabel(asset.quantumSafety)}.${asset.keyLength ? ` Key length: ${asset.keyLength}-bit.` : ''}${asset.cryptoProperties?.algorithmProperties?.primitive ? ` Primitive: ${asset.cryptoProperties.algorithmProperties.primitive}.` : ''}`,
+                                  details: {
+                                    algorithm: asset.name,
+                                    keyLength: asset.keyLength != null ? String(asset.keyLength) : undefined,
+                                    primitive: asset.cryptoProperties?.algorithmProperties?.primitive,
+                                    quantumSafety: asset.quantumSafety,
+                                    pqcVerdict: asset.pqcVerdict?.verdict,
+                                    location: asset.location ? `${asset.location.fileName}${asset.location.lineNumber ? ':' + asset.location.lineNumber : ''}` : undefined,
+                                    source: asset.provider,
+                                  },
+                                  severity: asset.quantumSafety === 'not-quantum-safe' ? 'Critical' : asset.quantumSafety === 'conditional' ? 'High' : 'Medium',
+                                  githubRepo: ghMatch ? ghMatch[1] : undefined,
+                                  githubBranch: effectiveBranch || undefined,
+                                });
+                              }}
+                            >
+                              <Ticket className={s.ticketBtnIcon} />
+                              Create Ticket
+                            </button>
+                          )}
+                        </div>
                       );
                     }
 
-                    /* ---------- Idle (show PQC hint + button) ---------- */
+                    /* ---------- Idle (show AI Fix + Create Ticket) ---------- */
                     return (
-                      <div className={s.suggIdle}>
-                        {asset.recommendedPQC && (
-                          <span className={s.suggHint}>
-                            Migrate to <span className={s.suggHintAlgo}>{asset.recommendedPQC}</span>
-                          </span>
-                        )}
+                      <div className={s.actionsCell}>
                         <button
                           onClick={() => fetchSuggestion(asset)}
                           className={s.aiFixBtn}
@@ -1039,47 +1096,42 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                           <Sparkles className={s.aiFixIcon} />
                           AI Fix
                         </button>
+                        {asset.quantumSafety !== QuantumSafetyStatus.QUANTUM_SAFE && (
+                          <button
+                            className={s.ticketBtn}
+                            title="Create remediation ticket"
+                            onClick={() => {
+                              const sg2 = suggestions[asset.id];
+                              const ghMatch = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+                              const effectiveBranch = branch === 'custom' ? customBranch : branch;
+                              setTicketCtx({
+                                entityType: 'Software',
+                                entityName: asset.name,
+                                quantumSafe: asset.quantumSafety === 'quantum-safe',
+                                problemStatement: `Cryptographic asset "${asset.name}" is classified as ${getStatusLabel(asset.quantumSafety)}.${asset.keyLength ? ` Key length: ${asset.keyLength}-bit.` : ''}${asset.cryptoProperties?.algorithmProperties?.primitive ? ` Primitive: ${asset.cryptoProperties.algorithmProperties.primitive}.` : ''}`,
+                                details: {
+                                  algorithm: asset.name,
+                                  keyLength: asset.keyLength != null ? String(asset.keyLength) : undefined,
+                                  primitive: asset.cryptoProperties?.algorithmProperties?.primitive,
+                                  quantumSafety: asset.quantumSafety,
+                                  pqcVerdict: asset.pqcVerdict?.verdict,
+                                  location: asset.location ? `${asset.location.fileName}${asset.location.lineNumber ? ':' + asset.location.lineNumber : ''}` : undefined,
+                                  source: asset.provider,
+                                },
+                                severity: asset.quantumSafety === 'not-quantum-safe' ? 'Critical' : asset.quantumSafety === 'conditional' ? 'High' : 'Medium',
+                                aiSuggestion: sg2?.fix,
+                                githubRepo: ghMatch ? ghMatch[1] : undefined,
+                                githubBranch: effectiveBranch || undefined,
+                              });
+                            }}
+                          >
+                            <Ticket className={s.ticketBtnIcon} />
+                            Create Ticket
+                          </button>
+                        )}
                       </div>
                     );
                   })()}
-                </td>
-
-                {/* Create Ticket — only for non-quantum-safe assets */}
-                <td className={s.td}>
-                  {asset.quantumSafety !== QuantumSafetyStatus.QUANTUM_SAFE && (
-                  <button
-                    className={s.ticketBtn}
-                    title="Create remediation ticket"
-                    onClick={() => {
-                      const sg = suggestions[asset.id];
-                      // Extract owner/repo from repoUrl (e.g. https://github.com/owner/repo)
-                      const ghMatch = repoUrl.match(/github\.com\/([^/]+\/[^/]+)/);
-                      const effectiveBranch = branch === 'custom' ? customBranch : branch;
-                      setTicketCtx({
-                        entityType: 'Software',
-                        entityName: asset.name,
-                        quantumSafe: asset.quantumSafety === 'quantum-safe',
-                        problemStatement: `Cryptographic asset "${asset.name}" is classified as ${getStatusLabel(asset.quantumSafety)}.${asset.keyLength ? ` Key length: ${asset.keyLength}-bit.` : ''}${asset.cryptoProperties?.algorithmProperties?.primitive ? ` Primitive: ${asset.cryptoProperties.algorithmProperties.primitive}.` : ''}`,
-                        details: {
-                          algorithm: asset.name,
-                          keyLength: asset.keyLength != null ? String(asset.keyLength) : undefined,
-                          primitive: asset.cryptoProperties?.algorithmProperties?.primitive,
-                          quantumSafety: asset.quantumSafety,
-                          pqcVerdict: asset.pqcVerdict?.verdict,
-                          location: asset.location ? `${asset.location.fileName}${asset.location.lineNumber ? ':' + asset.location.lineNumber : ''}` : undefined,
-                          source: asset.provider,
-                        },
-                        severity: asset.quantumSafety === 'not-quantum-safe' ? 'Critical' : asset.quantumSafety === 'conditional' ? 'High' : 'Medium',
-                        aiSuggestion: sg?.fix,
-                        githubRepo: ghMatch ? ghMatch[1] : undefined,
-                        githubBranch: effectiveBranch || undefined,
-                      });
-                    }}
-                  >
-                    <Ticket className={s.ticketBtnIcon} />
-                    Create Ticket
-                  </button>
-                  )}
                 </td>
 
               </tr>

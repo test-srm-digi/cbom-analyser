@@ -103,11 +103,11 @@ export async function runCodeQLAnalysis(
     }
 
     // Write qlpack.yml — use libraryPathDependencies so CodeQL resolves
-    // codeql/java-all from the bundled packs shipped with the CLI.
-    // Using `dependencies: codeql/java-all: "*"` would download the
-    // latest version from the registry which may be incompatible with
-    // the installed CLI (e.g. v8.x packs use nullable `?` syntax that
-    // older CLI versions cannot parse).
+    // codeql/java-all from the bundled packs shipped with the CodeQL bundle.
+    // The bundle (from github/codeql-action releases) includes all standard
+    // packs in <codeql-root>/qlpacks/, which --search-path discovers.
+    // Do NOT use `dependencies` format — that triggers registry download
+    // via `codeql pack install` which may fetch an incompatible version.
     fs.writeFileSync(path.join(queryDir, 'qlpack.yml'), [
       'name: cbom-crypto-queries',
       'version: 0.0.1',
@@ -115,7 +115,9 @@ export async function runCodeQLAnalysis(
       '  - codeql/java-all',
     ].join('\n'));
 
-    // Resolve CodeQL home for --search-path (still useful for bundled packs)
+    // Resolve CodeQL home directory for --search-path.
+    // The bundle extracts to e.g. /opt/cbom-tools/codeql/ with packs in qlpacks/.
+    // --search-path tells CodeQL to search this root for bundled packs.
     let codeqlHome = '';
     try {
       const bin = execSync('which codeql', { encoding: 'utf-8' }).trim();
@@ -126,21 +128,19 @@ export async function runCodeQLAnalysis(
     }
     const searchPathFlag = codeqlHome ? `--search-path="${codeqlHome}"` : '';
 
-    // libraryPathDependencies resolves from bundled packs — no `codeql pack install` needed.
-    // Verify the bundled pack is discoverable via the search path.
+    // Verify the bundled java-all pack is discoverable via the search path.
+    // This catches misconfiguration early (e.g. CLI-only download without packs).
     if (codeqlHome) {
-      try {
-        const { stdout: resolvedPacks } = await execAsync(
-          `codeql resolve qlpacks ${searchPathFlag} 2>/dev/null | grep java-all || true`,
-          { timeout: 15000 },
+      const qlpacksDir = path.join(codeqlHome, 'qlpacks', 'codeql', 'java-all');
+      if (fs.existsSync(qlpacksDir)) {
+        const versions = fs.readdirSync(qlpacksDir).filter(d => !d.startsWith('.'));
+        console.log(`CodeQL: bundled codeql/java-all found (${versions[0] || 'unknown version'})`);
+      } else {
+        console.warn(
+          'CodeQL: codeql/java-all NOT found in bundle. ' +
+          'Ensure the CodeQL *bundle* (not CLI-only) is installed. ' +
+          'See: https://docs.github.com/en/code-security/codeql-cli/getting-started-with-the-codeql-cli/setting-up-the-codeql-cli',
         );
-        if (resolvedPacks.trim()) {
-          console.log(`CodeQL: bundled pack found — ${resolvedPacks.trim().split('\n')[0]}`);
-        } else {
-          console.log('CodeQL: codeql/java-all not found in search path — analysis may fail');
-        }
-      } catch {
-        // Non-blocking — analysis will still attempt
       }
     }
 
@@ -219,11 +219,14 @@ export async function runCodeQLAnalysis(
 
     if (!dbCreated) return [];
 
-    // Step 2: Run queries (--search-path tells CodeQL where to find bundled java-all library)
+    // Step 2: Run queries
+    // --search-path tells CodeQL where to find the bundled java-all library packs.
+    // --additional-packs gives priority to the bundle root for pack resolution.
     const sarifOutput = path.join(tmpDir, 'results.sarif');
+    const additionalPacksFlag = codeqlHome ? `--additional-packs="${codeqlHome}"` : '';
     console.log('CodeQL: running crypto analysis queries...');
     try {
-      const analyzeCmd = `codeql database analyze "${dbDir}" "${queryDir}" --format=sarifv2.1.0 --output="${sarifOutput}" ${searchPathFlag} 2>&1`;
+      const analyzeCmd = `codeql database analyze "${dbDir}" "${queryDir}" --format=sarifv2.1.0 --output="${sarifOutput}" ${searchPathFlag} ${additionalPacksFlag} 2>&1`;
       console.log(`CodeQL: ${analyzeCmd}`);
       const { stdout: analyzeOut } = await execAsync(analyzeCmd, { timeout: 600000 });
       console.log(`CodeQL: analyze completed — ${analyzeOut.slice(-200)}`);
