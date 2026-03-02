@@ -984,6 +984,18 @@ $_pqc-review: $warning-200;
   font-size: 12px;
 }
 
+// ── Language column ──────────────────────────────────────────
+.langBadge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(130, 140, 160, 0.10);
+  color: $dc1-text;
+  white-space: nowrap;
+}
+
 // ── AI Suggestion column ─────────────────────────────────────
 .suggLoading {
   display: flex;

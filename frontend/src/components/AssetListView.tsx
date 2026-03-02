@@ -92,6 +92,53 @@ function getStatusIcon(status?: QuantumSafetyStatus) {
   }
 }
 
+/** Derive programming language from a file path's extension. */
+function getLanguageFromFileName(fileName?: string): string {
+  if (!fileName) return '—';
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  const map: Record<string, string> = {
+    java: 'Java',
+    kt: 'Kotlin',
+    kts: 'Kotlin',
+    py: 'Python',
+    js: 'JavaScript',
+    jsx: 'JavaScript',
+    ts: 'TypeScript',
+    tsx: 'TypeScript',
+    cs: 'C#',
+    c: 'C',
+    cpp: 'C++',
+    cxx: 'C++',
+    cc: 'C++',
+    h: 'C/C++',
+    hpp: 'C++',
+    hxx: 'C++',
+    go: 'Go',
+    rs: 'Rust',
+    php: 'PHP',
+    rb: 'Ruby',
+    swift: 'Swift',
+    scala: 'Scala',
+    pem: 'Certificate',
+    crt: 'Certificate',
+    cer: 'Certificate',
+    key: 'Key File',
+    p12: 'Certificate',
+    pfx: 'Certificate',
+    jks: 'Java Keystore',
+    pub: 'Public Key',
+    json: 'Config (JSON)',
+    yml: 'Config (YAML)',
+    yaml: 'Config (YAML)',
+    xml: 'Config (XML)',
+    properties: 'Config (Properties)',
+    conf: 'Config',
+    cnf: 'Config',
+    security: 'Config (Security)',
+  };
+  return map[ext || ''] || ext?.toUpperCase() || '—';
+}
+
 function confidenceBadge(level?: string) {
   if (!level) return null;
   const map: Record<string, string> = {
@@ -235,7 +282,7 @@ function buildGitHubFileUrl(repoUrl: string, branch: string, basePath: string, f
 export default function AssetListView({ assets, repository }: AssetListViewProps) {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [sortField, setSortField] = useState<'name' | 'primitive' | 'location' | 'safety'>('name');
+  const [sortField, setSortField] = useState<'name' | 'primitive' | 'location' | 'safety' | 'language'>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [filterText, setFilterText] = useState('');
   const [safetyFilter, setSafetyFilter] = useState<Set<QuantumSafetyStatus | 'unknown'>>(new Set());
@@ -259,7 +306,7 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
   const resizingCol = useRef<{ idx: number; startX: number; startW: number } | null>(null);
 
   // Per-column minimum widths (index-matched to colgroup order)
-  const COL_MIN: Record<number, number> = { 0: 120, 1: 170, 2: 100, 3: 140, 4: 170, 5: 120, 6: 240, 7: 110 };
+  const COL_MIN: Record<number, number> = { 0: 120, 1: 170, 2: 100, 3: 140, 4: 170, 5: 100, 6: 120, 7: 240, 8: 110 };
 
   /* ── Policy evaluation per asset ──────────────────────── */
   const { data: dbPolicies = [] } = useGetPoliciesQuery();
@@ -472,7 +519,8 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
         a.name.toLowerCase().includes(q) ||
         a.location?.fileName.toLowerCase().includes(q) ||
         a.cryptoProperties?.algorithmProperties?.primitive?.toLowerCase().includes(q) ||
-        getStatusLabel(a.quantumSafety).toLowerCase().includes(q)
+        getStatusLabel(a.quantumSafety).toLowerCase().includes(q) ||
+        getLanguageFromFileName(a.location?.fileName).toLowerCase().includes(q)
       );
     }
 
@@ -494,6 +542,10 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
         const sa = safetyOrder[a.quantumSafety ?? 'unknown'] ?? 2;
         const sb = safetyOrder[b.quantumSafety ?? 'unknown'] ?? 2;
         cmp = sa - sb;
+      } else if (sortField === 'language') {
+        const la = getLanguageFromFileName(a.location?.fileName);
+        const lb = getLanguageFromFileName(b.location?.fileName);
+        cmp = la.localeCompare(lb);
       } else {
         const la = a.location?.fileName || '';
         const lb = b.location?.fileName || '';
@@ -507,7 +559,7 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
   const totalPages = Math.ceil(filtered.length / perPage);
   const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
-  function toggleSort(field: 'name' | 'primitive' | 'location' | 'safety') {
+  function toggleSort(field: 'name' | 'primitive' | 'location' | 'safety' | 'language') {
     if (sortField === field) {
       setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     } else {
@@ -747,6 +799,7 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
             <col style={{ width: colWidths[4] || COL_MIN[4], minWidth: COL_MIN[4] }} />
             <col style={{ width: colWidths[5] || COL_MIN[5], minWidth: COL_MIN[5] }} />
             <col style={{ width: colWidths[6] || COL_MIN[6], minWidth: COL_MIN[6] }} />
+            <col style={{ width: colWidths[7] || COL_MIN[7], minWidth: COL_MIN[7] }} />
           </colgroup>
           <thead className={s.thead}>
             <tr>
@@ -770,20 +823,24 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                 Location {sortField === 'location' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
                 <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 4)} />
               </th>
+              <th className={s.th} onClick={() => toggleSort('language')}>
+                Language {sortField === 'language' ? (sortDir === 'asc' ? '↑' : '↓') : ''}
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 5)} />
+              </th>
               <th className={s.th}>
                 Policy Violations
-                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 5)} />
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 6)} />
               </th>
               <th className={s.thAi}>
                 <span className={s.thAiInner}>
                   <Sparkles className={s.aiSparkle} />
                   <span className={s.aiLabel}>AI Suggested Fix</span>
                 </span>
-                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 6)} />
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 7)} />
               </th>
               <th className={s.th}>
                 Actions
-                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 7)} />
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 8)} />
               </th>
             </tr>
           </thead>
@@ -869,6 +926,11 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
                   ) : (
                     <span className={s.noDash}>—</span>
                   )}
+                </td>
+
+                {/* Language */}
+                <td className={s.td}>
+                  <span className={s.langBadge}>{getLanguageFromFileName(asset.location?.fileName)}</span>
                 </td>
 
                 {/* Policy Violations */}

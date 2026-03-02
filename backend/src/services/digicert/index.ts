@@ -1,20 +1,16 @@
 /**
- * DigiCert TLM Connector — thin re-export shim.
- *
- * Implementation has moved to the `digicert/` module for cleaner separation.
- * This file preserves backward compatibility for all existing importers.
+ * DigiCert TLM Connector — Barrel Exports
  */
+export { fetchCertificatesFromDigiCert } from './connector';
+export { testDigiCertConnection } from './testConnection';
+export { digicertRequest } from './httpClient';
 export {
-  fetchCertificatesFromDigiCert,
-  testDigiCertConnection,
-  digicertRequest,
   isQuantumSafe,
   normaliseAlgorithm,
   normaliseStatus,
   extractCaVendor,
   detectCertificateApiPath,
-} from './digicert';
-
+} from './utils';
 export {
   PAGE_SIZE,
   MAX_PAGES,
@@ -22,12 +18,11 @@ export {
   CERTIFICATE_API_PATHS,
   ACCOUNT_API_PATH,
   QUANTUM_SAFE_ALGORITHMS,
-} from './digicert';
-
+} from './constants';
 export type {
   CertEndpointCandidate,
   DigiCertCertificate,
   DigiCertListResponse,
   DigiCertUserResponse,
   DetectedEndpoint,
-} from './digicert';
+} from './types';

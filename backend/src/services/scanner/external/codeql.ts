@@ -38,24 +38,26 @@ export const CODEQL_QUERIES: Record<string, string> = {
  */
 import java
 
-from MethodAccess ma, StringLiteral sl
+from MethodAccess ma, StringLiteral sl, string className, string algoValue
 where
   ma.getMethod().hasName("getInstance") and
   sl = ma.getArgument(0) and
+  className = ma.getMethod().getDeclaringType().getName() and
+  algoValue = sl.getValue() and
   (
-    ma.getMethod().getDeclaringType().hasName("MessageDigest") or
-    ma.getMethod().getDeclaringType().hasName("Cipher") or
-    ma.getMethod().getDeclaringType().hasName("KeyGenerator") or
-    ma.getMethod().getDeclaringType().hasName("Signature") or
-    ma.getMethod().getDeclaringType().hasName("KeyPairGenerator") or
-    ma.getMethod().getDeclaringType().hasName("KeyAgreement") or
-    ma.getMethod().getDeclaringType().hasName("Mac") or
-    ma.getMethod().getDeclaringType().hasName("SSLContext") or
-    ma.getMethod().getDeclaringType().hasName("AlgorithmParameters") or
-    ma.getMethod().getDeclaringType().hasName("SecretKeyFactory") or
-    ma.getMethod().getDeclaringType().hasName("KeyFactory")
+    className = "MessageDigest" or
+    className = "Cipher" or
+    className = "KeyGenerator" or
+    className = "Signature" or
+    className = "KeyPairGenerator" or
+    className = "KeyAgreement" or
+    className = "Mac" or
+    className = "SSLContext" or
+    className = "AlgorithmParameters" or
+    className = "SecretKeyFactory" or
+    className = "KeyFactory"
   )
-select ma, ma.getMethod().getDeclaringType().getName() + ".getInstance() uses algorithm: " + sl.getValue()
+select ma, className + ".getInstance() uses algorithm: " + algoValue
   `.trim(),
 };
 
