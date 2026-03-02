@@ -44,12 +44,22 @@ export function classifyAlgorithm(algorithmName: string): AlgorithmProfile {
     }
   }
 
-  // Partial match (e.g., "RSA-OAEP" matches "RSA")
+  // Partial match — prefer the LONGEST matching prefix.
+  // Uses startsWith (not includes) to avoid false substring matches:
+  //   e.g. "SLH-DSA-SHA2-128s" must NOT match "DSA" via includes().
+  let bestMatch: AlgorithmProfile | null = null;
+  let bestLen = 0;
   for (const [key, profile] of Object.entries(ALGORITHM_DATABASE)) {
-    if (normalized.includes(key.toUpperCase()) || key.toUpperCase().includes(normalized)) {
-      return profile;
+    const keyUpper = key.toUpperCase();
+    if (normalized.startsWith(keyUpper) && keyUpper.length > bestLen) {
+      bestMatch = profile;
+      bestLen = keyUpper.length;
+    } else if (keyUpper.startsWith(normalized) && normalized.length > bestLen) {
+      bestMatch = profile;
+      bestLen = normalized.length;
     }
   }
+  if (bestMatch) return bestMatch;
 
   return {
     quantumSafety: QuantumSafetyStatus.UNKNOWN,

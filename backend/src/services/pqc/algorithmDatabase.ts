@@ -265,6 +265,101 @@ export const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
     notes: 'Leighton-Micali Signature (RFC 8554) — stateful hash-based signature, quantum-safe.',
   },
+  'HSS': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Hierarchical Signature System (multi-tree LMS) — stateful hash-based signature, quantum-safe.',
+  },
+  'NTRU': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Lattice-based KEM/encryption — conservative post-quantum candidate, quantum-safe.',
+  },
+  'Classic-McEliece': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Code-based KEM (NIST round 4) — conservative post-quantum candidate, quantum-safe.',
+  },
+  'CMCE': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Classic McEliece (BouncyCastle alias) — code-based KEM, quantum-safe.',
+  },
+  'Falcon-512': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Falcon signature at NIST security level 1 — compact lattice-based PQC signature.',
+  },
+  'Falcon-1024': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Falcon signature at NIST security level 5 — compact lattice-based PQC signature.',
+  },
+  // SLH-DSA parameter sets (FIPS 205) — all quantum-safe
+  'SLH-DSA-SHA2-128s': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SLH-DSA SHA2 128-bit small variant (FIPS 205)',
+  },
+  'SLH-DSA-SHA2-128f': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SLH-DSA SHA2 128-bit fast variant (FIPS 205)',
+  },
+  'SLH-DSA-SHA2-192s': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SLH-DSA SHA2 192-bit small variant (FIPS 205)',
+  },
+  'SLH-DSA-SHA2-192f': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SLH-DSA SHA2 192-bit fast variant (FIPS 205)',
+  },
+  'SLH-DSA-SHA2-256s': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SLH-DSA SHA2 256-bit small variant (FIPS 205)',
+  },
+  'SLH-DSA-SHA2-256f': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SLH-DSA SHA2 256-bit fast variant (FIPS 205)',
+  },
+  'SLH-DSA-SHAKE-128s': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SLH-DSA SHAKE 128-bit small variant (FIPS 205)',
+  },
+  'SLH-DSA-SHAKE-128f': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SLH-DSA SHAKE 128-bit fast variant (FIPS 205)',
+  },
+  'SLH-DSA-SHAKE-192s': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SLH-DSA SHAKE 192-bit small variant (FIPS 205)',
+  },
+  'SLH-DSA-SHAKE-192f': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SLH-DSA SHAKE 192-bit fast variant (FIPS 205)',
+  },
+  'SLH-DSA-SHAKE-256s': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SLH-DSA SHAKE 256-bit small variant (FIPS 205)',
+  },
+  'SLH-DSA-SHAKE-256f': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'SLH-DSA SHAKE 256-bit fast variant (FIPS 205)',
+  },
+
+  // PQC library / generic category entries
+  'liboqs': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Open Quantum Safe liboqs library — all algorithms are post-quantum.',
+  },
+  'PQC-KEM': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Post-quantum Key Encapsulation Mechanism — quantum-safe by definition.',
+  },
+  'PQC-Signature': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Post-quantum digital signature — quantum-safe by definition.',
+  },
+  'PQC': {
+    quantumSafety: QuantumSafetyStatus.QUANTUM_SAFE,
+    notes: 'Generic post-quantum cryptography construct — quantum-safe by definition.',
+  },
+  'PrivateKey': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'Generic private key — quantum safety depends on the key type (RSA/EC → vulnerable, ML-DSA/ML-KEM → safe).',
+  },
 
   // PRNGs / CSPRNGs
   'SecureRandom': {

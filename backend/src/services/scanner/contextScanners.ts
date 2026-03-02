@@ -142,8 +142,9 @@ export function scanNearbyContext(lines: string[], matchLine: number, assetName:
     if (!algoRefs.includes(m[1])) algoRefs.push(m[1]);
   }
 
-  // Signature algorithm references
-  const sigAlgoRe = /(SHA\d+with\w+|MD5with\w+|Ed25519|Ed448|ECDSA|RSA|DSA)/g;
+  // Signature algorithm references — use negative lookbehind/lookahead to
+  // avoid matching "DSA" inside "ML-DSA-65" or "RSA" inside "RSA-OAEP".
+  const sigAlgoRe = /(?<![A-Za-z0-9-])(SHA\d+[wW]ith\w+|MD5[wW]ith\w+|Ed25519|Ed448|ECDSA|RSA|DSA)(?![A-Za-z0-9-])/g;
   while ((m = sigAlgoRe.exec(nearbyText)) !== null) {
     if (!algoRefs.includes(m[1])) algoRefs.push(m[1]);
   }
