@@ -253,7 +253,7 @@ export const javaPatterns: CryptoPattern[] = [
   { pattern: /new\s+MD4Digest\s*\(/g, algorithm: 'MD4', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },
 
   // ── PBE without strong KDF (CrySL ConstraintError) ──
-  { pattern: /Cipher\.getInstance\s*\(\s*"PBEWith([^"]+)"/g, algorithm: 'PBE', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.ENCRYPT, extractAlgorithm: true },
+  { pattern: /Cipher\.getInstance\s*\(\s*"(PBEWith[^"]+)"/g, algorithm: 'PBE', primitive: CryptoPrimitive.KEY_DERIVATION, cryptoFunction: CryptoFunction.ENCRYPT, extractAlgorithm: true },
 
   // ── Deprecated Apache Commons Codec / custom Base64 (not crypto per se, but CrySL flags these) ──
   { pattern: /MessageDigest\.getInstance\s*\(\s*"MD5"\s*\)/g, algorithm: 'MD5', primitive: CryptoPrimitive.HASH, cryptoFunction: CryptoFunction.HASH_FUNCTION },

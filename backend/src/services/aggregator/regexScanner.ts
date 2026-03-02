@@ -476,7 +476,7 @@ const RESOLVABLE_CONDITIONAL_NAMES = new Set([
   'JCE-Signature-Registration', 'JCE-KeyPairGen-Registration', 'JCE-Digest-Registration',
   'ring', 'node-forge', 'crypto-js', 'openssl',
   'X.509', 'WebCrypto',
-  'PBE', 'PKCS12', 'PKCS#12', 'JKS', 'JCEKS', 'PEM', 'PKCS8',
+  'PKCS12', 'PKCS#12', 'JKS', 'JCEKS', 'PEM', 'PKCS8',
   'KeyPairGenerator', 'KeyFactory', 'Digital-Signature',
   // PQC libraries & generic categories — resolve to actual algorithms
   'liboqs', 'PQC', 'PQC-KEM', 'PQC-Signature',

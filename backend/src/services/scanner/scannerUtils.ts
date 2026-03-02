@@ -216,6 +216,13 @@ export function normaliseAlgorithmName(raw: string): string {
     return 'PBKDF2';
   }
 
+  // PBE suffixes without prefix: "MD5AndDES" → "PBEWithMD5AndDES" etc.
+  // Handles orphaned capture-group output from older regex patterns.
+  const pbeSuffixMatch = name.match(/^((?:MD5|SHA1|SHA-1|HmacSHA\d+)And(?:DES|DESede|RC2[-_]?\d*|AES[-_]?\d*))$/i);
+  if (pbeSuffixMatch) {
+    return `PBEWith${pbeSuffixMatch[1]}`;
+  }
+
   // SHA256 → SHA-256 (insert dash if missing)
   const shaMatch = name.match(/^SHA(\d{3,4})$/i);
   if (shaMatch) {

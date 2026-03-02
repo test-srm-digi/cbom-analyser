@@ -854,8 +854,9 @@ export const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
 
   // Password-Based Encryption
   'PBE': {
-    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
-    notes: 'Password-Based Encryption — symmetric-derived, not directly broken by quantum computers. Grover\'s halves effective key-derivation work factor. Review underlying cipher and iteration count.',
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    recommendedPQC: 'PBKDF2-HMAC-SHA256 + AES-256',
+    notes: 'Password-Based Encryption — generic PBE without a known strong variant. Most legacy PBE implementations use weak constructions (MD5+DES, SHA-1+3DES). Grover\'s halves effective key-derivation work factor. Migrate to PBKDF2 with HMAC-SHA-256 and AES-256.',
   },
   'PBEWithMD5AndDES': {
     quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
@@ -875,6 +876,10 @@ export const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
   'PBEWithHmacSHA256AndAES_256': {
     quantumSafety: QuantumSafetyStatus.CONDITIONAL,
     notes: 'PBE with HMAC-SHA256 and AES-256 — strong configuration. Not directly quantum-vulnerable.',
+  },
+  'PBEWithSHA256And256BitAES-CBC-BC': {
+    quantumSafety: QuantumSafetyStatus.CONDITIONAL,
+    notes: 'BouncyCastle PBE with SHA-256 and AES-256-CBC — strong configuration. Grover\'s halves effective key-derivation work but 256-bit AES provides adequate margin.',
   },
 
   // Signature algorithm formats
