@@ -292,6 +292,28 @@ export const ALGORITHM_DATABASE: Record<string, AlgorithmProfile> = {
     notes: 'OS-native PRNG (/dev/urandom) — no quantum vulnerability. Quality depends on OS entropy source.',
   },
 
+  // Weak/insecure PRNGs (not cryptographically secure)
+  'java.util.Random': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    notes: 'java.util.Random is a non-cryptographic PRNG (linear congruential generator). Predictable output — must not be used for security-sensitive purposes. Replace with java.security.SecureRandom.',
+    recommendedPQC: 'java.security.SecureRandom',
+  },
+  'Math.random': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    notes: 'Math.random() is a non-cryptographic PRNG. Output is predictable and must not be used for tokens, keys, nonces, or any security-sensitive purpose. Replace with SecureRandom (Java) or crypto.getRandomValues() (JavaScript).',
+    recommendedPQC: 'SecureRandom / crypto.getRandomValues()',
+  },
+  'ThreadLocalRandom': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    notes: 'ThreadLocalRandom is a non-cryptographic PRNG optimised for concurrency. Not suitable for security-sensitive use. Replace with java.security.SecureRandom.',
+    recommendedPQC: 'java.security.SecureRandom',
+  },
+  'SplittableRandom': {
+    quantumSafety: QuantumSafetyStatus.NOT_QUANTUM_SAFE,
+    notes: 'SplittableRandom is a non-cryptographic PRNG designed for parallel computation. Predictable — must not be used for security. Replace with java.security.SecureRandom.',
+    recommendedPQC: 'java.security.SecureRandom',
+  },
+
   // Crypto API wrappers
   'WebCrypto': {
     quantumSafety: QuantumSafetyStatus.CONDITIONAL,
