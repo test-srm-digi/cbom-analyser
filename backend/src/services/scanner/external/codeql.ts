@@ -107,9 +107,8 @@ export async function runCodeQLAnalysis(
       fs.writeFileSync(path.join(queryDir, filename), content);
     }
 
-    // Resolve CodeQL home directory for --search-path.
+    // Resolve CodeQL home directory.
     // The bundle extracts to e.g. /opt/cbom-tools/codeql/ with packs in qlpacks/.
-    // --search-path tells CodeQL to search this root for bundled packs.
     let codeqlHome = '';
     try {
       const bin = execSync('which codeql', { encoding: 'utf-8' }).trim();
@@ -118,9 +117,16 @@ export async function runCodeQLAnalysis(
     } catch {
       console.log('CodeQL: could not resolve home directory — will try default search path');
     }
-    const searchPathFlag = codeqlHome ? `--search-path="${codeqlHome}"` : '';
+    // --search-path must point to the qlpacks/ directory (the immediate parent
+    // of the namespace dirs like codeql/java-all/).  Pointing at the bundle
+    // root doesn't work because CodeQL only treats directories with a
+    // .codeqlmanifest.json or "immediate parents of pack dirs" as valid roots.
+    const qlpacksRoot = codeqlHome ? path.join(codeqlHome, 'qlpacks') : '';
+    const searchPathFlag = qlpacksRoot && fs.existsSync(qlpacksRoot)
+      ? `--search-path="${qlpacksRoot}"`
+      : (codeqlHome ? `--search-path="${codeqlHome}"` : '');
 
-    // Verify the bundled java-all pack is discoverable via the search path.
+    // Verify the bundled java-all pack is discoverable.
     // This catches misconfiguration early (e.g. CLI-only download without packs).
     if (codeqlHome) {
       const qlpacksDir = path.join(codeqlHome, 'qlpacks', 'codeql', 'java-all');

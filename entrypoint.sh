@@ -87,7 +87,10 @@ if [ "$ENABLE_CODEQL" = "true" ] && ! command -v codeql &>/dev/null; then
   if curl -fsSL "$BUNDLE_URL" -o /tmp/codeql-bundle.tar.gz 2>/dev/null; then
     tar -xzf /tmp/codeql-bundle.tar.gz -C "$TOOLS_DIR" 2>/dev/null
     if [ -x "$TOOLS_DIR/codeql/codeql" ]; then
-      ln -sf "$TOOLS_DIR/codeql/codeql" /usr/local/bin/codeql
+      # Add to PATH instead of symlinking.  When invoked via a symlink at
+      # /usr/local/bin/codeql the binary resolves its location as /usr/local/bin/
+      # and fails to find the bundled qlpacks/ directory next to it.
+      export PATH="$TOOLS_DIR/codeql:$PATH"
       echo -e "${GREEN}   ✓ CodeQL bundle ${CODEQL_VERSION} installed${NC}"
       # Verify bundled packs are present
       if [ -d "$TOOLS_DIR/codeql/qlpacks/codeql/java-all" ]; then
