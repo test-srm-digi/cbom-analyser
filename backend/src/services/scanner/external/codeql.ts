@@ -20,6 +20,9 @@ import type { SARIFResult, SARIFReport } from './types';
 
 const execAsync = promisify(exec);
 
+/** 50 MB — CodeQL autobuild (Gradle/Maven) can produce many MB of output */
+const MAX_BUFFER = 50 * 1024 * 1024;
+
 /**
  * Custom CodeQL queries for crypto argument resolution.
  * These are written to disk temporarily and executed via `codeql database analyze`.
@@ -161,7 +164,7 @@ export async function runCodeQLAnalysis(
         try {
           await execAsync(
             `codeql database create "${dbDir}" --language="${language}" --source-root="${sourceRoot}" --command="./mvnw compile -DskipTests -B -q" --overwrite 2>&1`,
-            { timeout: 600000, cwd: sourceRoot },
+            { timeout: 600000, cwd: sourceRoot, maxBuffer: MAX_BUFFER },
           );
           dbCreated = true;
           console.log('CodeQL: database created with Maven compilation');
@@ -175,7 +178,7 @@ export async function runCodeQLAnalysis(
         try {
           await execAsync(
             `codeql database create "${dbDir}" --language="${language}" --source-root="${sourceRoot}" --command="./gradlew compileJava --no-daemon -q" --overwrite 2>&1`,
-            { timeout: 600000, cwd: sourceRoot },
+            { timeout: 600000, cwd: sourceRoot, maxBuffer: MAX_BUFFER },
           );
           dbCreated = true;
           console.log('CodeQL: database created with Gradle compilation');
@@ -185,19 +188,32 @@ export async function runCodeQLAnalysis(
       }
 
       if (!dbCreated) {
-        // Fallback: source-only extraction (no compilation needed)
+        // Fallback: source-only extraction (no compilation needed).
+        // Note: --build-mode=none may still invoke Gradle/Maven for dependency
+        // resolution.  If that sub-step fails (e.g. JDK version mismatch) the
+        // process exits non-zero even though the database was actually created.
+        // We check for the DB directory in the catch block before giving up.
         console.log(`CodeQL: creating ${language} database in source-only mode (--build-mode=none)...`);
         try {
           await execAsync(
             `codeql database create "${dbDir}" --language="${language}" --source-root="${sourceRoot}" --build-mode=none --overwrite 2>&1`,
-            { timeout: 300000, cwd: sourceRoot },
+            { timeout: 300000, cwd: sourceRoot, maxBuffer: MAX_BUFFER },
           );
           dbCreated = true;
           console.log('CodeQL: database created in source-only mode');
         } catch (err: any) {
-          const detail = err?.stdout || err?.stderr || err?.message || 'Unknown error';
-          console.warn(`CodeQL database creation failed:\n${detail}`);
-          return [];
+          // CodeQL may exit non-zero due to Gradle/Maven dep-resolution failures
+          // while still successfully creating the database.  Check for the DB.
+          const dbMarker = path.join(dbDir, 'db-java');
+          const dbMarkerAlt = path.join(dbDir, 'db-' + language.replace('-', ''));
+          if (fs.existsSync(dbMarker) || fs.existsSync(dbMarkerAlt) || fs.existsSync(path.join(dbDir, 'codeql-database.yml'))) {
+            dbCreated = true;
+            console.log('CodeQL: database created in source-only mode (non-zero exit ignored — DB exists)');
+          } else {
+            const detail = err?.stdout || err?.stderr || err?.message || 'Unknown error';
+            console.warn(`CodeQL database creation failed:\n${detail.slice(0, 500)}`);
+            return [];
+          }
         }
       }
     } else {
@@ -206,7 +222,7 @@ export async function runCodeQLAnalysis(
       try {
         await execAsync(
           `codeql database create "${dbDir}" --language="${language}" --source-root="${sourceRoot}" --overwrite 2>&1`,
-          { timeout: 300000, cwd: sourceRoot },
+          { timeout: 300000, cwd: sourceRoot, maxBuffer: MAX_BUFFER },
         );
         dbCreated = true;
       } catch (err) {
@@ -229,7 +245,7 @@ export async function runCodeQLAnalysis(
     try {
       const analyzeCmd = `codeql database analyze "${dbDir}" ${queryFiles} --format=sarifv2.1.0 --output="${sarifOutput}" ${searchPathFlag} 2>&1`;
       console.log(`CodeQL: ${analyzeCmd}`);
-      const { stdout: analyzeOut } = await execAsync(analyzeCmd, { timeout: 600000 });
+      const { stdout: analyzeOut } = await execAsync(analyzeCmd, { timeout: 600000, maxBuffer: MAX_BUFFER });
       console.log(`CodeQL: analyze completed — ${analyzeOut.slice(-200)}`);
     } catch (err: any) {
       const detail = err?.stdout || err?.stderr || err?.message || 'Unknown error';

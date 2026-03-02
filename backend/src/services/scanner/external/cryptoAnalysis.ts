@@ -23,6 +23,9 @@ import type { SARIFResult, SARIFReport, CryptoAnalysisResult } from './types';
 
 const execAsync = promisify(exec);
 
+/** 50 MB — large Java projects can produce huge build output */
+const MAX_BUFFER = 50 * 1024 * 1024;
+
 /**
  * Run CryptoAnalysis (CogniCryptSAST / HeadlessJavaScanner) on a Java project.
  *
@@ -63,11 +66,11 @@ export async function runCryptoAnalysis(repoPath: string): Promise<CryptoAsset[]
       try {
         if (hasMvnw) {
           await execAsync(`chmod +x ./mvnw && ./mvnw compile -DskipTests -B -q 2>&1`, {
-            timeout: 300000, cwd: repoPath,
+            timeout: 300000, cwd: repoPath, maxBuffer: MAX_BUFFER,
           });
         } else if (hasGradlew) {
           await execAsync(`chmod +x ./gradlew && ./gradlew compileJava --no-daemon -q 2>&1`, {
-            timeout: 300000, cwd: repoPath,
+            timeout: 300000, cwd: repoPath, maxBuffer: MAX_BUFFER,
           });
         }
       } catch {
@@ -97,7 +100,7 @@ export async function runCryptoAnalysis(repoPath: string): Promise<CryptoAsset[]
     try {
       await execAsync(
         `"${binName}" --appPath "${targetDir}" ${rulesFlag} --reportFormat SARIF --reportPath "${outputDir}" 2>&1`,
-        { timeout: 300000 },  // 5 min timeout
+        { timeout: 300000, maxBuffer: MAX_BUFFER },  // 5 min timeout
       );
     } catch (err) {
       console.warn(`CryptoAnalysis execution failed: ${(err as Error).message}`);
