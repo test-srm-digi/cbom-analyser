@@ -9,6 +9,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import { fetchWithUser } from '../../../utils/fetchWithUser';
 import {
   ShieldCheck,
   ShieldX,
@@ -112,7 +113,7 @@ function ViolationModal({ result, aiContext, enableAi, onClose }: ModalProps) {
     if (!aiContext) return;
     setAi({ loading: true });
     try {
-      const res = await fetch('/api/ai-policy-evaluate', {
+      const res = await fetchWithUser('/api/ai-policy-evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(aiContext),

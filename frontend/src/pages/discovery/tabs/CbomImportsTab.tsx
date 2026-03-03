@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { ShieldAlert, ShieldCheck, TrendingUp as TrendUp, TrendingDown, Loader2, X, BarChart3, AlertTriangle, TrendingUp, Clock, GitBranch, FileText, ArrowUpRight, ShieldX, Download, Layers, MoreVertical } from 'lucide-react';
+import { fetchWithUser } from '../../../utils/fetchWithUser';
 import { useColumnResize } from '../../../hooks/useColumnResize';
 import { StatCards, Toolbar, AiBanner, DataTable, CbomStatusBadge, ProgressBar, EmptyState, PolicyViolationCell } from '../components';
 import type { IntegrationStep } from '../components';
@@ -164,7 +165,7 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
       const uniqueFiles = new Set(data.map((cb) => cb.fileName)).size;
       const detectionSources: Record<string, number> = { 'cbom-import': totalCrypto };
 
-      const res = await fetch('/api/ai-summary', {
+      const res = await fetchWithUser('/api/ai-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -290,7 +291,7 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
   const downloadBom = async (importId: string, bomType: 'cbom' | 'sbom' | 'xbom', filename: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const res = await fetch(`/api/cbom-imports/${importId}`);
+      const res = await fetchWithUser(`/api/cbom-imports/${importId}`);
       if (!res.ok) return;
       const record = await res.json();
       const fieldMap = { cbom: 'cbomFile', sbom: 'sbomFile', xbom: 'xbomFile' } as const;

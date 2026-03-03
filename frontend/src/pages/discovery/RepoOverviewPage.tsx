@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
+import { fetchWithUser } from '../../utils/fetchWithUser';
 import {
   ArrowLeft, GitBranch, ShieldCheck, ShieldAlert,
   TrendingUp, TrendingDown, BarChart3, AlertTriangle,
@@ -204,7 +205,7 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
         .slice(0, 10)
         .map((cb) => ({ name: cb.fileName, count: cb.nonQuantumSafeComponents }));
 
-      const res = await fetch('/api/ai-summary', {
+      const res = await fetchWithUser('/api/ai-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { Sparkles, Loader2, ShieldCheck, ShieldX, Ticket, X, AlertTriangle, CheckCircle } from 'lucide-react';
+import { fetchWithUser } from '../../../utils/fetchWithUser';
 import { useColumnResize } from '../../../hooks/useColumnResize';
 import { CreateTicketModal } from '../../tracking';
 import type { TicketContext } from '../../tracking';
@@ -128,7 +129,7 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
     setSuggestions(prev => ({ ...prev, [key]: { loading: true } }));
     setExpandedId(key);
     try {
-      const res = await fetch('/api/ai-suggest', {
+      const res = await fetchWithUser('/api/ai-suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

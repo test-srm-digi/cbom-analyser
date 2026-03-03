@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Trash2, Loader2, ShieldCheck, ShieldX, ArrowLeft, Info, ChevronDown, ChevronUp, Sparkles, Clock, Globe, Wifi } from 'lucide-react';
+import { fetchWithUser } from '../utils/fetchWithUser';
 import type { NetworkScanResult } from '../types';
 import { NetworkScanner } from '../components';
 import { useGetNetworkScansQuery, useDeleteNetworkScanMutation, useDeleteAllNetworkScansMutation, useGetNetworkScanQuery } from '../store/api';
@@ -28,7 +29,7 @@ function ScanDetailView({ scanId, onBack }: { scanId: string; onBack: () => void
     if (!scan) return;
     setAiSuggestion({ loading: true });
     try {
-      const res = await fetch('/api/ai-suggest', {
+      const res = await fetchWithUser('/api/ai-suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

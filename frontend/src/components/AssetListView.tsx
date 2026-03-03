@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { fetchWithUser } from '../utils/fetchWithUser';
 import {
   ExternalLink, ChevronLeft, ChevronRight, SlidersHorizontal,
   Github, GitBranch, FolderOpen, Sparkles, Loader2,
@@ -354,7 +355,7 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
     const key = asset.id;
     setSuggestions(prev => ({ ...prev, [key]: { loading: true } }));
     try {
-      const res = await fetch('/api/ai-suggest', {
+      const res = await fetchWithUser('/api/ai-suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -431,7 +432,7 @@ export default function AssetListView({ assets, repository }: AssetListViewProps
         .filter(([, v]) => !v.status || v.status === QuantumSafetyStatus.UNKNOWN)
         .map(([name]) => name);
 
-      const res = await fetch('/api/ai-summary', {
+      const res = await fetchWithUser('/api/ai-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Globe, Loader2, Wifi, ShieldCheck, ShieldX, ChevronDown, ChevronUp, Sparkles, Info } from 'lucide-react';
 import { NetworkScanResult } from '../types';
+import { fetchWithUser } from '../utils/fetchWithUser';
 import styles from './NetworkScanner.module.scss';
 
 interface CipherComponent {
@@ -44,7 +45,7 @@ export default function NetworkScanner({ onScanComplete }: NetworkScannerProps) 
     setAiSuggestion(null);
 
     try {
-      const resp = await fetch('/api/scan-network', {
+      const resp = await fetchWithUser('/api/scan-network', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
@@ -70,7 +71,7 @@ export default function NetworkScanner({ onScanComplete }: NetworkScannerProps) 
     setAiSuggestion({ loading: true });
 
     try {
-      const res = await fetch('/api/ai-suggest', {
+      const res = await fetchWithUser('/api/ai-suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

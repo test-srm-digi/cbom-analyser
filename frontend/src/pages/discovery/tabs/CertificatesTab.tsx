@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState, useCallback } from 'react';
 import { Sparkles, Loader2, BarChart3, AlertTriangle, TrendingUp, Clock, X, ShieldCheck, ShieldX, Ticket, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { fetchWithUser } from '../../../utils/fetchWithUser';
 import { useColumnResize } from '../../../hooks/useColumnResize';
 import { CreateTicketModal } from '../../tracking';
 import type { TicketContext } from '../../tracking';
@@ -130,7 +131,7 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
       });
       const unknownAlgos = Object.entries(algoCounts).map(([name, count]) => ({ name, count }));
 
-      const res = await fetch('/api/ai-summary', {
+      const res = await fetchWithUser('/api/ai-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -160,7 +161,7 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
     setSuggestions(prev => ({ ...prev, [key]: { loading: true } }));
     setExpandedId(key);
     try {
-      const res = await fetch('/api/ai-suggest', {
+      const res = await fetchWithUser('/api/ai-suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

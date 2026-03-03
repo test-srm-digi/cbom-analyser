@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { fetchWithUser } from './utils/fetchWithUser';
 import AppShell, { type NavPage } from "./layouts/AppShell";
 import DashboardPage from "./pages/DashboardPage";
 import ViolationsPage from "./pages/ViolationsPage";
@@ -122,7 +123,7 @@ export default function App() {
     try {
       const formData = new FormData();
       formData.append("cbom", file);
-      const resp = await fetch("/api/upload", {
+      const resp = await fetchWithUser("/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -195,7 +196,7 @@ export default function App() {
             onClearCbom={() => { setCbom(null); setReadinessScore(null); setCompliance(null); }}
             onLoadCbomUpload={async (id: string) => {
               try {
-                const res = await fetch(`/api/cbom-uploads/${encodeURIComponent(id)}`);
+                const res = await fetchWithUser(`/api/cbom-uploads/${encodeURIComponent(id)}`);
                 const json = await res.json();
                 if (!json.success || !json.data?.cbomFile) return;
                 const raw = atob(json.data.cbomFile);

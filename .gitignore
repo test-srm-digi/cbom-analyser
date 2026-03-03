@@ -10,3 +10,5 @@ coverage/
 sonarqube/extensions/plugins/*.jar
 sonarqube/data/
 sonarqube/logs/
+local_dump.sql
+local_dump.sql.gz

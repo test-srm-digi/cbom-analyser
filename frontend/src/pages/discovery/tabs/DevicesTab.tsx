@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { Ticket, Sparkles, Loader2, X, ShieldCheck, ShieldX, CheckCircle, Clock, Ban, Filter } from 'lucide-react';
+import { fetchWithUser } from '../../../utils/fetchWithUser';
 import { useColumnResize } from '../../../hooks/useColumnResize';
 import { StatCards, Toolbar, AiBanner, QsBadge, DeviceStatusBadge, EmptyState, PolicyViolationCell } from '../components';
 import { ArrowUpDown } from 'lucide-react';
@@ -74,7 +75,7 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
     setSuggestions(prev => ({ ...prev, [key]: { loading: true } }));
     setExpandedId(key);
     try {
-      const res = await fetch('/api/ai-suggest', {
+      const res = await fetchWithUser('/api/ai-suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { fetchWithUser } from '../utils/fetchWithUser';
 import {
   Upload,
   ShieldCheck,
@@ -73,7 +74,7 @@ export default function DashboardPage({
 
   const downloadCbomUpload = useCallback(async (id: string, name: string) => {
     try {
-      const res = await fetch(`/api/cbom-uploads/${encodeURIComponent(id)}`);
+      const res = await fetchWithUser(`/api/cbom-uploads/${encodeURIComponent(id)}`);
       const json = await res.json();
       if (!json.success || !json.data?.cbomFile) return;
       const raw = atob(json.data.cbomFile);

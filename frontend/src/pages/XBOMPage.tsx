@@ -7,6 +7,7 @@
  *                        Vulnerabilities  |  Cross-References
  */
 import { useState, useRef, useCallback, useMemo } from "react";
+import { fetchWithUser } from '../utils/fetchWithUser';
 import {
   useGetXBOMStatusQuery,
   useGetXBOMListQuery,
@@ -77,7 +78,7 @@ export default function XBOMPage() {
 
   const downloadXbom = useCallback(async (id: string, component: string) => {
     try {
-      const res = await fetch(`/api/xbom/${encodeURIComponent(id)}`);
+      const res = await fetchWithUser(`/api/xbom/${encodeURIComponent(id)}`);
       const json = await res.json();
       const blob = new Blob([JSON.stringify(json.xbom ?? json, null, 2)], {
         type: "application/json",

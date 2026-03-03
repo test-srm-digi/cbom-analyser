@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { X, Sparkles, Loader2, ExternalLink } from 'lucide-react';
+import { fetchWithUser } from '../../utils/fetchWithUser';
 import type { TicketType, TicketContext, CreateTicketPayload, TicketPriority } from './types';
 import {
   useGetConnectorsQuery,
@@ -219,7 +220,7 @@ export default function CreateTicketModal({ open, onClose, context, onSubmit, al
   const fetchAiSuggestion = useCallback(async () => {
     setAiLoading(true);
     try {
-      const res = await fetch('/api/ai-suggest', {
+      const res = await fetchWithUser('/api/ai-suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
