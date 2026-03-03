@@ -7,7 +7,8 @@ ARG FONTAWESOME_TOKEN
 ARG GH_NPM_TOKEN
 
 COPY .npmrc package*.json ./
-RUN npm install --ignore-scripts --legacy-peer-deps
+RUN GH_NPM_TOKEN=${GH_NPM_TOKEN} FONTAWESOME_TOKEN=${FONTAWESOME_TOKEN} \
+    npm install --ignore-scripts --legacy-peer-deps
 
 COPY . .
 RUN npm run build

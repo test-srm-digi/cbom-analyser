@@ -45,6 +45,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        GH_NPM_TOKEN: ${GH_NPM_TOKEN}
+        FONTAWESOME_TOKEN: ${FONTAWESOME_TOKEN}
     ports:
       - "8080:80"
     depends_on:
