@@ -8,10 +8,8 @@
  *   - Checking Trivy status
  */
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { createBaseQueryWithUserId } from './baseQuery';
+import { baseQueryWithUserId } from './baseQuery';
 import type { XBOMDocument, XBOMAnalytics, XBOMListItem } from '../../types';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 /* ── Response types ──────────────────────────────── */
 
@@ -79,7 +77,7 @@ export interface XBOMMergeRequest {
 
 export const xbomApi = createApi({
   reducerPath: 'xbomApi',
-  baseQuery: createBaseQueryWithUserId(API_BASE),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['XBOM'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,
@@ -87,13 +85,13 @@ export const xbomApi = createApi({
 
     /** GET /api/xbom/status — Check Trivy + xBOM service health */
     getXBOMStatus: builder.query<XBOMStatusResponse, void>({
-      query: () => '/api/xbom/status',
+      query: () => '/xbom/status',
     }),
 
     /** POST /api/xbom/generate — Generate xBOM from repo scan */
     generateXBOM: builder.mutation<XBOMGenerateResponse, XBOMGenerateRequest>({
       query: (body) => ({
-        url: '/api/xbom/generate',
+        url: '/xbom/generate',
         method: 'POST',
         body,
       }),
@@ -103,7 +101,7 @@ export const xbomApi = createApi({
     /** POST /api/xbom/merge — Merge existing SBOM + CBOM */
     mergeXBOM: builder.mutation<XBOMGenerateResponse, XBOMMergeRequest>({
       query: (body) => ({
-        url: '/api/xbom/merge',
+        url: '/xbom/merge',
         method: 'POST',
         body,
       }),
@@ -112,21 +110,21 @@ export const xbomApi = createApi({
 
     /** GET /api/xbom/list — List stored xBOMs */
     getXBOMList: builder.query<XBOMListItem[], void>({
-      query: () => '/api/xbom/list',
+      query: () => '/xbom/list',
       transformResponse: (response: XBOMListResponse) => response.xboms,
       providesTags: ['XBOM'],
     }),
 
     /** GET /api/xbom/:id — Get a specific xBOM */
     getXBOM: builder.query<XBOMGetResponse, string>({
-      query: (id) => `/api/xbom/${encodeURIComponent(id)}`,
+      query: (id) => `/xbom/${encodeURIComponent(id)}`,
       providesTags: (_result, _err, id) => [{ type: 'XBOM', id }],
     }),
 
     /** POST /api/xbom/upload — Upload an existing xBOM JSON file */
     uploadXBOM: builder.mutation<XBOMGenerateResponse, FormData>({
       query: (formData) => ({
-        url: '/api/xbom/upload',
+        url: '/xbom/upload',
         method: 'POST',
         body: formData,
       }),
@@ -136,7 +134,7 @@ export const xbomApi = createApi({
     /** DELETE /api/xbom/:id — Delete a stored xBOM */
     deleteXBOM: builder.mutation<{ success: boolean }, string>({
       query: (id) => ({
-        url: `/api/xbom/${encodeURIComponent(id)}`,
+        url: `/xbom/${encodeURIComponent(id)}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['XBOM'],
@@ -145,7 +143,7 @@ export const xbomApi = createApi({
     /** POST /api/xbom/trivy/install — Install Trivy on the server */
     installTrivy: builder.mutation<{ success: boolean; message: string; trivyInstalled: boolean; trivyVersion?: string | null }, void>({
       query: () => ({
-        url: '/api/xbom/trivy/install',
+        url: '/xbom/trivy/install',
         method: 'POST',
       }),
     }),
@@ -153,7 +151,7 @@ export const xbomApi = createApi({
     /** POST /api/xbom/trivy/recheck — Re-probe Trivy availability */
     recheckTrivy: builder.mutation<{ success: boolean; trivyInstalled: boolean; trivyVersion?: string | null }, void>({
       query: () => ({
-        url: '/api/xbom/trivy/recheck',
+        url: '/xbom/trivy/recheck',
         method: 'POST',
       }),
     }),

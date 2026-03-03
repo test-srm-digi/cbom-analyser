@@ -489,7 +489,16 @@ function GenerateForm() {
   };
 
   return (
-    <div style={{ padding: "0 4px" }}>
+    <div className={s.formCardWrapper} style={{ padding: "0 4px" }}>
+      {/* ── Loading overlay ── */}
+      {isLoading && (
+        <div className={s.loadingOverlay}>
+          <Loader2 size={32} />
+          <span className={s.loadingOverlayText}>Generating xBOM…</span>
+          <span className={s.loadingOverlaySubText}>Scanning repository for software dependencies &amp; crypto assets</span>
+        </div>
+      )}
+
       {/* ── Scanner status mini-cards ── */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
         <div style={{
@@ -879,7 +888,16 @@ function MergeForm() {
   };
 
   return (
-    <div style={{ padding: "0 4px" }}>
+    <div className={s.formCardWrapper} style={{ padding: "0 4px" }}>
+      {/* ── Loading overlay ── */}
+      {isLoading && (
+        <div className={s.loadingOverlay}>
+          <Loader2 size={32} />
+          <span className={s.loadingOverlayText}>Merging SBOM + CBOM…</span>
+          <span className={s.loadingOverlaySubText}>Building cross-references between software &amp; crypto assets</span>
+        </div>
+      )}
+
       <p
         style={{
           fontSize: 13,
@@ -1171,7 +1189,15 @@ function UploadForm({
   };
 
   return (
-    <div style={{ padding: "0 4px" }}>
+    <div className={s.formCardWrapper} style={{ padding: "0 4px" }}>
+      {/* ── Loading overlay ── */}
+      {uploading && (
+        <div className={s.loadingOverlay}>
+          <Loader2 size={32} />
+          <span className={s.loadingOverlayText}>Saving xBOM to server…</span>
+        </div>
+      )}
+
       <p
         style={{
           fontSize: 13,
