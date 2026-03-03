@@ -22,12 +22,13 @@ export interface IntegrationAttributes {
   lastSyncErrors: number | null;
   nextSync: string | null;
   errorMessage: string | null;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface IntegrationCreationAttributes
-  extends Optional<IntegrationAttributes, 'id' | 'status' | 'enabled' | 'lastSync' | 'lastSyncItems' | 'lastSyncErrors' | 'nextSync' | 'errorMessage' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<IntegrationAttributes, 'id' | 'status' | 'enabled' | 'lastSync' | 'lastSyncItems' | 'lastSyncErrors' | 'nextSync' | 'errorMessage' | 'userId' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -49,6 +50,7 @@ class Integration
   declare lastSyncErrors: number | null;
   declare nextSync: string | null;
   declare errorMessage: string | null;
+  declare userId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -125,6 +127,11 @@ Integration.init(
       type: DataTypes.TEXT,
       allowNull: true,
       field: 'error_message',
+    },
+    userId: {
+      type: DataTypes.STRING(36),
+      allowNull: true,
+      field: 'user_id',
     },
     createdAt: {
       type: DataTypes.DATE,

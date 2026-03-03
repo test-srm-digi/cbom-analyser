@@ -17,12 +17,13 @@ export interface CryptoPolicyAttributes {
   /** JSON-serialised array of PolicyRule objects */
   rules: string;
   presetId: string | null;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CryptoPolicyCreationAttributes
-  extends Optional<CryptoPolicyAttributes, 'id' | 'presetId' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<CryptoPolicyAttributes, 'id' | 'presetId' | 'userId' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -38,6 +39,7 @@ class CryptoPolicy
   declare operator: CryptoPolicyAttributes['operator'];
   declare rules: string;
   declare presetId: string | null;
+  declare userId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -81,6 +83,11 @@ CryptoPolicy.init(
       type: DataTypes.STRING(100),
       allowNull: true,
       field: 'preset_id',
+    },
+    userId: {
+      type: DataTypes.STRING(36),
+      allowNull: true,
+      field: 'user_id',
     },
     createdAt: {
       type: DataTypes.DATE,

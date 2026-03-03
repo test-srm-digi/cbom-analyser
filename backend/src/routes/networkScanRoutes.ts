@@ -15,9 +15,9 @@ import NetworkScan from '../models/NetworkScan';
 const router = Router();
 
 /* ── GET /api/network-scans ───────────────────────────────── */
-router.get('/network-scans', async (_req: Request, res: Response) => {
+router.get('/network-scans', async (req: Request, res: Response) => {
   try {
-    const rows = await NetworkScan.findAll({ order: [['scanned_at', 'DESC']] });
+    const rows = await NetworkScan.findAll({ where: { ...(req.userId && { userId: req.userId }) }, order: [['scanned_at', 'DESC']] });
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error fetching network scans:', error);
@@ -38,9 +38,9 @@ router.get('/network-scans/:id', async (req: Request, res: Response) => {
 });
 
 /* ── DELETE /api/network-scans/all ────────────────────────── */
-router.delete('/network-scans/all', async (_req: Request, res: Response) => {
+router.delete('/network-scans/all', async (req: Request, res: Response) => {
   try {
-    const count = await NetworkScan.destroy({ where: {}, truncate: true });
+    const count = await NetworkScan.destroy({ where: { ...(req.userId && { userId: req.userId }) } });
     res.json({ success: true, message: `Deleted ${count} network scans` });
   } catch (error) {
     console.error('Error deleting all network scans:', error);

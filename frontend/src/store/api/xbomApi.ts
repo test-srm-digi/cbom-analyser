@@ -7,7 +7,8 @@
  *   - Listing / viewing stored xBOMs
  *   - Checking Trivy status
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { createBaseQueryWithUserId } from './baseQuery';
 import type { XBOMDocument, XBOMAnalytics, XBOMListItem } from '../../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -78,7 +79,7 @@ export interface XBOMMergeRequest {
 
 export const xbomApi = createApi({
   reducerPath: 'xbomApi',
-  baseQuery: fetchBaseQuery({ baseUrl: API_BASE }),
+  baseQuery: createBaseQueryWithUserId(API_BASE),
   tagTypes: ['XBOM'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

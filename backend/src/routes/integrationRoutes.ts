@@ -19,9 +19,10 @@ import { onScheduleChanged, onIntegrationDeleted, onIntegrationToggled, schedule
 const router = Router();
 
 /* ── GET /api/integrations — List all ─────────────────────── */
-router.get('/integrations', async (_req: Request, res: Response) => {
+router.get('/integrations', async (req: Request, res: Response) => {
   try {
     const integrations = await Integration.findAll({
+      where: { ...(req.userId && { userId: req.userId }) },
       order: [['created_at', 'DESC']],
     });
     res.json({ success: true, data: integrations });
@@ -75,6 +76,7 @@ router.post('/integrations', async (req: Request, res: Response) => {
       config: config || {},
       importScope: importScope || [],
       syncSchedule: syncSchedule || '24h',
+      userId: req.userId,
     });
 
     // Schedule cron job if non-manual

@@ -6,7 +6,8 @@
  *   useGetCbomUploadQuery
  *   useDeleteCbomUploadMutation
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithUserId } from './baseQuery';
 
 /* ── List item (no cbomFile blob) ──────────────────────────── */
 export interface CbomUploadItem {
@@ -41,7 +42,7 @@ interface ApiResponse<T> {
 /* ── API definition ────────────────────────────────────────── */
 export const cbomUploadsApi = createApi({
   reducerPath: 'cbomUploadsApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['CbomUpload'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

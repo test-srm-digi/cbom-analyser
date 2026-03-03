@@ -6,7 +6,8 @@
  *   useGetConnectorsQuery, useCreateConnectorMutation, useUpdateConnectorMutation,
  *   useToggleConnectorMutation, useDeleteConnectorMutation
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithUserId } from './baseQuery';
 import type { RemediationTicket, CreateTicketPayload } from '../../pages/tracking/types';
 
 /* ── Envelope ──────────────────────────────────────────────── */
@@ -120,7 +121,7 @@ export type UpdateConnectorRequest = { id: string } & Partial<Omit<TicketConnect
 /* ── API definition ────────────────────────────────────────── */
 export const trackingApi = createApi({
   reducerPath: 'trackingApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['Ticket', 'Connector'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

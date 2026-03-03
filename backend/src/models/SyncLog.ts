@@ -22,6 +22,7 @@ export interface SyncLogAttributes {
   errors: number;
   errorDetails: string[] | null;
   syncSchedule: string | null;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +40,7 @@ export interface SyncLogCreationAttributes
     | 'errors'
     | 'errorDetails'
     | 'syncSchedule'
+    | 'userId'
     | 'createdAt'
     | 'updatedAt'
   > {}
@@ -63,6 +65,7 @@ class SyncLog
   declare errors: number;
   declare errorDetails: string[] | null;
   declare syncSchedule: string | null;
+  declare userId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -143,6 +146,11 @@ SyncLog.init(
       type: DataTypes.STRING(10),
       allowNull: true,
       field: 'sync_schedule',
+    },
+    userId: {
+      type: DataTypes.STRING(36),
+      allowNull: true,
+      field: 'user_id',
     },
     createdAt: {
       type: DataTypes.DATE,

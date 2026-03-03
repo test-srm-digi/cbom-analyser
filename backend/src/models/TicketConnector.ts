@@ -18,12 +18,13 @@ export interface TicketConnectorAttributes {
   enabled: boolean;
   /** JSON-serialised connector-specific config (project key, repo, etc.) */
   config: string;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface TicketConnectorCreationAttributes
-  extends Optional<TicketConnectorAttributes, 'id' | 'apiKey' | 'username' | 'config' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<TicketConnectorAttributes, 'id' | 'apiKey' | 'username' | 'config' | 'userId' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -40,6 +41,7 @@ class TicketConnector
   declare username: string | null;
   declare enabled: boolean;
   declare config: string;
+  declare userId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -87,6 +89,11 @@ TicketConnector.init(
       type: DataTypes.TEXT('long'),
       allowNull: true,
       defaultValue: '{}',
+    },
+    userId: {
+      type: DataTypes.STRING(36),
+      allowNull: true,
+      field: 'user_id',
     },
     createdAt: {
       type: DataTypes.DATE,

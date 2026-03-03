@@ -168,3 +168,12 @@ export {
 } from './networkScansApi';
 
 export type { NetworkScanRecord, CipherBreakdown, CipherComponent } from './networkScansApi';
+
+export {
+  usersApi,
+  useGetUsersQuery,
+  useCreateUserMutation,
+  useGetUserQuery,
+} from './usersApi';
+
+export type { User } from './usersApi';

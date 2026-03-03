@@ -15,3 +15,4 @@ export { default as ticketRoutes } from './ticketRoutes';
 export { default as ticketConnectorRoutes } from './ticketConnectorRoutes';
 export { default as xbomRoutes } from './xbomRoutes';
 export { default as networkScanRoutes } from './networkScanRoutes';
+export { default as userRoutes } from './userRoutes';

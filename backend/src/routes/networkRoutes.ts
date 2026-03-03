@@ -119,6 +119,7 @@ router.post('/scan-network', async (req: Request, res: Response) => {
         certIssuer: (result as any).certIssuer || null,
         certExpiry: (result as any).certExpiry || null,
         scannedAt: result.lastScanned,
+        userId: req.userId,
       });
     } catch (dbErr) {
       console.warn('[NetworkScanner] Failed to persist scan result:', (dbErr as Error).message);

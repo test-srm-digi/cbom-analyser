@@ -10,7 +10,8 @@
  *   useDeletePolicyMutation
  *   useDeleteAllPoliciesMutation
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithUserId } from './baseQuery';
 import type { CryptoPolicy } from '../../pages/policies/types';
 
 /* ── Envelope ──────────────────────────────────────────────── */
@@ -27,7 +28,7 @@ export type UpdatePolicyRequest = { id: string } & Partial<Omit<CryptoPolicy, 'i
 /* ── API definition ────────────────────────────────────────── */
 export const policiesApi = createApi({
   reducerPath: 'policiesApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['Policy'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

@@ -28,12 +28,13 @@ export interface EndpointAttributes {
   osName: string | null;
   sensorName: string | null;
   domainName: string | null;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface EndpointCreationAttributes
-  extends Optional<EndpointAttributes, 'id' | 'integrationId' | 'lastScanned' | 'certCommonName' | 'securityRating' | 'automationStatus' | 'caVendor' | 'expiryDate' | 'osName' | 'sensorName' | 'domainName' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<EndpointAttributes, 'id' | 'integrationId' | 'lastScanned' | 'certCommonName' | 'securityRating' | 'automationStatus' | 'caVendor' | 'expiryDate' | 'osName' | 'sensorName' | 'domainName' | 'userId' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -60,6 +61,7 @@ class Endpoint
   declare osName: string | null;
   declare sensorName: string | null;
   declare domainName: string | null;
+  declare userId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -158,6 +160,11 @@ Endpoint.init(
       type: DataTypes.STRING(255),
       allowNull: true,
       field: 'domain_name',
+    },
+    userId: {
+      type: DataTypes.STRING(36),
+      allowNull: true,
+      field: 'user_id',
     },
     createdAt: {
       type: DataTypes.DATE,

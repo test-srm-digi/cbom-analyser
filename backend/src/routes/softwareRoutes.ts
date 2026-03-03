@@ -17,9 +17,9 @@ import { Software } from '../models';
 const router = Router();
 
 /* ── GET /api/software ────────────────────────────────────── */
-router.get('/software', async (_req: Request, res: Response) => {
+router.get('/software', async (req: Request, res: Response) => {
   try {
-    const rows = await Software.findAll({ order: [['created_at', 'DESC']] });
+    const rows = await Software.findAll({ where: { ...(req.userId && { userId: req.userId }) }, order: [['created_at', 'DESC']] });
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error fetching software:', error);
@@ -56,7 +56,7 @@ router.get('/software/:id', async (req: Request, res: Response) => {
 /* ── POST /api/software ───────────────────────────────────── */
 router.post('/software', async (req: Request, res: Response) => {
   try {
-    const row = await Software.create({ id: uuidv4(), ...req.body });
+    const row = await Software.create({ id: uuidv4(), ...req.body, userId: req.userId });
     res.status(201).json({ success: true, data: row });
   } catch (error) {
     console.error('Error creating software:', error);
@@ -70,6 +70,7 @@ router.post('/software/bulk', async (req: Request, res: Response) => {
     const items = (req.body.items || []).map((item: Record<string, unknown>) => ({
       id: uuidv4(),
       ...item,
+      userId: req.userId,
     }));
     const rows = await Software.bulkCreate(items);
     res.status(201).json({ success: true, data: rows, message: `Created ${rows.length} software records` });
@@ -93,9 +94,9 @@ router.put('/software/:id', async (req: Request, res: Response) => {
 });
 
 /* ── DELETE /api/software/all ──────────────────────────────── */
-router.delete('/software/all', async (_req: Request, res: Response) => {
+router.delete('/software/all', async (req: Request, res: Response) => {
   try {
-    const count = await Software.destroy({ where: {}, truncate: true });
+    const count = await Software.destroy({ where: { ...(req.userId && { userId: req.userId }) } });
     res.json({ success: true, message: `Deleted ${count} software records` });
   } catch (error) {
     console.error('Error deleting all software:', error);

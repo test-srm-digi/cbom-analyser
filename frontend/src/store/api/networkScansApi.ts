@@ -7,7 +7,8 @@
  *   useDeleteNetworkScanMutation
  *   useDeleteAllNetworkScansMutation
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithUserId } from './baseQuery';
 
 /* ── Types ─────────────────────────────────────────────────── */
 
@@ -53,7 +54,7 @@ interface ApiResponse<T> {
 /* ── API definition ────────────────────────────────────────── */
 export const networkScansApi = createApi({
   reducerPath: 'networkScansApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['NetworkScan'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

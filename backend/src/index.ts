@@ -27,8 +27,10 @@ import {
   ticketConnectorRoutes,
   xbomRoutes,
   networkScanRoutes,
+  userRoutes,
 } from './routes';
 import { initDatabase } from './config/database';
+import { userContext } from './middleware/userContext';
 import { initScheduler, stopAllJobs } from './services/syncScheduler';
 import { loadXBOMsFromImports } from './services/xbomDbLoader';
 
@@ -42,6 +44,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use(userContext);
 
 // Routes
 app.use('/api', cbomRoutes);
@@ -61,6 +64,7 @@ app.use('/api', ticketRoutes);
 app.use('/api', ticketConnectorRoutes);
 app.use('/api', xbomRoutes);
 app.use('/api', networkScanRoutes);
+app.use('/api', userRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

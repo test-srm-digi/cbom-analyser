@@ -20,12 +20,13 @@ export interface CertificateAttributes {
   expiryDate: string | null;
   serialNumber: string | null;
   signatureAlgorithm: string | null;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CertificateCreationAttributes
-  extends Optional<CertificateAttributes, 'id' | 'integrationId' | 'expiryDate' | 'serialNumber' | 'signatureAlgorithm' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<CertificateAttributes, 'id' | 'integrationId' | 'expiryDate' | 'serialNumber' | 'signatureAlgorithm' | 'userId' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -45,6 +46,7 @@ class Certificate
   declare expiryDate: string | null;
   declare serialNumber: string | null;
   declare signatureAlgorithm: string | null;
+  declare userId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -110,6 +112,11 @@ Certificate.init(
       type: DataTypes.STRING(100),
       allowNull: true,
       field: 'signature_algorithm',
+    },
+    userId: {
+      type: DataTypes.STRING(36),
+      allowNull: true,
+      field: 'user_id',
     },
     createdAt: {
       type: DataTypes.DATE,

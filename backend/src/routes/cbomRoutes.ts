@@ -69,6 +69,7 @@ router.post('/upload', upload.single('cbom'), (req: Request, res: Response) => {
       uploadDate: new Date().toISOString(),
       cbomFile: req.file.buffer,
       cbomFileType: 'application/json',
+      userId: req.userId,
     }).catch((err) => console.error('Failed to persist CBOM upload:', err));
 
     const response: UploadResponse = {

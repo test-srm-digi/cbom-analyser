@@ -1,5 +1,6 @@
 import { useState, useEffect, ReactNode } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import UserDropdown from "../components/UserDropdown";
 import digicertIcon from "../assets/images/digicert-icon.svg";
 import digicertLogo from "../assets/images/digicert-logo.svg";
 import {
@@ -336,7 +337,9 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
         {/* Top header bar */}
         <header className="dc1-topbar">
           <div className="dc1-topbar-left" />
-          <div className="dc1-topbar-right" />
+          <div className="dc1-topbar-right">
+            <UserDropdown />
+          </div>
         </header>
 
         {/* Page content */}

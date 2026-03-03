@@ -11,7 +11,8 @@
  *   useDeleteEndpointMutation
  *   useDeleteEndpointsByIntegrationMutation
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithUserId } from './baseQuery';
 import type { DiscoveryEndpoint } from '../../pages/discovery/types';
 
 /* ── Envelope ──────────────────────────────────────────────── */
@@ -28,7 +29,7 @@ export type UpdateEndpointRequest = { id: string } & Partial<Omit<DiscoveryEndpo
 /* ── API definition ────────────────────────────────────────── */
 export const endpointsApi = createApi({
   reducerPath: 'endpointsApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['Endpoint'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

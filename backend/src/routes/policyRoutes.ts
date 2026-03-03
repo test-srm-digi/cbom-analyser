@@ -16,9 +16,9 @@ import { CryptoPolicy } from '../models';
 const router = Router();
 
 /* ── GET /api/policies ────────────────────────────────────── */
-router.get('/policies', async (_req: Request, res: Response) => {
+router.get('/policies', async (req: Request, res: Response) => {
   try {
-    const rows = await CryptoPolicy.findAll({ order: [['created_at', 'DESC']] });
+    const rows = await CryptoPolicy.findAll({ where: { ...(req.userId && { userId: req.userId }) }, order: [['created_at', 'DESC']] });
     // Parse the JSON‑serialised rules back into objects
     const parsed = rows.map((r) => {
       const plain = r.toJSON() as unknown as Record<string, unknown>;
@@ -62,7 +62,7 @@ router.post('/policies', async (req: Request, res: Response) => {
     if (Array.isArray(body.rules)) {
       body.rules = JSON.stringify(body.rules);
     }
-    const row = await CryptoPolicy.create({ id: uuidv4(), ...body });
+    const row = await CryptoPolicy.create({ id: uuidv4(), ...body, userId: req.userId });
     const plain = row.toJSON() as unknown as Record<string, unknown>;
     try {
       plain.rules = typeof plain.rules === 'string' ? JSON.parse(plain.rules as string) : plain.rules;
@@ -83,6 +83,7 @@ router.post('/policies/bulk', async (req: Request, res: Response) => {
       id: uuidv4(),
       ...item,
       rules: Array.isArray(item.rules) ? JSON.stringify(item.rules) : item.rules || '[]',
+      userId: req.userId,
     }));
     const rows = await CryptoPolicy.bulkCreate(items);
     const parsed = rows.map((r) => {
@@ -125,9 +126,9 @@ router.put('/policies/:id', async (req: Request, res: Response) => {
 });
 
 /* ── DELETE /api/policies/all ─────────────────────────────── */
-router.delete('/policies/all', async (_req: Request, res: Response) => {
+router.delete('/policies/all', async (req: Request, res: Response) => {
   try {
-    const count = await CryptoPolicy.destroy({ where: {}, truncate: true });
+    const count = await CryptoPolicy.destroy({ where: { ...(req.userId && { userId: req.userId }) } });
     res.json({ success: true, message: `Deleted ${count} policies` });
   } catch (error) {
     console.error('Error deleting all policies:', error);

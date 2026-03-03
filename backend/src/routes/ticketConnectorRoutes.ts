@@ -27,9 +27,9 @@ function parseRow(row: InstanceType<typeof TicketConnector>) {
 }
 
 /* ── GET /api/ticket-connectors ───────────────────────────── */
-router.get('/ticket-connectors', async (_req: Request, res: Response) => {
+router.get('/ticket-connectors', async (req: Request, res: Response) => {
   try {
-    const rows = await TicketConnector.findAll({ order: [['type', 'ASC']] });
+    const rows = await TicketConnector.findAll({ where: { ...(req.userId && { userId: req.userId }) }, order: [['type', 'ASC']] });
     res.json({ success: true, data: rows.map(parseRow) });
   } catch (error) {
     console.error('Error fetching ticket connectors:', error);
@@ -56,7 +56,7 @@ router.post('/ticket-connectors', async (req: Request, res: Response) => {
     if (body.config && typeof body.config === 'object') {
       body.config = JSON.stringify(body.config);
     }
-    const row = await TicketConnector.create({ id: uuidv4(), ...body });
+    const row = await TicketConnector.create({ id: uuidv4(), ...body, userId: req.userId });
     res.status(201).json({ success: true, data: parseRow(row) });
   } catch (error) {
     console.error('Error creating connector:', error);

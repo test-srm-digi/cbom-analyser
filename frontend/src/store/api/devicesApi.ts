@@ -11,7 +11,8 @@
  *   useDeleteDeviceMutation
  *   useDeleteDevicesByIntegrationMutation
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithUserId } from './baseQuery';
 import type { DiscoveryDevice } from '../../pages/discovery/types';
 
 /* ── Envelope ──────────────────────────────────────────────── */
@@ -28,7 +29,7 @@ export type UpdateDeviceRequest = { id: string } & Partial<Omit<DiscoveryDevice,
 /* ── API definition ────────────────────────────────────────── */
 export const devicesApi = createApi({
   reducerPath: 'devicesApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['Device'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

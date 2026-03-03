@@ -11,7 +11,8 @@
  *   useDeleteCbomImportMutation
  *   useDeleteCbomImportsByIntegrationMutation
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithUserId } from './baseQuery';
 import type { DiscoveryCbomImport } from '../../pages/discovery/types';
 
 /* ── Envelope ──────────────────────────────────────────────── */
@@ -28,7 +29,7 @@ export type UpdateCbomImportRequest = { id: string } & Partial<Omit<DiscoveryCbo
 /* ── API definition ────────────────────────────────────────── */
 export const cbomImportsApi = createApi({
   reducerPath: 'cbomImportsApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['CbomImport'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

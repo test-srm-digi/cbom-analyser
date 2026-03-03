@@ -11,7 +11,8 @@
  *   useSyncIntegrationMutation
  *   useTestIntegrationMutation
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithUserId } from './baseQuery';
 import type { Integration, IntegrationStatus, ImportScope, SyncSchedule } from '../../types';
 
 /* ── Request / Response types ──────────────────────────────── */
@@ -52,7 +53,7 @@ interface TestConnectionResponse {
 
 export const integrationsApi = createApi({
   reducerPath: 'integrationsApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['Integration'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

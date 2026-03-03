@@ -17,9 +17,9 @@ import { Endpoint } from '../models';
 const router = Router();
 
 /* ── GET /api/endpoints ───────────────────────────────────── */
-router.get('/endpoints', async (_req: Request, res: Response) => {
+router.get('/endpoints', async (req: Request, res: Response) => {
   try {
-    const rows = await Endpoint.findAll({ order: [['created_at', 'DESC']] });
+    const rows = await Endpoint.findAll({ where: { ...(req.userId && { userId: req.userId }) }, order: [['created_at', 'DESC']] });
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error fetching endpoints:', error);
@@ -56,7 +56,7 @@ router.get('/endpoints/:id', async (req: Request, res: Response) => {
 /* ── POST /api/endpoints ──────────────────────────────────── */
 router.post('/endpoints', async (req: Request, res: Response) => {
   try {
-    const row = await Endpoint.create({ id: uuidv4(), ...req.body });
+    const row = await Endpoint.create({ id: uuidv4(), ...req.body, userId: req.userId });
     res.status(201).json({ success: true, data: row });
   } catch (error) {
     console.error('Error creating endpoint:', error);
@@ -70,6 +70,7 @@ router.post('/endpoints/bulk', async (req: Request, res: Response) => {
     const items = (req.body.items || []).map((item: Record<string, unknown>) => ({
       id: uuidv4(),
       ...item,
+      userId: req.userId,
     }));
     const rows = await Endpoint.bulkCreate(items);
     res.status(201).json({ success: true, data: rows, message: `Created ${rows.length} endpoints` });
@@ -93,9 +94,9 @@ router.put('/endpoints/:id', async (req: Request, res: Response) => {
 });
 
 /* ── DELETE /api/endpoints/all ─────────────────────────────── */
-router.delete('/endpoints/all', async (_req: Request, res: Response) => {
+router.delete('/endpoints/all', async (req: Request, res: Response) => {
   try {
-    const count = await Endpoint.destroy({ where: {}, truncate: true });
+    const count = await Endpoint.destroy({ where: { ...(req.userId && { userId: req.userId }) } });
     res.json({ success: true, message: `Deleted ${count} endpoints` });
   } catch (error) {
     console.error('Error deleting all endpoints:', error);

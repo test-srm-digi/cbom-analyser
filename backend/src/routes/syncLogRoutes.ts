@@ -16,6 +16,7 @@ router.get('/sync-logs', async (req: Request, res: Response) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 100, 500);
     const logs = await SyncLog.findAll({
+      where: { ...(req.userId && { userId: req.userId }) },
       order: [['started_at', 'DESC']],
       limit,
     });

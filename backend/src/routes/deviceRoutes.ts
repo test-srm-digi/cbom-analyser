@@ -17,9 +17,9 @@ import { Device } from '../models';
 const router = Router();
 
 /* ── GET /api/devices ─────────────────────────────────────── */
-router.get('/devices', async (_req: Request, res: Response) => {
+router.get('/devices', async (req: Request, res: Response) => {
   try {
-    const rows = await Device.findAll({ order: [['created_at', 'DESC']] });
+    const rows = await Device.findAll({ where: { ...(req.userId && { userId: req.userId }) }, order: [['created_at', 'DESC']] });
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error fetching devices:', error);
@@ -56,7 +56,7 @@ router.get('/devices/:id', async (req: Request, res: Response) => {
 /* ── POST /api/devices ────────────────────────────────────── */
 router.post('/devices', async (req: Request, res: Response) => {
   try {
-    const row = await Device.create({ id: uuidv4(), ...req.body });
+    const row = await Device.create({ id: uuidv4(), ...req.body, userId: req.userId });
     res.status(201).json({ success: true, data: row });
   } catch (error) {
     console.error('Error creating device:', error);
@@ -70,6 +70,7 @@ router.post('/devices/bulk', async (req: Request, res: Response) => {
     const items = (req.body.items || []).map((item: Record<string, unknown>) => ({
       id: uuidv4(),
       ...item,
+      userId: req.userId,
     }));
     const rows = await Device.bulkCreate(items);
     res.status(201).json({ success: true, data: rows, message: `Created ${rows.length} devices` });
@@ -93,9 +94,9 @@ router.put('/devices/:id', async (req: Request, res: Response) => {
 });
 
 /* ── DELETE /api/devices/all ───────────────────────────────── */
-router.delete('/devices/all', async (_req: Request, res: Response) => {
+router.delete('/devices/all', async (req: Request, res: Response) => {
   try {
-    const count = await Device.destroy({ where: {}, truncate: true });
+    const count = await Device.destroy({ where: { ...(req.userId && { userId: req.userId }) } });
     res.json({ success: true, message: `Deleted ${count} devices` });
   } catch (error) {
     console.error('Error deleting all devices:', error);

@@ -23,12 +23,13 @@ export interface TicketAttributes {
   labels: string;
   /** JSON-serialised platform-specific details */
   platformDetails: string;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface TicketCreationAttributes
-  extends Optional<TicketAttributes, 'id' | 'externalUrl' | 'labels' | 'platformDetails' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<TicketAttributes, 'id' | 'externalUrl' | 'labels' | 'platformDetails' | 'userId' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -50,6 +51,7 @@ class Ticket
   declare externalUrl: string | null;
   declare labels: string;
   declare platformDetails: string;
+  declare userId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -124,6 +126,11 @@ Ticket.init(
       allowNull: true,
       defaultValue: '{}',
       field: 'platform_details',
+    },
+    userId: {
+      type: DataTypes.STRING(36),
+      allowNull: true,
+      field: 'user_id',
     },
     createdAt: {
       type: DataTypes.DATE,

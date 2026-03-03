@@ -28,12 +28,13 @@ export interface CbomImportAttributes {
   sbomFileType: string | null;
   xbomFile: Buffer | null;
   xbomFileType: string | null;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CbomImportCreationAttributes
-  extends Optional<CbomImportAttributes, 'id' | 'integrationId' | 'applicationName' | 'cbomFile' | 'cbomFileType' | 'sbomFile' | 'sbomFileType' | 'xbomFile' | 'xbomFileType' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<CbomImportAttributes, 'id' | 'integrationId' | 'applicationName' | 'cbomFile' | 'cbomFileType' | 'sbomFile' | 'sbomFileType' | 'xbomFile' | 'xbomFileType' | 'userId' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -61,6 +62,7 @@ class CbomImport
   declare sbomFileType: string | null;
   declare xbomFile: Buffer | null;
   declare xbomFileType: string | null;
+  declare userId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -169,6 +171,11 @@ CbomImport.init(
       type: DataTypes.STRING(50),
       allowNull: true,
       field: 'xbom_file_type',
+    },
+    userId: {
+      type: DataTypes.STRING(36),
+      allowNull: true,
+      field: 'user_id',
     },
     createdAt: {
       type: DataTypes.DATE,

@@ -21,12 +21,13 @@ export interface CbomUploadAttributes {
   uploadDate: string;
   cbomFile: Buffer | null;
   cbomFileType: string | null;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CbomUploadCreationAttributes
-  extends Optional<CbomUploadAttributes, 'id' | 'componentName' | 'cbomFile' | 'cbomFileType' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<CbomUploadAttributes, 'id' | 'componentName' | 'cbomFile' | 'cbomFileType' | 'userId' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -47,6 +48,7 @@ class CbomUpload
   declare uploadDate: string;
   declare cbomFile: Buffer | null;
   declare cbomFileType: string | null;
+  declare userId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -120,6 +122,11 @@ CbomUpload.init(
       type: DataTypes.STRING(50),
       allowNull: true,
       field: 'cbom_file_type',
+    },
+    userId: {
+      type: DataTypes.STRING(36),
+      allowNull: true,
+      field: 'user_id',
     },
     createdAt: {
       type: DataTypes.DATE,

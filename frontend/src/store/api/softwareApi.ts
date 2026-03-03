@@ -11,7 +11,8 @@
  *   useDeleteSoftwareMutation
  *   useDeleteSoftwareByIntegrationMutation
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithUserId } from './baseQuery';
 import type { DiscoverySoftware } from '../../pages/discovery/types';
 
 /* ── Envelope ──────────────────────────────────────────────── */
@@ -28,7 +29,7 @@ export type UpdateSoftwareRequest = { id: string } & Partial<Omit<DiscoverySoftw
 /* ── API definition ────────────────────────────────────────── */
 export const softwareApi = createApi({
   reducerPath: 'softwareApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['Software'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

@@ -6,7 +6,8 @@
  *   useStopSchedulerMutation
  *   useRestartSchedulerMutation
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithUserId } from './baseQuery';
 
 /* ── Types ─────────────────────────────────────────────────── */
 
@@ -37,7 +38,7 @@ interface ApiResponse<T> {
 
 export const schedulerApi = createApi({
   reducerPath: 'schedulerApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['Scheduler'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

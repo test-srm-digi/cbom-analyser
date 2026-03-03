@@ -7,7 +7,8 @@
  *   useGetSyncLogQuery
  *   useDeleteSyncLogsByIntegrationMutation
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithUserId } from './baseQuery';
 
 /* ── Types ─────────────────────────────────────────────────── */
 
@@ -40,7 +41,7 @@ interface ApiResponse<T> {
 
 export const syncLogsApi = createApi({
   reducerPath: 'syncLogsApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['SyncLog'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

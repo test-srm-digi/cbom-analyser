@@ -21,12 +21,13 @@ export interface SoftwareAttributes {
   source: string;
   releaseDate: string | null;
   sbomLinked: boolean;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface SoftwareCreationAttributes
-  extends Optional<SoftwareAttributes, 'id' | 'integrationId' | 'releaseDate' | 'sbomLinked' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<SoftwareAttributes, 'id' | 'integrationId' | 'releaseDate' | 'sbomLinked' | 'userId' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -47,6 +48,7 @@ class Software
   declare source: string;
   declare releaseDate: string | null;
   declare sbomLinked: boolean;
+  declare userId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -116,6 +118,11 @@ Software.init(
       allowNull: false,
       defaultValue: false,
       field: 'sbom_linked',
+    },
+    userId: {
+      type: DataTypes.STRING(36),
+      allowNull: true,
+      field: 'user_id',
     },
     createdAt: {
       type: DataTypes.DATE,

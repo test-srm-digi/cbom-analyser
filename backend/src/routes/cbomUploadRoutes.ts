@@ -8,9 +8,10 @@ import CbomUpload from '../models/CbomUpload';
 const router = Router();
 
 /* ── GET /api/cbom-uploads ── list all uploads (most-recent first) */
-router.get('/cbom-uploads', async (_req: Request, res: Response) => {
+router.get('/cbom-uploads', async (req: Request, res: Response) => {
   try {
     const rows = await CbomUpload.findAll({
+      where: { ...(req.userId && { userId: req.userId }) },
       order: [['created_at', 'DESC']],
       attributes: { exclude: ['cbomFile'] }, // skip large blob for listing
     });

@@ -145,6 +145,17 @@ export async function executeSyncForIntegration(
   let deletedCount = 0;
   let createdCount = 0;
 
+  // Tag all records with the integration's userId for multi-user scoping
+  const userIdValue = integration.userId || undefined;
+  if (userIdValue) {
+    fetchedRecords = fetchedRecords.map(r => ({ ...r, userId: userIdValue }));
+  }
+
+  // Also tag the SyncLog with the same userId
+  if (userIdValue) {
+    await syncLog.update({ userId: userIdValue });
+  }
+
   // Incremental mode: connector signals via meta.incremental = true
   // (used by GitHub Actions CBOM connector — only appends new records)
   const isIncremental = !!fetchMeta.incremental;
@@ -231,9 +242,13 @@ export async function executeSyncForIntegration(
             deletedCount += extraDeleted;
           }
 
-          const extraCreated = await (ExtraModel as any).bulkCreate(extraResult.data, { validate: true });
+          const extraData = userIdValue
+            ? extraResult.data.map((r: Record<string, unknown>) => ({ ...r, userId: userIdValue }))
+            : extraResult.data;
+
+          const extraCreated = await (ExtraModel as any).bulkCreate(extraData, { validate: true });
           createdCount += extraCreated.length;
-          fetchedRecords = fetchedRecords.concat(extraResult.data);
+          fetchedRecords = fetchedRecords.concat(extraData);
 
           console.log(`[SyncExecutor] Additional fetcher (${extra.model}): ${extraCreated.length} created`);
         } else if (!isIncremental) {

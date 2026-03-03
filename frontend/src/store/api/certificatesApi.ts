@@ -11,7 +11,8 @@
  *   useDeleteCertificateMutation
  *   useDeleteCertificatesByIntegrationMutation
  */
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithUserId } from './baseQuery';
 import type { DiscoveryCertificate } from '../../pages/discovery/types';
 
 /* ── Envelope ──────────────────────────────────────────────── */
@@ -28,7 +29,7 @@ export type UpdateCertificateRequest = { id: string } & Partial<Omit<DiscoveryCe
 /* ── API definition ────────────────────────────────────────── */
 export const certificatesApi = createApi({
   reducerPath: 'certificatesApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: baseQueryWithUserId,
   tagTypes: ['Certificate'],
   refetchOnFocus: true,
   refetchOnMountOrArgChange: true,

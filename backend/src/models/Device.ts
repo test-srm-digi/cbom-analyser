@@ -23,12 +23,13 @@ export interface DeviceAttributes {
   deviceGroup: string | null;
   operationalStatus: string;
   connected: boolean;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface DeviceCreationAttributes
-  extends Optional<DeviceAttributes, 'id' | 'integrationId' | 'deviceGroup' | 'operationalStatus' | 'connected' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<DeviceAttributes, 'id' | 'integrationId' | 'deviceGroup' | 'operationalStatus' | 'connected' | 'userId' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -51,6 +52,7 @@ class Device
   declare deviceGroup: string | null;
   declare operationalStatus: string;
   declare connected: boolean;
+  declare userId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -132,6 +134,11 @@ Device.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    userId: {
+      type: DataTypes.STRING(36),
+      allowNull: true,
+      field: 'user_id',
     },
     createdAt: {
       type: DataTypes.DATE,

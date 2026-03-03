@@ -17,9 +17,9 @@ import { Certificate } from '../models';
 const router = Router();
 
 /* ── GET /api/certificates ────────────────────────────────── */
-router.get('/certificates', async (_req: Request, res: Response) => {
+router.get('/certificates', async (req: Request, res: Response) => {
   try {
-    const rows = await Certificate.findAll({ order: [['created_at', 'DESC']] });
+    const rows = await Certificate.findAll({ where: { ...(req.userId && { userId: req.userId }) }, order: [['created_at', 'DESC']] });
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error fetching certificates:', error);
@@ -56,7 +56,7 @@ router.get('/certificates/:id', async (req: Request, res: Response) => {
 /* ── POST /api/certificates ───────────────────────────────── */
 router.post('/certificates', async (req: Request, res: Response) => {
   try {
-    const row = await Certificate.create({ id: uuidv4(), ...req.body });
+    const row = await Certificate.create({ id: uuidv4(), ...req.body, userId: req.userId });
     res.status(201).json({ success: true, data: row });
   } catch (error) {
     console.error('Error creating certificate:', error);
@@ -70,6 +70,7 @@ router.post('/certificates/bulk', async (req: Request, res: Response) => {
     const items = (req.body.items || []).map((item: Record<string, unknown>) => ({
       id: uuidv4(),
       ...item,
+      userId: req.userId,
     }));
     const rows = await Certificate.bulkCreate(items);
     res.status(201).json({ success: true, data: rows, message: `Created ${rows.length} certificates` });
@@ -93,9 +94,9 @@ router.put('/certificates/:id', async (req: Request, res: Response) => {
 });
 
 /* ── DELETE /api/certificates/all ──────────────────────────── */
-router.delete('/certificates/all', async (_req: Request, res: Response) => {
+router.delete('/certificates/all', async (req: Request, res: Response) => {
   try {
-    const count = await Certificate.destroy({ where: {}, truncate: true });
+    const count = await Certificate.destroy({ where: { ...(req.userId && { userId: req.userId }) } });
     res.json({ success: true, message: `Deleted ${count} certificates` });
   } catch (error) {
     console.error('Error deleting all certificates:', error);

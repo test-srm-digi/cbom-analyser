@@ -24,6 +24,7 @@ export interface NetworkScanAttributes {
   certIssuer: string | null;
   certExpiry: string | null;
   scannedAt: string;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +40,7 @@ export interface NetworkScanCreationAttributes
     | 'certCommonName'
     | 'certIssuer'
     | 'certExpiry'
+    | 'userId'
     | 'createdAt'
     | 'updatedAt'
   > {}
@@ -63,6 +65,7 @@ class NetworkScan
   declare certIssuer: string | null;
   declare certExpiry: string | null;
   declare scannedAt: string;
+  declare userId: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -139,6 +142,11 @@ NetworkScan.init(
       type: DataTypes.STRING(100),
       allowNull: false,
       field: 'scanned_at',
+    },
+    userId: {
+      type: DataTypes.STRING(36),
+      allowNull: true,
+      field: 'user_id',
     },
     createdAt: {
       type: DataTypes.DATE,

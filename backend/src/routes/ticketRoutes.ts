@@ -29,9 +29,9 @@ function parseTicketRow(row: InstanceType<typeof Ticket>) {
 }
 
 /* ── GET /api/tickets ─────────────────────────────────────── */
-router.get('/tickets', async (_req: Request, res: Response) => {
+router.get('/tickets', async (req: Request, res: Response) => {
   try {
-    const rows = await Ticket.findAll({ order: [['created_at', 'DESC']] });
+    const rows = await Ticket.findAll({ where: { ...(req.userId && { userId: req.userId }) }, order: [['created_at', 'DESC']] });
     const parsed = rows.map(parseTicketRow);
     res.json({ success: true, data: parsed });
   } catch (error) {
@@ -190,7 +190,7 @@ router.post('/tickets', async (req: Request, res: Response) => {
       body.platformDetails = JSON.stringify(body.platformDetails);
     }
 
-    const row = await Ticket.create({ id: uuidv4(), ...body });
+    const row = await Ticket.create({ id: uuidv4(), ...body, userId: req.userId });
     res.status(201).json({ success: true, data: parseTicketRow(row) });
   } catch (error) {
     console.error('Error creating ticket:', error);
@@ -217,9 +217,9 @@ router.put('/tickets/:id', async (req: Request, res: Response) => {
 });
 
 /* ── DELETE /api/tickets/all ──────────────────────────────── */
-router.delete('/tickets/all', async (_req: Request, res: Response) => {
+router.delete('/tickets/all', async (req: Request, res: Response) => {
   try {
-    const count = await Ticket.destroy({ where: {}, truncate: true });
+    const count = await Ticket.destroy({ where: { ...(req.userId && { userId: req.userId }) } });
     res.json({ success: true, message: `Deleted ${count} tickets` });
   } catch (error) {
     console.error('Error deleting all tickets:', error);
