@@ -26,6 +26,7 @@ import {
   ticketRoutes,
   ticketConnectorRoutes,
   xbomRoutes,
+  networkScanRoutes,
 } from './routes';
 import { initDatabase } from './config/database';
 import { initScheduler, stopAllJobs } from './services/syncScheduler';
@@ -59,6 +60,7 @@ app.use('/api', policyRoutes);
 app.use('/api', ticketRoutes);
 app.use('/api', ticketConnectorRoutes);
 app.use('/api', xbomRoutes);
+app.use('/api', networkScanRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

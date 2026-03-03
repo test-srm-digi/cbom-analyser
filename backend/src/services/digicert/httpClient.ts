@@ -17,13 +17,19 @@ export function digicertRequest<T>(
   rejectUnauthorized = true,
   method: 'GET' | 'POST' = 'GET',
   body?: string,
+  bearerToken?: string,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const parsed = new URL(url);
     const isHttps = parsed.protocol === 'https:';
 
     const headers: Record<string, string> = {
-      'x-api-key': apiKey,
+      // Bearer token takes priority over API key
+      ...(bearerToken
+        ? { Authorization: `Bearer ${bearerToken}` }
+        : apiKey
+          ? { 'x-api-key': apiKey }
+          : {}),
       Accept: 'application/json',
       ...(accountId ? { 'x-dc-account-id': accountId } : {}),
     };

@@ -14,6 +14,8 @@ import {
 } from '../services';
 import { cbomStore } from './cbomRoutes';
 import { NetworkScanRequest, NetworkScanResponse } from '../types';
+import { v4 as uuidv4 } from 'uuid';
+import NetworkScan from '../models/NetworkScan';
 
 const router = Router();
 
@@ -95,11 +97,39 @@ router.post('/scan-network', async (req: Request, res: Response) => {
     const enrichedAsset = enrichAssetWithPQCData(cbomAsset);
     const breakdown = buildCipherBreakdown(result.cipherSuite, result.protocol);
 
+    // Persist scan result to the network_scans table
+    let savedScan: NetworkScan | null = null;
+    try {
+      const keyExchangeComp = breakdown.components.find(c => c.role === 'Key Exchange');
+      const encryptionComp = breakdown.components.find(c => c.role === 'Encryption');
+      const hashComp = breakdown.components.find(c => c.role === 'Hash / PRF');
+
+      savedScan = await NetworkScan.create({
+        id: uuidv4(),
+        host,
+        port: port || 443,
+        protocol: result.protocol,
+        cipherSuite: result.cipherSuite,
+        keyExchange: keyExchangeComp?.name || 'Unknown',
+        encryption: encryptionComp?.name || 'Unknown',
+        hashFunction: hashComp?.name || 'Unknown',
+        isQuantumSafe: result.isQuantumSafe,
+        cipherBreakdown: JSON.stringify(breakdown),
+        certCommonName: (result as any).certCommonName || null,
+        certIssuer: (result as any).certIssuer || null,
+        certExpiry: (result as any).certExpiry || null,
+        scannedAt: result.lastScanned,
+      });
+    } catch (dbErr) {
+      console.warn('[NetworkScanner] Failed to persist scan result:', (dbErr as Error).message);
+    }
+
     const response = {
       success: true,
       result,
       cbomAsset: enrichedAsset,
       cipherBreakdown: breakdown,
+      savedScanId: savedScan?.id || null,
     };
 
     res.json(response);

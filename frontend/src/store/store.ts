@@ -15,6 +15,7 @@ import { policiesApi } from './api/policiesApi';
 import { trackingApi } from './api/trackingApi';
 import { xbomApi } from './api/xbomApi';
 import { cbomUploadsApi } from './api/cbomUploadsApi';
+import { networkScansApi } from './api/networkScansApi';
 
 export const store = configureStore({
   reducer: {
@@ -30,6 +31,7 @@ export const store = configureStore({
     [trackingApi.reducerPath]: trackingApi.reducer,
     [xbomApi.reducerPath]: xbomApi.reducer,
     [cbomUploadsApi.reducerPath]: cbomUploadsApi.reducer,
+    [networkScansApi.reducerPath]: networkScansApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -44,7 +46,8 @@ export const store = configureStore({
       .concat(policiesApi.middleware)
       .concat(trackingApi.middleware)
       .concat(xbomApi.middleware)
-      .concat(cbomUploadsApi.middleware),
+      .concat(cbomUploadsApi.middleware)
+      .concat(networkScansApi.middleware),
 });
 
 /* Enable refetchOnFocus & refetchOnReconnect across all API slices */

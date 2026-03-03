@@ -9,3 +9,4 @@ export { default as SyncLog } from './SyncLog';
 export { default as CryptoPolicy } from './CryptoPolicy';
 export { default as Ticket } from './Ticket';
 export { default as TicketConnector } from './TicketConnector';
+export { default as NetworkScan } from './NetworkScan';

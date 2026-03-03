@@ -245,7 +245,7 @@ router.post('/integrations/:id/test', async (req: Request, res: Response) => {
     }
 
     // ── Real connection test for DigiCert DTM ──
-    if (templateType === 'digicert-dtm' && config.apiBaseUrl && config.apiKey) {
+    if (templateType === 'digicert-dtm' && config.apiBaseUrl && (config.apiKey || config.accessToken)) {
       const { testDtmConnection } = await import('../services/digicert/dtmConnector');
       const result = await testDtmConnection(config as import('../services/connectors').ConnectorConfig);
 

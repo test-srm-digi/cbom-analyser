@@ -33,6 +33,8 @@ export interface ConnectorResult<T> {
 export interface ConnectorConfig {
   apiBaseUrl?: string;
   apiKey?: string;
+  /** Bearer / access token — alternative to apiKey for session-based auth */
+  accessToken?: string;
   accountId?: string;
   organizationId?: string;
   token?: string;
@@ -273,8 +275,8 @@ export async function fetchDevices(
   config: ConnectorConfig,
   integrationId: string,
 ): Promise<ConnectorResult<Record<string, unknown>>> {
-  // ── Real DigiCert DTM API mode ──
-  if (config.apiBaseUrl && config.apiKey && config.accountId) {
+  // ── Real DigiCert DTM API mode (API key OR access token) ──
+  if (config.apiBaseUrl && (config.apiKey || config.accessToken) && config.accountId) {
     const { fetchDevicesFromDtm } = await import('./digicert/dtmConnector');
     return fetchDevicesFromDtm(config, integrationId);
   }
@@ -524,6 +526,19 @@ export const CONNECTOR_REGISTRY: Record<string, ConnectorEntry> = {
   },
   'network-scanner': { fetch: fetchEndpoints, model: 'Endpoint', label: 'Network Scanner (Endpoints)' },
   'digicert-stm': { fetch: fetchSoftware, model: 'Software', label: 'DigiCert STM (Software)' },
-  'digicert-dtm': { fetch: fetchDevices, model: 'Device', label: 'DigiCert DTM (Devices)' },
+  'digicert-dtm': {
+    fetch: fetchDevices,
+    model: 'Device',
+    label: 'DigiCert DTM (Devices & Certificates)',
+    additionalFetchers: [
+      {
+        fetch: async (config, integrationId) => {
+          const { fetchDeviceCertificatesFromDtm } = await import('./digicert/dtmConnector');
+          return fetchDeviceCertificatesFromDtm(config, integrationId);
+        },
+        model: 'Certificate',
+      },
+    ],
+  },
   'cbom-import': { fetch: fetchCbomImports, model: 'CbomImport', label: 'CBOM Import' },
 };

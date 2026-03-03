@@ -3,7 +3,7 @@
  */
 export { fetchCertificatesFromDigiCert } from './connector';
 export { fetchEndpointsFromDigiCert } from './endpointConnector';
-export { fetchDevicesFromDtm, testDtmConnection } from './dtmConnector';
+export { fetchDevicesFromDtm, fetchDeviceCertificatesFromDtm, testDtmConnection } from './dtmConnector';
 export { testDigiCertConnection } from './testConnection';
 export { digicertRequest } from './httpClient';
 export {

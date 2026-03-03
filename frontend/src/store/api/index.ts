@@ -158,3 +158,13 @@ export {
 } from './cbomUploadsApi';
 
 export type { CbomUploadItem, CbomUploadDetail } from './cbomUploadsApi';
+
+export {
+  networkScansApi,
+  useGetNetworkScansQuery,
+  useGetNetworkScanQuery,
+  useDeleteNetworkScanMutation,
+  useDeleteAllNetworkScansMutation,
+} from './networkScansApi';
+
+export type { NetworkScanRecord, CipherBreakdown, CipherComponent } from './networkScansApi';

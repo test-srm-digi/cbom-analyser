@@ -14,3 +14,4 @@ export { default as policyRoutes } from './policyRoutes';
 export { default as ticketRoutes } from './ticketRoutes';
 export { default as ticketConnectorRoutes } from './ticketConnectorRoutes';
 export { default as xbomRoutes } from './xbomRoutes';
+export { default as networkScanRoutes } from './networkScanRoutes';

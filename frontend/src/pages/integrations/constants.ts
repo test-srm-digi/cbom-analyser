@@ -480,8 +480,16 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
         label: "API Key",
         type: "password",
         placeholder: "Enter your API key",
-        required: true,
-        helpText: "Generate from DigiCert ONE → Admin → API Keys",
+        required: false,
+        helpText: "Generate from DigiCert ONE → Admin → API Keys. Provide either API Key or Access Token.",
+      },
+      {
+        key: "accessToken",
+        label: "Access Token (Bearer)",
+        type: "password",
+        placeholder: "Paste access token from browser session",
+        required: false,
+        helpText: "Alternative to API Key — paste the dcone.access.token from your browser cookies. Note: expires in ~5 minutes.",
       },
       {
         key: "accountId",

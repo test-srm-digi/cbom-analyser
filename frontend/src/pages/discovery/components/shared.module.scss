@@ -331,6 +331,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  table-layout: fixed;
 }
 
 .table thead th {
@@ -433,6 +434,9 @@
   padding: 12px 12px;
   color: $dc1-text;
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Badges ───────────────────────────────────────────────── */

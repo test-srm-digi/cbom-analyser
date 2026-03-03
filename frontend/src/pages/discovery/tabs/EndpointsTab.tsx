@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Sparkles, Loader2, ShieldCheck, ShieldX, Ticket, X } from 'lucide-react';
+import { Sparkles, Loader2, ShieldCheck, ShieldX, Ticket, X, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useColumnResize } from '../../../hooks/useColumnResize';
 import { CreateTicketModal } from '../../tracking';
 import type { TicketContext } from '../../tracking';
@@ -96,11 +96,17 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
+  // Filter state
+  type QsFilter = 'all' | 'safe' | 'not-safe';
+  type RiskFilter = 'all' | 'AT_RISK' | 'SECURE';
+  const [qsFilter, setQsFilter] = useState<QsFilter>('all');
+  const [riskFilter, setRiskFilter] = useState<RiskFilter>('all');
+
   // Data from a real integration has integrationId set — hide reset for integration-sourced data
   const isSampleData = loaded && data.every((e) => !e.integrationId);
 
   // Column resize
-  const COL_MIN: Record<number, number> = { 0: 120, 1: 100, 2: 50, 3: 100, 4: 90, 5: 90, 6: 100, 7: 60, 8: 80, 9: 90, 10: 110, 11: 70, 12: 200 };
+  const COL_MIN: Record<number, number> = { 0: 150, 1: 150, 2: 90, 3: 120, 4: 150, 5: 150, 6: 120, 7: 120, 8: 120, 9: 120, 10: 120, 11: 120, 12: 200 };
   const { colWidths, onResizeStart } = useColumnResize(COL_MIN);
 
   /* ── Create-ticket modal state ───────────────────────── */
@@ -181,18 +187,27 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
   }, [policyResultsMap]);
 
   const filtered = useMemo(() => {
-    if (!search) return data;
-    const q = search.toLowerCase();
-    return data.filter(
-      (e) =>
-        e.hostname.toLowerCase().includes(q) ||
-        e.ipAddress.includes(q) ||
-        (e.caVendor || '').toLowerCase().includes(q) ||
-        (e.osName || '').toLowerCase().includes(q) ||
-        (e.sensorName || '').toLowerCase().includes(q) ||
-        (e.securityRating || '').toLowerCase().includes(q),
-    );
-  }, [search, data]);
+    let result = data;
+    // Quantum-safe filter
+    if (qsFilter === 'safe') result = result.filter(e => e.quantumSafe);
+    else if (qsFilter === 'not-safe') result = result.filter(e => !e.quantumSafe);
+    // Risk filter
+    if (riskFilter !== 'all') result = result.filter(e => e.securityRating === riskFilter);
+    // Text search
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (e) =>
+          e.hostname.toLowerCase().includes(q) ||
+          e.ipAddress.includes(q) ||
+          (e.caVendor || '').toLowerCase().includes(q) ||
+          (e.osName || '').toLowerCase().includes(q) ||
+          (e.sensorName || '').toLowerCase().includes(q) ||
+          (e.securityRating || '').toLowerCase().includes(q),
+      );
+    }
+    return result;
+  }, [search, data, qsFilter, riskFilter]);
 
   // Reset page when filter changes
   const filteredLen = filtered.length;
@@ -343,6 +358,15 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
         onReset={isSampleData ? () => deleteAll() : undefined}
         resetLoading={isSampleData ? isResetLoading : undefined}
       />
+
+      {/* Filter pills */}
+      <div className={s.filterPills}>
+        <button className={`${s.filterPill} ${qsFilter === 'all' && riskFilter === 'all' ? s.filterPillActive : ''}`} onClick={() => { setQsFilter('all'); setRiskFilter('all'); }}>All</button>
+        <button className={`${s.filterPill} ${qsFilter === 'safe' ? s.filterPillActive : ''}`} onClick={() => setQsFilter(qsFilter === 'safe' ? 'all' : 'safe')}><ShieldCheck size={14} /> Quantum-safe</button>
+        <button className={`${s.filterPill} ${qsFilter === 'not-safe' ? s.filterPillActive : ''}`} onClick={() => setQsFilter(qsFilter === 'not-safe' ? 'all' : 'not-safe')}><ShieldX size={14} /> Not Safe</button>
+        <button className={`${s.filterPill} ${riskFilter === 'AT_RISK' ? s.filterPillActive : ''}`} onClick={() => setRiskFilter(riskFilter === 'AT_RISK' ? 'all' : 'AT_RISK')}><AlertTriangle size={14} /> At Risk</button>
+        <button className={`${s.filterPill} ${riskFilter === 'SECURE' ? s.filterPillActive : ''}`} onClick={() => setRiskFilter(riskFilter === 'SECURE' ? 'all' : 'SECURE')}><CheckCircle size={14} /> Secure</button>
+      </div>
 
       <div className={s.tableCard}>
         <h3 className={s.tableTitle}>Endpoints ({filtered.length})</h3>

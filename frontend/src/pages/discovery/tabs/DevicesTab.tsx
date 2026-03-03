@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Ticket, Sparkles, Loader2, X } from 'lucide-react';
+import { Ticket, Sparkles, Loader2, X, ShieldCheck, ShieldX, CheckCircle, Clock, Ban, Filter } from 'lucide-react';
 import { useColumnResize } from '../../../hooks/useColumnResize';
 import { StatCards, Toolbar, AiBanner, QsBadge, DeviceStatusBadge, EmptyState, PolicyViolationCell } from '../components';
 import { ArrowUpDown } from 'lucide-react';
@@ -40,12 +40,20 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
   const isSampleData = loaded && data.every((d) => !d.integrationId);
 
   // Column resize
-  const COL_MIN: Record<number, number> = { 0: 120, 1: 80, 2: 100, 3: 90, 4: 100, 5: 80, 6: 80, 7: 80, 8: 80, 9: 65, 10: 80, 11: 120, 12: 70, 13: 200 };
+  const COL_MIN: Record<number, number> = { 0: 150, 1: 150, 2: 150, 3: 120, 4: 120, 5: 120, 6: 120, 7: 120, 8: 120, 9: 100, 10: 120, 11: 120, 12: 100, 13: 200 };
   const { colWidths, onResizeStart } = useColumnResize(COL_MIN);
 
   // Pagination state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+
+  // Filter state
+  type QsFilter = 'all' | 'safe' | 'not-safe';
+  type StatusFilter = 'all' | 'Enrolled' | 'Pending' | 'Revoked' | 'Expired';
+  type AlgoFilter = 'all' | string;
+  const [qsFilter, setQsFilter] = useState<QsFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [algoFilter, setAlgoFilter] = useState<AlgoFilter>('all');
 
   /* ── Create-ticket modal state ─────────────────────────── */
   const [ticketCtx, setTicketCtx] = useState<TicketContext | null>(null);
@@ -118,17 +126,34 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
     return count;
   }, [policyResultsMap]);
 
+  // Unique algorithm values for filter pills
+  const uniqueAlgos = useMemo(() => {
+    const algos = new Set(data.map(d => d.certAlgorithm).filter(a => a && a !== 'Unknown'));
+    return Array.from(algos).sort();
+  }, [data]);
+
   const filtered = useMemo(() => {
-    if (!search) return data;
-    const q = search.toLowerCase();
-    return data.filter(
-      (d) =>
-        d.deviceName.toLowerCase().includes(q) ||
-        d.manufacturer.toLowerCase().includes(q) ||
-        d.deviceType.toLowerCase().includes(q) ||
-        d.certAlgorithm.toLowerCase().includes(q),
-    );
-  }, [search, data]);
+    let result = data;
+    // Quantum-safe filter
+    if (qsFilter === 'safe') result = result.filter(d => d.quantumSafe);
+    else if (qsFilter === 'not-safe') result = result.filter(d => !d.quantumSafe);
+    // Status filter
+    if (statusFilter !== 'all') result = result.filter(d => d.enrollmentStatus === statusFilter);
+    // Algorithm filter
+    if (algoFilter !== 'all') result = result.filter(d => d.certAlgorithm === algoFilter);
+    // Text search
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (d) =>
+          d.deviceName.toLowerCase().includes(q) ||
+          d.manufacturer.toLowerCase().includes(q) ||
+          d.deviceType.toLowerCase().includes(q) ||
+          d.certAlgorithm.toLowerCase().includes(q),
+      );
+    }
+    return result;
+  }, [search, data, qsFilter, statusFilter, algoFilter]);
 
   const stats: StatCardConfig[] = [
     { title: 'Total Devices',     value: total,      sub: 'Managed by DigiCert Device Trust Manager',                       variant: 'default' },
@@ -274,6 +299,19 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
         onReset={isSampleData ? () => deleteAll() : undefined}
         resetLoading={isSampleData ? isResetLoading : undefined}
       />
+
+      {/* Filter pills */}
+      <div className={s.filterPills}>
+        <button className={`${s.filterPill} ${qsFilter === 'all' && statusFilter === 'all' && algoFilter === 'all' ? s.filterPillActive : ''}`} onClick={() => { setQsFilter('all'); setStatusFilter('all'); setAlgoFilter('all'); }}>All</button>
+        <button className={`${s.filterPill} ${qsFilter === 'safe' ? s.filterPillActive : ''}`} onClick={() => setQsFilter(qsFilter === 'safe' ? 'all' : 'safe')}><ShieldCheck size={14} /> Quantum-safe</button>
+        <button className={`${s.filterPill} ${qsFilter === 'not-safe' ? s.filterPillActive : ''}`} onClick={() => setQsFilter(qsFilter === 'not-safe' ? 'all' : 'not-safe')}><ShieldX size={14} /> Not Safe</button>
+        <button className={`${s.filterPill} ${statusFilter === 'Enrolled' ? s.filterPillActive : ''}`} onClick={() => setStatusFilter(statusFilter === 'Enrolled' ? 'all' : 'Enrolled')}><CheckCircle size={14} /> Enrolled</button>
+        <button className={`${s.filterPill} ${statusFilter === 'Pending' ? s.filterPillActive : ''}`} onClick={() => setStatusFilter(statusFilter === 'Pending' ? 'all' : 'Pending')}><Clock size={14} /> Pending</button>
+        <button className={`${s.filterPill} ${statusFilter === 'Revoked' ? s.filterPillActive : ''}`} onClick={() => setStatusFilter(statusFilter === 'Revoked' ? 'all' : 'Revoked')}><Ban size={14} /> Revoked</button>
+        {uniqueAlgos.map(algo => (
+          <button key={algo} className={`${s.filterPill} ${algoFilter === algo ? s.filterPillActive : ''}`} onClick={() => setAlgoFilter(algoFilter === algo ? 'all' : algo)}><Filter size={14} /> {algo}</button>
+        ))}
+      </div>
 
       <div className={s.tableCard}>
         <h3 className={s.tableTitle}>Devices ({filtered.length})</h3>
