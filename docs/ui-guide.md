@@ -233,6 +233,22 @@ When no data has been imported, each discovery page shows an **EmptyState** comp
 | **Devices** | DigiCert DTM | Device Name, Type, Manufacturer, Firmware, Cert Algorithm, Key Length, Enrollment | IoT devices — firmware crypto, certificate enrollment, key-strength audit |
 | **BOM Imports** | CBOM File Import | Component Name, Type, Algorithm, Version, Quantum Safe, Spec Version, BOMs (CBOM/SBOM/xBOM) | CycloneDX BOM contents — crypto component inventory, PQC breakdown, and multi-BOM availability indicators |
 
+### Filter Pills
+
+The **Certificates**, **Devices**, and **Endpoints** tabs include **filter pill buttons** above the data table for quick category-based filtering. Clicking a pill toggles the filter; clicking "All" resets all filters.
+
+| Tab | Filter Pills | Description |
+|-----|-------------|-------------|
+| **Certificates** | All, Quantum-safe, Not Safe | Filter by PQC safety classification |
+| **Devices** | All, Quantum-safe, Not Safe, Enrolled, Pending, Revoked, *[dynamic algorithm pills]* | Filter by PQC safety, enrollment status, or certificate algorithm (RSA, ECDSA, etc. — generated dynamically from data) |
+| **Endpoints** | All, Quantum-safe, Not Safe, At Risk, Secure | Filter by PQC safety or security rating |
+
+Filter pills combine with the text search — both are applied simultaneously.
+
+### Resizable Columns
+
+All discovery tab tables support **drag-to-resize columns**. Each column header has a resize handle on its right edge. Dragging the handle adjusts the column width, with minimum widths enforced per column. The resize is powered by the `useColumnResize` custom hook that tracks `colWidths` state applied via `<colgroup>`. The underlying CSS uses `table-layout: fixed` to ensure browser-enforced column widths.
+
 ### Integration → Discovery Data Flow
 
 ```
@@ -307,6 +323,66 @@ When an integration type tile is selected in the "Available Integration Types" r
 ## Real Connectors
 
 While the `CONNECTOR_REGISTRY` in `connectors.ts` contains simulated fallback connectors, three integration types have **real production connectors** that talk to external APIs.
+
+### DigiCert Device Trust Manager
+
+**File:** `backend/src/services/digicert/dtmConnector.ts`
+
+Fetches IoT/OT devices and their certificates from the **DigiCert ONE Device Trust Manager** REST API and maps them to the normalised `Device` model.
+
+#### Configuration
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `apiBaseUrl` | Yes | DigiCert ONE base URL (e.g. `https://one.digicert.com`) |
+| `apiKey` | Yes | DigiCert ONE API key (sent as `x-api-key` header) |
+| `accessToken` | No | Bearer token (alternative to API key, used by staging/browser sessions) |
+| `accountId` | No | Account ID filter |
+| `allowInsecureTls` | No | `"true"` to accept self-signed / internal CA certs |
+
+#### API Endpoints
+
+The connector uses two DTM REST API endpoints:
+
+| Resource | Method | Path | Pagination |
+|----------|--------|------|------------|
+| **Devices** | GET | `/devicetrustmanager/api/v4/device` | `?limit=100&offset=N` |
+| **Certificates** | GET | `/devicetrustmanager/certificate-issuance-service/api/v2/certificate` | `?limit=100&offset=N` |
+
+Both endpoints support **API key** auth (`x-api-key` header) and **Bearer token** auth (`Authorization: Bearer …`).
+
+#### Certificate Enrichment
+
+Device records from the v4 device endpoint don't include certificate details. The connector performs a **bulk certificate fetch** from the v2 certificate endpoint and correlates certificates to devices:
+
+1. **Fetch all devices** — paginated sweep of the v4 device endpoint (up to 5,000 devices)
+2. **Bulk-fetch all certificates** — single paginated sweep of the v2 certificate endpoint, building a `Map<deviceId, cert>`. Each v2 cert record includes a `device: { id, name }` nested object used for correlation.
+3. **Enrich devices** — for each device, look up its cert from the map and populate `certAlgorithm`, `keyLength`, and other certificate fields.
+
+This bulk approach is far more efficient than per-device certificate lookups.
+
+#### `key_type` Parsing
+
+The v2 certificate endpoint returns a combined `key_type` field (e.g. `"RSA_2048"`, `"EC_prime256v1"`) that encodes both algorithm and key size. Two parser functions extract the components:
+
+| `key_type` Value | Parsed Algorithm | Parsed Key Length |
+|------------------|-----------------|-------------------|
+| `RSA_2048` | RSA | 2048 |
+| `RSA_4096` | RSA | 4096 |
+| `EC_prime256v1` | ECDSA P-256 | P-256 |
+| `EC_secp384r1` | ECDSA P-384 | P-384 |
+| `EC_secp521r1` | ECDSA P-521 | P-521 |
+| `ED25519` | EdDSA | Ed25519 |
+
+#### Features
+
+- **Pagination** — fetches up to 5,000 devices and 5,000 certificates (100 per page, max 50 pages each)
+- **Dual auth** — supports both `x-api-key` and `Authorization: Bearer` headers
+- **Test Connection** — validates credentials by fetching the first page of devices
+- **Bulk cert enrichment** — single sweep instead of per-device API calls
+- **Certificate field normalisation** — maps v2 fields (`valid_to`, `valid_from`, `issuer_common_name`, `thumbprint_sha256`, `signature_algorithm`) to the standard `Certificate` model with PQC safety classification
+
+---
 
 ### DigiCert Trust Lifecycle Manager
 

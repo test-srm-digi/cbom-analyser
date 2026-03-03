@@ -72,6 +72,7 @@ cbom-analyser/
 │       │   ├── Software.ts         # Software signing data
 │       │   ├── Device.ts           # IoT/industrial devices
 │       │   ├── CbomImport.ts       # CBOM file imports (with BLOBs)
+│       │   ├── NetworkScan.ts      # Persisted TLS scan results (Network Scanner history)
 │       │   ├── SyncLog.ts          # Sync audit trail
 │       │   └── index.ts            # Sequelize associations
 │       ├── services/
@@ -85,6 +86,7 @@ cbom-analyser/
 │       │   ├── syncScheduler.ts    # Cron job management (node-cron)
 │       │   ├── xbomDbLoader.ts     # Loads xBOM from DB into memory
 │       │   ├── digicertTlmConnector.ts   # DigiCert TLM real connector
+│       │   ├── digicert/dtmConnector.ts  # DigiCert DTM real connector (v2 API)
 │       │   ├── githubCbomConnector.ts    # GitHub CBOM real connector
 │       │   ├── networkTlsConnector.ts    # Network TLS real connector
 │       │   ├── bedrockService.ts         # AWS Bedrock AI suggestions
@@ -105,6 +107,7 @@ cbom-analyser/
 │           ├── endpointRoutes.ts   # Discovery endpoints CRUD
 │           ├── softwareRoutes.ts   # Discovery software CRUD
 │           ├── deviceRoutes.ts     # Discovery devices CRUD
+│           ├── networkScanRoutes.ts# Network scan history CRUD
 │           ├── syncLogRoutes.ts    # Sync log read + cleanup
 │           ├── schedulerRoutes.ts  # Scheduler control
 │           └── index.ts            # Barrel exports
@@ -293,6 +296,7 @@ frontend/src/store/
     ├── devicesApi.ts        — Devices CRUD (8 hooks)
     ├── cbomImportsApi.ts    — CBOM Imports CRUD (8 hooks)
     ├── cbomUploadsApi.ts    — CBOM Uploads (3 hooks)
+    ├── networkScansApi.ts   — Network Scan History (4 hooks)
     ├── xbomApi.ts           — xBOM CRUD (6 hooks)
     ├── syncLogsApi.ts       — Sync Logs (4 hooks)
     ├── schedulerApi.ts      — Scheduler status & control (3 hooks)
@@ -344,6 +348,15 @@ Each of the five discovery API slices generates 8 hooks following the same patte
 | `useGetCbomUploadsQuery()` | Query | List all uploaded CBOMs (excludes BLOB) |
 | `useGetCbomUploadQuery(id)` | Query | Fetch a single upload with base64-encoded CBOM |
 | `useDeleteCbomUploadMutation()` | Mutation | Delete an uploaded CBOM |
+
+### Network Scans API Hooks
+
+| Hook | Type | Description |
+|------|------|-------------|
+| `useGetNetworkScansQuery()` | Query | Fetch all persisted TLS scan results (newest first) |
+| `useGetNetworkScanQuery(id)` | Query | Fetch a single scan by ID |
+| `useDeleteNetworkScanMutation()` | Mutation | Delete a single scan |
+| `useDeleteAllNetworkScansMutation()` | Mutation | Delete all scan history |
 
 ### Sync Logs API Hooks
 
@@ -414,7 +427,7 @@ RTK Query uses **tags** for automatic cache invalidation across all API slices:
 - Mutations (create, bulk create, update, delete) **invalidate** both the specific tag and the list tag
 - Any list query auto-refetches after any mutation — no manual refetch needed
 
-**Tag types:** `Integration`, `Certificate`, `Endpoint`, `Software`, `Device`, `CbomImport`, `CbomUpload`, `SyncLog`, `Scheduler`, `Policy`, `Ticket`, `TicketConnector`
+**Tag types:** `Integration`, `Certificate`, `Endpoint`, `Software`, `Device`, `CbomImport`, `CbomUpload`, `NetworkScan`, `SyncLog`, `Scheduler`, `Policy`, `Ticket`, `TicketConnector`
 
 ### Usage Example
 

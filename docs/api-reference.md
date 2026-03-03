@@ -58,6 +58,21 @@ The list endpoint excludes the BLOB column (`cbomFile`) for performance. The sin
 | `POST` | `/api/scan-network/batch` | `{ hosts: [{ host, port? }] }` | `{ success, results, cbomAssets, errors }` |
 | `POST` | `/api/scan-network/merge/:cbomId` | `{ url, port? }` | Updated CBOM with network asset merged |
 
+### Network Scan History (Persisted)
+
+Scan results from the Network Scanner page are automatically persisted to the `network_scans` database table. These endpoints provide read and delete access to scan history, separate from the live scan endpoints above.
+
+| Method | Endpoint | Body | Response |
+|--------|----------|------|----------|
+| `GET` | `/api/network-scans` | — | `{ success, data: NetworkScan[] }` |
+| `GET` | `/api/network-scans/:id` | — | `{ success, data: NetworkScan }` |
+| `DELETE` | `/api/network-scans/:id` | — | `{ success, message }` |
+| `DELETE` | `/api/network-scans/all` | — | `{ success, message }` |
+
+Each `NetworkScan` record includes: `id`, `host`, `port`, `protocol`, `cipherSuite`, `keyExchange`, `encryption`, `hashFunction`, `isQuantumSafe`, `cipherBreakdown` (JSON), `certCommonName`, `certIssuer`, `certExpiry`, `scannedAt`.
+
+The `cipherBreakdown` field contains a JSON-serialised cipher component analysis with per-component quantum safety classification.
+
 ---
 
 ## Code Scanning

@@ -104,6 +104,7 @@ pool: {
 | `CbomImport` | `cbom_imports` | CycloneDX CBOM file import records |
 | `SyncLog` | `sync_logs` | Audit trail of every sync run (scheduled or manual) |
 | `CryptoPolicy` | `crypto_policies` | Cryptographic compliance policies with JSON-serialised rules |
+| `NetworkScan` | `network_scans` | Persisted TLS scan results from the Network Scanner tool |
 | `Ticket` | `tickets` | Remediation tickets created via JIRA, GitHub, or ServiceNow |
 | `TicketConnector` | `ticket_connectors` | JIRA / GitHub / ServiceNow connector credentials and defaults |
 | `CbomUpload` | `cbom_uploads` | CBOMs uploaded via the CBOM Analyzer page (persisted for Dashboard welcome page) |
@@ -281,6 +282,29 @@ pool: {
 | `device_group` | `VARCHAR(100)` | Logical device group (nullable) |
 | `created_at` | `DATETIME` | Auto-managed by Sequelize |
 | `updated_at` | `DATETIME` | Auto-managed by Sequelize |
+
+### Network Scans Table
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `VARCHAR(36)` PK | UUID v4 |
+| `host` | `VARCHAR(255)` | Scanned hostname or IP |
+| `port` | `INTEGER` | TCP port number (default 443) |
+| `protocol` | `VARCHAR(20)` | TLS protocol version (e.g. `TLSv1.3`) |
+| `cipher_suite` | `VARCHAR(255)` | Negotiated cipher suite |
+| `key_exchange` | `VARCHAR(100)` | Key exchange algorithm (default `Unknown`) |
+| `encryption` | `VARCHAR(100)` | Symmetric encryption algorithm (default `Unknown`) |
+| `hash_function` | `VARCHAR(100)` | Hash function (default `Unknown`) |
+| `is_quantum_safe` | `BOOLEAN` | Whether the cipher suite is PQC-safe |
+| `cipher_breakdown` | `LONGTEXT` | JSON-stringified cipher component breakdown (nullable) |
+| `cert_common_name` | `VARCHAR(255)` | Certificate CN from TLS handshake (nullable) |
+| `cert_issuer` | `VARCHAR(255)` | Certificate issuer (nullable) |
+| `cert_expiry` | `VARCHAR(100)` | Certificate expiration date (nullable) |
+| `scanned_at` | `VARCHAR(100)` | ISO timestamp of the scan |
+| `created_at` | `DATETIME` | Auto-managed by Sequelize |
+| `updated_at` | `DATETIME` | Auto-managed by Sequelize |
+
+> The `network_scans` table is **independent** from the `endpoints` table. Endpoints hold integration-sourced data (linked to an integration via `integration_id`), while network scans persist the results of on-demand TLS scans from the Network Scanner page.
 
 ### CBOM Imports Table
 
