@@ -6,6 +6,9 @@ import { useState, useMemo } from 'react';
 import { Box } from 'lucide-react';
 import type { SBOMComponent } from '../../types';
 import Pagination from '../Pagination';
+import { useColumnResize } from '../../hooks/useColumnResize';
+
+const SW_COL_MIN: Record<number, number> = { 0: 140, 1: 70, 2: 70, 3: 80, 4: 80, 5: 120 };
 
 interface Props {
   components: SBOMComponent[];
@@ -15,6 +18,7 @@ export default function SoftwarePanel({ components }: Props) {
   const [filter, setFilter] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const { colWidths, onResizeStart } = useColumnResize(SW_COL_MIN);
 
   const filtered = useMemo(() => {
     if (!filter) return components;
@@ -80,14 +84,17 @@ export default function SoftwarePanel({ components }: Props) {
         </div>
         <div className="dc1-table-wrapper">
           <table className="dc1-table" style={{ width: '100%' }}>
+            <colgroup>
+              {[0,1,2,3,4,5].map(i => <col key={i} style={{ width: colWidths[i] || SW_COL_MIN[i], minWidth: SW_COL_MIN[i] }} />)}
+            </colgroup>
             <thead>
               <tr>
-                <th>Package Name</th>
-                <th>Version</th>
-                <th>Type</th>
-                <th>Group</th>
-                <th>License</th>
-                <th>PURL</th>
+                <th>Package Name<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 0)} /></th>
+                <th>Version<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 1)} /></th>
+                <th>Type<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 2)} /></th>
+                <th>Group<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 3)} /></th>
+                <th>License<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 4)} /></th>
+                <th>PURL<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 5)} /></th>
               </tr>
             </thead>
             <tbody>

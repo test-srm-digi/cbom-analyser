@@ -1,5 +1,6 @@
 import { type ReactNode, useState, useMemo } from 'react';
 import { ArrowUpDown } from 'lucide-react';
+import { useColumnResize } from '../../../hooks/useColumnResize';
 import Pagination from '../../../components/Pagination';
 import s from './shared.module.scss';
 
@@ -10,6 +11,7 @@ interface Column<T> {
   render: (item: T) => ReactNode;
   headerStyle?: React.CSSProperties;
   cellStyle?: React.CSSProperties;
+  minWidth?: number;
 }
 
 interface Props<T> {
@@ -27,6 +29,14 @@ export default function DataTable<T>({ title, count, columns, data, rowKey, onRo
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
 
+  // Column resize
+  const COL_MIN = useMemo(() => {
+    const mins: Record<number, number> = {};
+    columns.forEach((col, i) => { mins[i] = col.minWidth ?? 80; });
+    return mins;
+  }, [columns]);
+  const { colWidths, onResizeStart } = useColumnResize(COL_MIN);
+
   // Reset to page 1 when data changes
   const dataLen = data.length;
   const [prevLen, setPrevLen] = useState(dataLen);
@@ -41,12 +51,18 @@ export default function DataTable<T>({ title, count, columns, data, rowKey, onRo
     <div className={s.tableCard}>
       <h3 className={s.tableTitle}>{title} ({count})</h3>
       <table className={s.table}>
+        <colgroup>
+          {columns.map((_, i) => (
+            <col key={i} style={{ width: colWidths[i] || COL_MIN[i], minWidth: COL_MIN[i] }} />
+          ))}
+        </colgroup>
         <thead>
           <tr>
-            {columns.map((col) => (
+            {columns.map((col, colIdx) => (
               <th key={col.key} style={col.headerStyle}>
                 {col.label}
                 {col.sortable !== false && <ArrowUpDown className={s.sortIcon} />}
+                <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, colIdx)} />
               </th>
             ))}
           </tr>

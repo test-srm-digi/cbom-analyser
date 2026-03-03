@@ -53,7 +53,7 @@ function evaluateCondition(
   condition: RuleCondition,
   expected: string,
 ): boolean {
-  const norm = (s: string) => s.trim().toLowerCase();
+  const norm = (s: string) => (s ?? '').trim().toLowerCase();
 
   switch (condition) {
     case 'equals':
@@ -172,6 +172,8 @@ function extractCertField(cert: DiscoveryCertificate, field: string): string | u
         return String(Math.max(0, days));
       }
       return undefined;
+    case 'status':
+      return cert.status;
     default:
       return undefined;
   }
@@ -195,6 +197,17 @@ function extractEndpointField(ep: DiscoveryEndpoint, field: string): string | un
       const m = ep.cipherSuite?.match(/(\d{3,4})/);
       return m ? m[1] : undefined;
     }
+    case 'expiryDays':
+      if (ep.expiryDate) {
+        const days = Math.ceil((new Date(ep.expiryDate).getTime() - Date.now()) / 86_400_000);
+        return String(Math.max(0, days));
+      }
+      return undefined;
+    case 'securityRating':
+      return ep.securityRating ?? undefined;
+    case 'status':
+      // Endpoints don't have a status field — skip
+      return undefined;
     default:
       return undefined;
   }

@@ -143,4 +143,43 @@ export const PRESET_POLICIES: PresetPolicy[] = [
       { asset: 'cbom-component', field: 'keyLength', condition: 'greater-than', value: '255' },
     ],
   },
+
+  /* ─────── TLM: Endpoint Security Rating ─────── */
+  {
+    id: 'preset-endpoint-security-rating',
+    name: 'No At-Risk Endpoints',
+    description: 'All DigiCert TLM endpoints must have a passing security rating — "AT_RISK" is not allowed.',
+    severity: 'High',
+    reference: 'DigiCert Trust Lifecycle Manager, NIST SP 800-57',
+    operator: 'AND',
+    rules: [
+      { asset: 'endpoint', field: 'securityRating', condition: 'not-equals', value: 'AT_RISK' },
+    ],
+  },
+
+  /* ─────── TLM: Endpoint Certificate Expiry ─────── */
+  {
+    id: 'preset-endpoint-cert-expiry',
+    name: 'No Expired Endpoint Certificates',
+    description: 'Endpoint certificates must have at least 1 day remaining before expiry. Expired certificates indicate a failed renewal process.',
+    severity: 'Critical',
+    reference: 'DigiCert Trust Lifecycle Manager, CA/Browser Forum',
+    operator: 'AND',
+    rules: [
+      { asset: 'endpoint', field: 'expiryDays', condition: 'greater-than', value: '0' },
+    ],
+  },
+
+  /* ─────── TLM: No Revoked Certificates ─────── */
+  {
+    id: 'preset-no-revoked-certs',
+    name: 'No Revoked Certificates',
+    description: 'Certificates with Revoked status must not remain active in the infrastructure.',
+    severity: 'Critical',
+    reference: 'DigiCert Trust Lifecycle Manager, NIST SP 800-57 §8',
+    operator: 'AND',
+    rules: [
+      { asset: 'certificate', field: 'status', condition: 'not-equals', value: 'Revoked' },
+    ],
+  },
 ];

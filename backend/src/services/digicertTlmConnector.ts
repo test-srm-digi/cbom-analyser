@@ -6,6 +6,7 @@
  */
 export {
   fetchCertificatesFromDigiCert,
+  fetchEndpointsFromDigiCert,
   testDigiCertConnection,
   digicertRequest,
   isQuantumSafe,
@@ -20,6 +21,7 @@ export {
   MAX_PAGES,
   REQUEST_TIMEOUT,
   CERTIFICATE_API_PATHS,
+  ENDPOINT_API_PATHS,
   ACCOUNT_API_PATH,
   QUANTUM_SAFE_ALGORITHMS,
 } from './digicert';
@@ -30,4 +32,6 @@ export type {
   DigiCertListResponse,
   DigiCertUserResponse,
   DetectedEndpoint,
+  DigiCertEndpoint,
+  DigiCertEndpointListResponse,
 } from './digicert';

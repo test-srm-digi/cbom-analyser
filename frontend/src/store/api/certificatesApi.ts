@@ -30,6 +30,8 @@ export const certificatesApi = createApi({
   reducerPath: 'certificatesApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
   tagTypes: ['Certificate'],
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
 
     getCertificates: builder.query<DiscoveryCertificate[], void>({

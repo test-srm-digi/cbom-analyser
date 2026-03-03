@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ConnectorConfig, ConnectorResult } from '../connectors';
 import { PAGE_SIZE, MAX_PAGES, CERTIFICATE_API_PATHS } from './constants';
 import { digicertRequest } from './httpClient';
-import { isQuantumSafe, normaliseAlgorithm, normaliseStatus, extractCaVendor, detectCertificateApiPath } from './utils';
+import { isQuantumSafe, normaliseAlgorithm, normaliseStatus, extractCaVendor, detectCertificateApiPath, str } from './utils';
 import type { DigiCertCertificate, DigiCertListResponse } from './types';
 
 export async function fetchCertificatesFromDigiCert(
@@ -40,10 +40,15 @@ export async function fetchCertificatesFromDigiCert(
   /* ── Resolve the certificate API path ────────────────────── */
   let certApiPath: string;
   let certApiMethod: 'GET' | 'POST' = 'GET';
+  let useAccountInQuery = false;
+  let certExtraParams: Record<string, string> | undefined;
+
   if (explicitApiPath) {
     certApiPath = explicitApiPath;
     // If explicit path ends with /search, use POST
     certApiMethod = explicitApiPath.endsWith('/search') ? 'POST' : 'GET';
+    // ui-api paths need account as query param
+    useAccountInQuery = explicitApiPath.includes('ui-api');
     console.log(`[DigiCert TLM] Using explicit apiPath: ${certApiPath} (${certApiMethod})`);
   } else {
     // Auto-detect working endpoint
@@ -52,7 +57,9 @@ export async function fetchCertificatesFromDigiCert(
     if (detected) {
       certApiPath = detected.path;
       certApiMethod = detected.method;
-      console.log(`[DigiCert TLM] Auto-detected working path: ${certApiPath} (${certApiMethod})`);
+      useAccountInQuery = !!detected.accountInQuery;
+      certExtraParams = detected.extraParams;
+      console.log(`[DigiCert TLM] Auto-detected working path: ${certApiPath} (${certApiMethod})${useAccountInQuery ? ' [account-in-query]' : ''}`);
     } else {
       // None of the probed paths worked — collect detailed diagnostics
       const triedPaths = CERTIFICATE_API_PATHS.map((c) => `  • ${c.method} /${c.path}`).join('\n');
@@ -66,11 +73,25 @@ export async function fetchCertificatesFromDigiCert(
     }
   }
 
+  // For ui-api routes, pass accountId as query param; for standard API, use header
+  const headerAccountId = useAccountInQuery ? undefined : accountId;
+
   try {
     while (hasMore && offset / PAGE_SIZE < MAX_PAGES) {
       // Build URL with pagination params
       const url = new URL(`${baseUrl}/${certApiPath}`);
       let response: DigiCertListResponse | DigiCertCertificate[];
+
+      // Add account query param for ui-api routes
+      if (useAccountInQuery && accountId) {
+        url.searchParams.set('account', JSON.stringify({ id: accountId, name: accountId }));
+      }
+      // Add extra query params (e.g. status=issued, unique_certificate_view=true)
+      if (certExtraParams) {
+        for (const [k, v] of Object.entries(certExtraParams)) {
+          url.searchParams.set(k, v);
+        }
+      }
 
       if (certApiMethod === 'POST') {
         // POST search: pagination in JSON body
@@ -78,7 +99,7 @@ export async function fetchCertificatesFromDigiCert(
         if (divisionId) body.division_id = divisionId;
         console.log(`[DigiCert TLM] POST search page offset=${offset} limit=${PAGE_SIZE}`);
         response = await digicertRequest<DigiCertListResponse | DigiCertCertificate[]>(
-          url.toString(), apiKey, accountId, rejectUnauthorized, 'POST', JSON.stringify(body),
+          url.toString(), apiKey, headerAccountId, rejectUnauthorized, 'POST', JSON.stringify(body),
         );
       } else {
         // GET: pagination in query string
@@ -87,7 +108,7 @@ export async function fetchCertificatesFromDigiCert(
         if (divisionId) url.searchParams.set('division_id', divisionId);
         console.log(`[DigiCert TLM] GET page offset=${offset} limit=${PAGE_SIZE}`);
         response = await digicertRequest<DigiCertListResponse | DigiCertCertificate[]>(
-          url.toString(), apiKey, accountId, rejectUnauthorized,
+          url.toString(), apiKey, headerAccountId, rejectUnauthorized,
         );
       }
 
@@ -111,23 +132,43 @@ export async function fetchCertificatesFromDigiCert(
       // Map each DigiCert cert to our Certificate model schema
       for (const cert of certs) {
         const { keyAlgorithm, keyLength } = normaliseAlgorithm(cert);
-        const sigAlg = cert.signature_algorithm || null;
+        const sigAlg = str(cert.signature_algorithm) || str(cert.signing_algorithm) || null;
         const qSafe = isQuantumSafe(keyAlgorithm) || isQuantumSafe(sigAlg || '');
 
-        allCerts.push({
+        // Extract commonName with smart fallbacks for certs missing the field
+        const subjectObj = (typeof cert.subject === 'object' && cert.subject) ? cert.subject as Record<string, unknown> : null;
+        const commonName = (
+          str(cert.common_name)
+          || (subjectObj ? str(subjectObj.common_name) : '')
+          || str(cert.organization_unit)
+          || str(cert.organization_name)
+          || 'Unknown'
+        ).slice(0, 255);
+
+        const mapped = {
           id: uuidv4(),
           integrationId,
-          commonName: cert.common_name || cert.subject || 'Unknown',
-          caVendor: extractCaVendor(cert),
-          status: normaliseStatus(cert.status),
-          keyAlgorithm,
-          keyLength,
+          commonName,
+          caVendor: extractCaVendor(cert).slice(0, 100),
+          status: normaliseStatus(str(cert.status) || undefined),
+          keyAlgorithm: (keyAlgorithm || 'Unknown').slice(0, 50),
+          keyLength: (keyLength || 'Unknown').slice(0, 50),
           quantumSafe: qSafe,
           source: 'DigiCert TLM',
-          expiryDate: cert.valid_till || null,
-          serialNumber: cert.serial_number || null,
-          signatureAlgorithm: sigAlg,
-        });
+          expiryDate: str(cert.valid_till) || str(cert.valid_to) || null,
+          serialNumber: str(cert.serial_number).slice(0, 100) || null,
+          signatureAlgorithm: sigAlg?.slice(0, 100) || null,
+        };
+
+        // Debug: log first 3 cert mappings so we can verify field extraction
+        if (allCerts.length < 3) {
+          console.log(`[DigiCert TLM] Cert #${allCerts.length + 1} mapping:`, JSON.stringify({
+            raw: { common_name: cert.common_name, key_type: cert.key_type, key_size: cert.key_size, key_length: (cert as any).key_length, signing_algorithm: (cert as any).signing_algorithm, signature_algorithm: cert.signature_algorithm, valid_to: (cert as any).valid_to, valid_till: cert.valid_till, ca_vendor: (cert as any).ca_vendor, status: cert.status },
+            mapped: { commonName: mapped.commonName, keyAlgorithm: mapped.keyAlgorithm, keyLength: mapped.keyLength, signatureAlgorithm: mapped.signatureAlgorithm, caVendor: mapped.caVendor, expiryDate: mapped.expiryDate, quantumSafe: mapped.quantumSafe, status: mapped.status },
+          }, null, 2));
+        }
+
+        allCerts.push(mapped);
       }
 
       totalFetched += certs.length;

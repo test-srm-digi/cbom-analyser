@@ -2,7 +2,7 @@
    Cryptographic Policy Types
    ═══════════════════════════════════════════════════════════════ */
 
-export type PolicySeverity = 'High' | 'Medium' | 'Low';
+export type PolicySeverity = 'Critical' | 'High' | 'Medium' | 'Low';
 export type PolicyStatus = 'active' | 'draft';
 export type LogicalOperator = 'AND' | 'OR';
 
@@ -22,7 +22,9 @@ export type RuleField =
   | 'hashFunction'
   | 'quantumSafe'
   | 'expiryDays'
-  | 'protocol';
+  | 'protocol'
+  | 'securityRating'
+  | 'status';
 
 export type RuleCondition =
   | 'equals'
@@ -84,8 +86,10 @@ export const FIELD_OPTIONS: { value: RuleField; label: string }[] = [
   { value: 'cipherSuite',        label: 'Cipher Suite' },
   { value: 'hashFunction',       label: 'Hash Function' },
   { value: 'quantumSafe',        label: 'Quantum-safe' },
-  { value: 'expiryDays',         label: 'Expiry (days)' },
+  { value: 'expiryDays',         label: 'Expiry (days remaining)' },
   { value: 'protocol',           label: 'Protocol' },
+  { value: 'securityRating',     label: 'Security Rating (TLM)' },
+  { value: 'status',             label: 'Certificate Status' },
 ];
 
 export const CONDITION_OPTIONS: { value: RuleCondition; label: string }[] = [

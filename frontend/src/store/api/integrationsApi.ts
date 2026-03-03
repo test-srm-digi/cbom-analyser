@@ -54,6 +54,8 @@ export const integrationsApi = createApi({
   reducerPath: 'integrationsApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
   tagTypes: ['Integration'],
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
     /* List all integrations */
     getIntegrations: builder.query<Integration[], void>({

@@ -20,12 +20,20 @@ export interface EndpointAttributes {
   source: string;
   lastScanned: string | null;
   certCommonName: string | null;
+  /* ── New fields from DigiCert inventory ─────────────────── */
+  securityRating: string | null;
+  automationStatus: string | null;
+  caVendor: string | null;
+  expiryDate: string | null;
+  osName: string | null;
+  sensorName: string | null;
+  domainName: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface EndpointCreationAttributes
-  extends Optional<EndpointAttributes, 'id' | 'integrationId' | 'lastScanned' | 'certCommonName' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<EndpointAttributes, 'id' | 'integrationId' | 'lastScanned' | 'certCommonName' | 'securityRating' | 'automationStatus' | 'caVendor' | 'expiryDate' | 'osName' | 'sensorName' | 'domainName' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -45,6 +53,13 @@ class Endpoint
   declare source: string;
   declare lastScanned: string | null;
   declare certCommonName: string | null;
+  declare securityRating: string | null;
+  declare automationStatus: string | null;
+  declare caVendor: string | null;
+  declare expiryDate: string | null;
+  declare osName: string | null;
+  declare sensorName: string | null;
+  declare domainName: string | null;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -66,7 +81,7 @@ Endpoint.init(
       allowNull: false,
     },
     ipAddress: {
-      type: DataTypes.STRING(45),
+      type: DataTypes.STRING(255),
       allowNull: false,
       field: 'ip_address',
     },
@@ -108,6 +123,41 @@ Endpoint.init(
       type: DataTypes.STRING(255),
       allowNull: true,
       field: 'cert_common_name',
+    },
+    securityRating: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      field: 'security_rating',
+    },
+    automationStatus: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      field: 'automation_status',
+    },
+    caVendor: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: 'ca_vendor',
+    },
+    expiryDate: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: 'expiry_date',
+    },
+    osName: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'os_name',
+    },
+    sensorName: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'sensor_name',
+    },
+    domainName: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'domain_name',
     },
     createdAt: {
       type: DataTypes.DATE,

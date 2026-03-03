@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { Ticket, Sparkles, Loader2, X } from 'lucide-react';
+import { useColumnResize } from '../../../hooks/useColumnResize';
 import { StatCards, Toolbar, AiBanner, QsBadge, DeviceStatusBadge, EmptyState, PolicyViolationCell } from '../components';
 import { ArrowUpDown } from 'lucide-react';
 import Pagination from '../../../components/Pagination';
@@ -37,6 +38,10 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
 
   // Data from a real integration has integrationId set — hide reset for integration-sourced data
   const isSampleData = loaded && data.every((d) => !d.integrationId);
+
+  // Column resize
+  const COL_MIN: Record<number, number> = { 0: 120, 1: 80, 2: 100, 3: 90, 4: 100, 5: 80, 6: 80, 7: 80, 8: 80, 9: 65, 10: 80, 11: 120, 12: 70, 13: 200 };
+  const { colWidths, onResizeStart } = useColumnResize(COL_MIN);
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -140,6 +145,15 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
     { key: 'certAlgorithm',   label: 'Cert Algorithm',     render: (d: DiscoveryDevice) => d.certAlgorithm },
     { key: 'keyLength',       label: 'Key Length',          render: (d: DiscoveryDevice) => d.keyLength },
     { key: 'enrollmentStatus', label: 'Status',             render: (d: DiscoveryDevice) => <DeviceStatusBadge status={d.enrollmentStatus} /> },
+    { key: 'deviceGroup',      label: 'Device Group',        render: (d: DiscoveryDevice) => d.deviceGroup || '—' },
+    { key: 'operationalStatus', label: 'Operational',        render: (d: DiscoveryDevice) => {
+      const st = d.operationalStatus || 'Unknown';
+      const cls = st === 'ENABLED' ? s.badgeEnrolled : st === 'DISABLED' ? s.badgeExpired : s.badgePending;
+      return <span className={cls}>{st}</span>;
+    }},
+    { key: 'connected',        label: 'Connected',           render: (d: DiscoveryDevice) => (
+      <span className={d.connected ? s.badgeEnrolled : s.badgeRevoked}>{d.connected ? 'Yes' : 'No'}</span>
+    )},
     { key: 'quantumSafe',     label: 'Quantum-safe',       render: (d: DiscoveryDevice) => <QsBadge safe={d.quantumSafe} />, sortable: false },
     { key: 'policiesViolated', label: 'Policies Violated', sortable: false, render: (d: DiscoveryDevice) => {
       const result = policyResultsMap.get(d.id);
@@ -251,6 +265,9 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
           { key: 'certAlgorithm', label: 'Cert Algorithm' },
           { key: 'keyLength', label: 'Key Length' },
           { key: 'enrollmentStatus', label: 'Status' },
+          { key: 'deviceGroup', label: 'Device Group' },
+          { key: 'operationalStatus', label: 'Operational Status' },
+          { key: 'connected', label: 'Connected' },
           { key: 'quantumSafe', label: 'Quantum-safe' },
           { key: 'source', label: 'Source' },
         ], 'devices')}
@@ -261,12 +278,18 @@ export default function DevicesTab({ search, setSearch, onGoToIntegrations }: Pr
       <div className={s.tableCard}>
         <h3 className={s.tableTitle}>Devices ({filtered.length})</h3>
         <table className={s.table}>
+          <colgroup>
+            {columns.map((_, i) => (
+              <col key={i} style={{ width: colWidths[i] || COL_MIN[i], minWidth: COL_MIN[i] }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
-              {columns.map((col) => (
+              {columns.map((col, colIdx) => (
                 <th key={col.key} style={col.headerStyle}>
                   {col.label}
                   {col.sortable !== false && <ArrowUpDown className={s.sortIcon} />}
+                  <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, colIdx)} />
                 </th>
               ))}
             </tr>

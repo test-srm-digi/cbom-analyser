@@ -49,15 +49,20 @@ export async function testDigiCertConnection(
 
   if (explicitApiPath) {
     // Test explicit path
+    const isUiApi = explicitApiPath.includes('ui-api');
+    const headerAcct = isUiApi ? undefined : accountId;
     try {
       const url = new URL(`${baseUrl}/${explicitApiPath}`);
       const isSearchPath = explicitApiPath.endsWith('/search');
+      if (isUiApi && accountId) {
+        url.searchParams.set('account', JSON.stringify({ id: accountId, name: accountId }));
+      }
       if (isSearchPath) {
-        await digicertRequest<unknown>(url.toString(), apiKey, accountId, rejectUnauthorized, 'POST', JSON.stringify({ offset: 0, limit: 1 }));
+        await digicertRequest<unknown>(url.toString(), apiKey, headerAcct, rejectUnauthorized, 'POST', JSON.stringify({ offset: 0, limit: 1 }));
       } else {
         url.searchParams.set('offset', '0');
         url.searchParams.set('limit', '1');
-        await digicertRequest<unknown>(url.toString(), apiKey, accountId, rejectUnauthorized);
+        await digicertRequest<unknown>(url.toString(), apiKey, headerAcct, rejectUnauthorized);
       }
       certEndpointStatus = `Certificate endpoint (${explicitApiPath}) is reachable.`;
     } catch (err) {

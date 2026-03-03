@@ -4,6 +4,7 @@ import {
   Ban, AlertTriangle, ArrowUpDown, ExternalLink, TrendingUp, TrendingDown,
   Inbox,
 } from 'lucide-react';
+import { useColumnResize } from '../../hooks/useColumnResize';
 import { useGetTicketsQuery } from '../../store/api/trackingApi';
 import type { RemediationTicket, TicketStatus, TicketPriority, EntityType, TicketType } from './types';
 import Pagination from '../../components/Pagination';
@@ -18,6 +19,10 @@ export default function TrackingPage() {
   const [typeFilter, setTypeFilter] = useState<TicketType | 'All'>('All');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+
+  // Column resize
+  const COL_MIN: Record<number, number> = { 0: 100, 1: 70, 2: 150, 3: 90, 4: 80, 5: 90, 6: 120, 7: 100, 8: 80, 9: 80 };
+  const { colWidths, onResizeStart } = useColumnResize(COL_MIN);
 
   /* ── Stats ──────────────────────────────────────────────── */
   const stats = useMemo(() => {
@@ -95,7 +100,7 @@ export default function TrackingPage() {
       {/* ── Header ─────────────────────────────────────────── */}
       <div className={s.header}>
         <div className={s.headerText}>
-          <h1 className={s.title}>Tracking</h1>
+          <h1 className={s.title}>Task Management</h1>
           <p className={s.subtitle}>Track and manage tasks created for cryptographic remediation</p>
         </div>
       </div>
@@ -178,17 +183,22 @@ export default function TrackingPage() {
               <Inbox size={48} className={s.emptyIcon} />
               <h3 className={s.emptyTitle}>No tickets yet</h3>
               <p className={s.emptyDesc}>
-                Create remediation tickets from the Discovery pages to start tracking cryptographic issues.
+                Create remediation tickets from the Inventory pages to start tracking cryptographic issues.
               </p>
             </div>
           ) : (
           <>
           <table className={s.table}>
+            <colgroup>
+              {[0,1,2,3,4,5,6,7,8,9].map((i) => (
+                <col key={i} style={{ width: colWidths[i] || COL_MIN[i], minWidth: COL_MIN[i] }} />
+              ))}
+            </colgroup>
             <thead>
               <tr>
-                <th>Ticket ID <ArrowUpDown size={12} /></th>
-                <th>Type <ArrowUpDown size={12} /></th>
-                <th>Title <ArrowUpDown size={12} /></th>
+                <th>Ticket ID <ArrowUpDown size={12} /><span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 0)} /></th>
+                <th>Type <ArrowUpDown size={12} /><span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 1)} /></th>
+                <th>Title <ArrowUpDown size={12} /><span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 2)} /></th>
                 <th>
                   Status <ArrowUpDown size={12} />
                   <div className={s.thFilter}>
@@ -202,6 +212,7 @@ export default function TrackingPage() {
                       <option>Blocked</option>
                     </select>
                   </div>
+                  <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 3)} />
                 </th>
                 <th>
                   Priority <ArrowUpDown size={12} />
@@ -214,6 +225,7 @@ export default function TrackingPage() {
                       <option>Low</option>
                     </select>
                   </div>
+                  <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 4)} />
                 </th>
                 <th>
                   Entity Type <ArrowUpDown size={12} />
@@ -227,11 +239,12 @@ export default function TrackingPage() {
                       <option>Software</option>
                     </select>
                   </div>
+                  <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 5)} />
                 </th>
-                <th>Entity Name <ArrowUpDown size={12} /></th>
-                <th>Assignee <ArrowUpDown size={12} /></th>
-                <th>Updated <ArrowUpDown size={12} /></th>
-                <th>Severity <ArrowUpDown size={12} /></th>
+                <th>Entity Name <ArrowUpDown size={12} /><span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 6)} /></th>
+                <th>Assignee <ArrowUpDown size={12} /><span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 7)} /></th>
+                <th>Updated <ArrowUpDown size={12} /><span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 8)} /></th>
+                <th>Severity <ArrowUpDown size={12} /><span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 9)} /></th>
               </tr>
             </thead>
             <tbody>

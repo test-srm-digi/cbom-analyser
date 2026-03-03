@@ -120,6 +120,59 @@ export async function fetchCertificates(
 }
 
 /* ══════════════════════════════════════════════════════════════
+ *  1b. DigiCert TLM — Endpoint Connector
+ *
+ *  When apiBaseUrl + apiKey are provided the connector calls the
+ *  real DigiCert ONE inventory/endpoint API.  Otherwise falls back
+ *  to simulated data.
+ * ══════════════════════════════════════════════════════════════ */
+
+export async function fetchEndpointsFromTlm(
+  config: ConnectorConfig,
+  integrationId: string,
+): Promise<ConnectorResult<Record<string, unknown>>> {
+  // ── Real DigiCert ONE API mode ──
+  if (config.apiBaseUrl && config.apiKey) {
+    const { fetchEndpointsFromDigiCert } = await import('./digicertTlmConnector');
+    return fetchEndpointsFromDigiCert(config, integrationId);
+  }
+
+  // ── Simulated data mode (dev / demo) ──
+  console.log('[DigiCert TLM] No API credentials — generating simulated endpoint data');
+  const tlsVersions = ['TLS 1.2', 'TLS 1.3'];
+  const cipherSuites = [
+    'TLS_AES_256_GCM_SHA384',
+    'TLS_AES_128_GCM_SHA256',
+    'ECDHE-RSA-AES256-GCM-SHA384',
+    'ECDHE-ECDSA-AES128-GCM-SHA256',
+  ];
+  const keyAgreements = ['ECDHE', 'X25519', 'ML-KEM-768', 'RSA'];
+
+  const count = randInt(3, 15);
+  const data: Record<string, unknown>[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const ka = pick(keyAgreements);
+    data.push({
+      id: uuidv4(),
+      integrationId,
+      hostname: `${pick(['web', 'api', 'mail', 'vpn', 'gateway'])}-${randInt(1, 50)}.${pick(['corp.net', 'internal.io', 'acme.dev'])}`,
+      ipAddress: `10.${randInt(0, 255)}.${randInt(0, 255)}.${randInt(1, 254)}`,
+      port: pick([443, 8443, 636, 993]),
+      tlsVersion: pick(tlsVersions),
+      cipherSuite: pick(cipherSuites),
+      keyAgreement: ka,
+      quantumSafe: ka === 'ML-KEM-768',
+      source: 'DigiCert TLM',
+      lastScanned: new Date().toISOString(),
+      certCommonName: `*.${pick(['corp.net', 'internal.io', 'acme.dev'])}`,
+    });
+  }
+
+  return { success: true, data, errors: [] };
+}
+
+/* ══════════════════════════════════════════════════════════════
  *  2. Network Scanner — Endpoint Connector
  *
  *  When `targets` (hostnames / IPs / CIDRs) are configured in the
@@ -217,9 +270,17 @@ export async function fetchSoftware(
  * ══════════════════════════════════════════════════════════════ */
 
 export async function fetchDevices(
-  _config: ConnectorConfig,
+  config: ConnectorConfig,
   integrationId: string,
 ): Promise<ConnectorResult<Record<string, unknown>>> {
+  // ── Real DigiCert DTM API mode ──
+  if (config.apiBaseUrl && config.apiKey && config.accountId) {
+    const { fetchDevicesFromDtm } = await import('./digicert/dtmConnector');
+    return fetchDevicesFromDtm(config, integrationId);
+  }
+
+  // ── Simulated data mode (dev / demo — no DTM credentials) ──
+  console.log('[DigiCert DTM] No API credentials — generating simulated data');
   const deviceNames = ['GW', 'Sensor', 'Controller', 'Actuator', 'Gateway', 'Edge-Node', 'Camera'];
   const deviceTypes = ['Gateway', 'Sensor', 'Controller', 'Edge Device', 'Camera', 'Actuator'];
   const manufacturers = ['Siemens', 'Honeywell', 'ABB', 'Schneider', 'Bosch', 'GE'];
@@ -246,6 +307,8 @@ export async function fetchDevices(
       lastCheckin: pastDate(randInt(0, 14)),
       source: 'DigiCert DTM',
       deviceGroup: pick(groups),
+      operationalStatus: pick(['ENABLED', 'DISABLED']),
+      connected: Math.random() > 0.5,
     });
   }
 
@@ -431,21 +494,34 @@ export async function fetchCbomImports(
 
 /* ── Connector registry ────────────────────────────────────── */
 
+/** A single fetch → model mapping */
+export interface ConnectorFetcher {
+  fetch: (config: ConnectorConfig, integrationId: string) => Promise<ConnectorResult<Record<string, unknown>>>;
+  /** Sequelize model name to bulkCreate into */
+  model: string;
+}
+
+export interface ConnectorEntry extends ConnectorFetcher {
+  /** Human-readable label */
+  label: string;
+  /** Additional data types fetched by this connector (same credentials) */
+  additionalFetchers?: ConnectorFetcher[];
+}
+
 /**
- * Maps integration templateType → connector function.
- * Each connector returns records appropriate for its discovery table.
+ * Maps integration templateType → connector function(s).
+ * A connector may have `additionalFetchers` to pull multiple data types
+ * from the same source (e.g. DigiCert TLM → Certificates + Endpoints).
  */
-export const CONNECTOR_REGISTRY: Record<
-  string,
-  {
-    fetch: (config: ConnectorConfig, integrationId: string) => Promise<ConnectorResult<Record<string, unknown>>>;
-    /** Sequelize model name to bulkCreate into */
-    model: string;
-    /** Human-readable label */
-    label: string;
-  }
-> = {
-  'digicert-tlm': { fetch: fetchCertificates, model: 'Certificate', label: 'DigiCert TLM (Certificates)' },
+export const CONNECTOR_REGISTRY: Record<string, ConnectorEntry> = {
+  'digicert-tlm': {
+    fetch: fetchCertificates,
+    model: 'Certificate',
+    label: 'DigiCert TLM (Certificates & Endpoints)',
+    additionalFetchers: [
+      { fetch: fetchEndpointsFromTlm, model: 'Endpoint' },
+    ],
+  },
   'network-scanner': { fetch: fetchEndpoints, model: 'Endpoint', label: 'Network Scanner (Endpoints)' },
   'digicert-stm': { fetch: fetchSoftware, model: 'Software', label: 'DigiCert STM (Software)' },
   'digicert-dtm': { fetch: fetchDevices, model: 'Device', label: 'DigiCert DTM (Devices)' },

@@ -58,7 +58,7 @@ export default function EmptyState({
         </div>
         <h2 className={s.emptyTitle}>No {title} Discovered Yet</h2>
         <p className={s.emptyDesc}>
-          Connect <strong>{integrationName}</strong> to automatically discover and import {title.toLowerCase()} data into Quantum Readiness Advisor.
+          Connect <strong>{integrationName}</strong> to automatically discover and import {title.toLowerCase()} data into QuantumGuard.
         </p>
         <p className={s.emptyDescSub}>{integrationDescription}</p>
 

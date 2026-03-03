@@ -155,10 +155,41 @@
   white-space: nowrap;
   user-select: none;
   cursor: pointer;
+  position: relative;
 
   svg {
     margin-left: 4px;
     opacity: 0.5;
+  }
+}
+
+// Column resize handle
+.resizeHandle {
+  position: absolute;
+  right: -4px;
+  top: 0;
+  width: 9px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 2;
+  &::after {
+    content: '';
+    position: absolute;
+    top: 20%;
+    bottom: 20%;
+    left: 4px;
+    width: 1px;
+    background: $dc1-border;
+    border-radius: 1px;
+    transition: all 0.15s;
+  }
+  &:hover::after {
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    left: 3px;
+    background: $dc1-blue;
+    box-shadow: 0 0 4px rgba($dc1-blue, 0.4);
   }
 }
 
@@ -231,6 +262,12 @@
   font-weight: 600;
   text-align: center;
   min-width: 60px;
+}
+
+.severityCritical {
+  composes: severityBadge;
+  background: #7c1d1d;
+  color: $dc1-white;
 }
 
 .severityHigh {

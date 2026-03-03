@@ -52,7 +52,7 @@ export default function DiscoveryPage({ tab, onViewCbom, onViewRepo, onGoToInteg
     <div>
       {/* Header */}
       <div className={s.header}>
-        <p className={s.breadcrumb}>Discovery</p>
+        <p className={s.breadcrumb}>Inventory</p>
         <h1 className={s.title}>{meta.title}</h1>
         <p className={s.subtitle}>{meta.subtitle}</p>
       </div>

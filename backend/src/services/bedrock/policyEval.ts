@@ -43,12 +43,18 @@ Endpoint Details:
 - Cipher Suite: ${ctx.cipherSuite ?? 'unknown'}
 - Key Agreement: ${ctx.keyAgreement ?? 'unknown'}
 - Quantum Safe: ${ctx.quantumSafe ?? 'unknown'}
+- Security Rating: ${ctx.securityRating ?? 'not available'}
+- CA Vendor: ${ctx.caVendor ?? 'not available'}
+- Certificate Expiry: ${ctx.expiryDate ?? 'not available'}
+- Automation Status: ${ctx.automationStatus ?? 'not available'}
+- OS: ${ctx.osName ?? 'not available'}
+- Sensor: ${ctx.sensorName ?? 'not available'}
 ${violatedList}
 
 Provide a brief (2-3 sentences) assessment of:
 1. Whether this endpoint meets NIST TLS configuration recommendations
-2. Any deprecated protocol or cipher suite concerns
-3. Specific remediation steps if non-compliant
+2. Any deprecated protocol, cipher suite, or certificate expiry concerns
+3. Specific remediation steps if non-compliant (including security rating and automation issues)
 
 Be concise and actionable. Do not use markdown formatting.`;
   }

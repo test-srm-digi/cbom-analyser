@@ -106,7 +106,7 @@ export default function IntegrationCard({
                 hour: '2-digit', minute: '2-digit',
               })}
               {intg.lastSyncItems != null && (
-                <span className={s.syncBadge}>{intg.lastSyncItems} items</span>
+                <span className={s.syncBadge}>{intg.lastSyncItems} assets</span>
               )}
             </span>
           </div>

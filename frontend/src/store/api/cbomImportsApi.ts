@@ -30,6 +30,8 @@ export const cbomImportsApi = createApi({
   reducerPath: 'cbomImportsApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
   tagTypes: ['CbomImport'],
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
 
     getCbomImports: builder.query<DiscoveryCbomImport[], void>({

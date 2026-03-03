@@ -1,5 +1,6 @@
-import { useMemo, useState, useCallback } from 'react';
-import { Sparkles, Loader2, BarChart3, AlertTriangle, TrendingUp, Clock, X, ShieldCheck, ShieldX, Ticket } from 'lucide-react';
+import { Fragment, useMemo, useState, useCallback } from 'react';
+import { Sparkles, Loader2, BarChart3, AlertTriangle, TrendingUp, Clock, X, ShieldCheck, ShieldX, Ticket, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { useColumnResize } from '../../../hooks/useColumnResize';
 import { CreateTicketModal } from '../../tracking';
 import type { TicketContext } from '../../tracking';
 import { useCreateTicketMutation } from '../../../store/api/trackingApi';
@@ -54,6 +55,17 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
   // Pagination state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+
+  // Sort state
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Quantum-safe filter: 'all' | 'safe' | 'not-safe'
+  const [qsFilter, setQsFilter] = useState<'all' | 'safe' | 'not-safe'>('all');
+
+  // Column resize
+  const COL_MIN: Record<number, number> = { 0: 140, 1: 100, 2: 80, 3: 100, 4: 80, 5: 100, 6: 90, 7: 120, 8: 80, 9: 200 };
+  const { colWidths, onResizeStart } = useColumnResize(COL_MIN);
 
   // Data from a real integration has integrationId set — hide reset for integration-sourced data
   const isSampleData = loaded && data.every((c) => !c.integrationId);
@@ -174,26 +186,66 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
   }, []);
 
   const filtered = useMemo(() => {
-    if (!search) return data;
-    const q = search.toLowerCase();
-    return data.filter(
-      (c) =>
-        c.commonName.toLowerCase().includes(q) ||
-        c.caVendor.toLowerCase().includes(q) ||
-        c.keyAlgorithm.toLowerCase().includes(q) ||
-        c.source.toLowerCase().includes(q),
-    );
-  }, [search, data]);
+    let result = data;
+    // Quantum-safe filter
+    if (qsFilter === 'safe') result = result.filter((c) => c.quantumSafe);
+    else if (qsFilter === 'not-safe') result = result.filter((c) => !c.quantumSafe);
+    // Text search
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (c) =>
+          c.commonName.toLowerCase().includes(q) ||
+          c.caVendor.toLowerCase().includes(q) ||
+          c.keyAlgorithm.toLowerCase().includes(q) ||
+          c.source.toLowerCase().includes(q),
+      );
+    }
+    return result;
+  }, [search, data, qsFilter]);
 
-  // Reset page when filter changes
-  const filteredLen = filtered.length;
+  // Sort
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      let va: string | number | boolean = '';
+      let vb: string | number | boolean = '';
+      switch (sortKey) {
+        case 'commonName': va = a.commonName; vb = b.commonName; break;
+        case 'caVendor': va = a.caVendor; vb = b.caVendor; break;
+        case 'status': va = a.status; vb = b.status; break;
+        case 'keyAlgorithm': va = a.keyAlgorithm; vb = b.keyAlgorithm; break;
+        case 'keyLength': va = parseInt(a.keyLength) || 0; vb = parseInt(b.keyLength) || 0; break;
+        case 'signatureAlgo': va = a.signatureAlgorithm ?? ''; vb = b.signatureAlgorithm ?? ''; break;
+        case 'source': va = a.source; vb = b.source; break;
+        default: return 0;
+      }
+      if (typeof va === 'number' && typeof vb === 'number') return sortDir === 'asc' ? va - vb : vb - va;
+      const sa = String(va).toLowerCase(), sb = String(vb).toLowerCase();
+      return sortDir === 'asc' ? sa.localeCompare(sb) : sb.localeCompare(sa);
+    });
+    return arr;
+  }, [filtered, sortKey, sortDir]);
+
+  // Reset page when filter/sort changes
+  const filteredLen = sorted.length;
   const [prevFilteredLen, setPrevFilteredLen] = useState(filteredLen);
   if (filteredLen !== prevFilteredLen) { setPrevFilteredLen(filteredLen); setPage(1); }
 
   const paged = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize]);
+    return sorted.slice(start, start + pageSize);
+  }, [sorted, page, pageSize]);
+
+  const handleSort = useCallback((key: string) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  }, [sortKey]);
 
   const stats: StatCardConfig[] = [
     { title: 'Total Certificates', value: total,      sub: `Discovered via DigiCert Trust Lifecycle Manager`, variant: 'default' },
@@ -423,30 +475,59 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
         resetLoading={isSampleData ? isResetLoading : undefined}
       />
 
+      {/* Quantum-safe filter pills */}
+      <div className={s.filterPills}>
+        <button className={`${s.filterPill} ${qsFilter === 'all' ? s.filterPillActive : ''}`} onClick={() => setQsFilter('all')}>All</button>
+        <button className={`${s.filterPill} ${qsFilter === 'safe' ? s.filterPillActive : ''}`} onClick={() => setQsFilter('safe')}><ShieldCheck size={14} /> Quantum-safe</button>
+        <button className={`${s.filterPill} ${qsFilter === 'not-safe' ? s.filterPillActive : ''}`} onClick={() => setQsFilter('not-safe')}><ShieldX size={14} /> Not Safe</button>
+      </div>
+
       {/* ── Inline table with expandable AI suggestion rows ── */}
       <div className={s.tableCard}>
-        <h3 className={s.tableTitle}>Certificates ({filtered.length})</h3>
+        <h3 className={s.tableTitle}>Certificates ({sorted.length})</h3>
         <table className={s.table}>
+          <colgroup>
+            {columns.map((_, i) => (
+              <col key={i} style={{ width: colWidths[i] || COL_MIN[i], minWidth: COL_MIN[i] }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
-              {columns.map((col) => (
-                <th key={col.key} style={col.headerStyle}>{col.label}</th>
-              ))}
+              {columns.map((col, colIdx) => {
+                const isSortable = (col as { sortable?: boolean }).sortable !== false && col.key !== 'actions' && col.key !== 'policiesViolated' && col.key !== 'quantumSafe';
+                return (
+                  <th
+                    key={col.key}
+                    style={{ ...col.headerStyle, cursor: isSortable ? 'pointer' : undefined, userSelect: isSortable ? 'none' : undefined }}
+                    onClick={isSortable ? () => handleSort(col.key) : undefined}
+                  >
+                    {col.label}
+                    {isSortable && (
+                      sortKey === col.key
+                        ? sortDir === 'asc'
+                          ? <ArrowUp className={s.sortIcon} />
+                          : <ArrowDown className={s.sortIcon} />
+                        : <ArrowUpDown className={s.sortIcon} style={{ opacity: 0.35 }} />
+                    )}
+                    <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, colIdx)} />
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
             {paged.map((cert) => {
               const sg = suggestions[cert.id];
               return (
-                <>{/* Fragment needed for adjacent rows */}
-                  <tr key={cert.id}>
+                <Fragment key={cert.id}>
+                  <tr>
                     {columns.map((col) => (
                       <td key={col.key}>{col.render(cert)}</td>
                     ))}
                   </tr>
                   {/* AI suggestion expandable row */}
                   {expandedId === cert.id && sg && (
-                    <tr key={`${cert.id}-ai`} className={s.aiSuggestionRow}>
+                    <tr className={s.aiSuggestionRow}>
                       <td colSpan={columns.length}>
                         {sg.loading ? (
                           <div className={s.aiLoading}>
@@ -490,14 +571,14 @@ export default function CertificatesTab({ search, setSearch, onGoToIntegrations 
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </tbody>
         </table>
         <Pagination
           page={page}
-          total={filtered.length}
+          total={sorted.length}
           pageSize={pageSize}
           onPageChange={setPage}
           onPageSizeChange={(sz) => { setPageSize(sz); setPage(1); }}

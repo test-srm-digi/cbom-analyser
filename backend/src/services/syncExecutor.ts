@@ -16,7 +16,7 @@
  */
 import { v4 as uuidv4 } from 'uuid';
 import { Integration, SyncLog, Certificate, Endpoint, Software, Device, CbomImport } from '../models';
-import { CONNECTOR_REGISTRY, ConnectorConfig } from './connectors';
+import { CONNECTOR_REGISTRY, ConnectorConfig, ConnectorEntry } from './connectors';
 import { loadXBOMsFromImports } from './xbomDbLoader';
 
 /* ── Model lookup map ──────────────────────────────────────── */
@@ -188,10 +188,66 @@ export async function executeSyncForIntegration(
         }
       }
     } catch (err) {
-      errors.push(`Persistence failed: ${(err as Error).message}`);
+      // Extract meaningful error message — Sequelize may nest errors
+      const e = err as any;
+      const msg = e?.message || e?.errors?.[0]?.message || e?.original?.message || e?.original?.sqlMessage || String(err);
+      errors.push(`Persistence failed: ${msg}`);
     }
   } else {
     errors.push(`Model "${connector.model}" not found in MODEL_MAP`);
+  }
+
+  /* ── Step 5b: Run additional fetchers (multi-model connectors) ── */
+  if (connector.additionalFetchers?.length) {
+    const config = (integration.config || {}) as ConnectorConfig;
+    const configWithSync = {
+      ...config,
+      lastSync: integration.lastSync || undefined,
+      integrationCreatedAt: integration.createdAt?.toISOString(),
+    };
+
+    for (const extra of connector.additionalFetchers) {
+      const ExtraModel = MODEL_MAP[extra.model];
+      if (!ExtraModel) {
+        errors.push(`Additional model "${extra.model}" not found in MODEL_MAP`);
+        continue;
+      }
+
+      try {
+        console.log(`[SyncExecutor] Running additional fetcher for model ${extra.model}`);
+        const extraResult = await extra.fetch(configWithSync, integrationId);
+
+        if (extraResult.errors.length > 0) {
+          // Treat as warnings — don't fail the whole sync
+          for (const e of extraResult.errors) {
+            console.warn(`[SyncExecutor] Additional fetcher (${extra.model}) warning: ${e}`);
+          }
+        }
+
+        if (extraResult.data.length > 0) {
+          // Full refresh for this model
+          if (!isIncremental) {
+            const extraDeleted = await (ExtraModel as any).destroy({ where: { integrationId } });
+            deletedCount += extraDeleted;
+          }
+
+          const extraCreated = await (ExtraModel as any).bulkCreate(extraResult.data, { validate: true });
+          createdCount += extraCreated.length;
+          fetchedRecords = fetchedRecords.concat(extraResult.data);
+
+          console.log(`[SyncExecutor] Additional fetcher (${extra.model}): ${extraCreated.length} created`);
+        } else if (!isIncremental) {
+          // No data but full refresh — still clear old records
+          const extraDeleted = await (ExtraModel as any).destroy({ where: { integrationId } });
+          deletedCount += extraDeleted;
+        }
+      } catch (err) {
+        // Non-fatal: log warning but don't fail the primary sync
+        const msg = `Additional fetcher (${extra.model}) failed: ${(err as Error).message}`;
+        console.warn(`[SyncExecutor] ${msg}`);
+        errors.push(msg);
+      }
+    }
   }
 
   /* ── Step 6: Update integration metadata ─────────────────── */
@@ -223,6 +279,17 @@ export async function executeSyncForIntegration(
       try {
         totalItems = await (TargetModel as any).count({ where: { integrationId } });
       } catch { /* fall back to createdCount */ }
+    }
+    // Also count items from additional models
+    if (connector.additionalFetchers?.length) {
+      for (const extra of connector.additionalFetchers) {
+        const ExtraModel = MODEL_MAP[extra.model];
+        if (ExtraModel) {
+          try {
+            totalItems += await (ExtraModel as any).count({ where: { integrationId } });
+          } catch { /* ignore */ }
+        }
+      }
     }
 
     await integration.update({

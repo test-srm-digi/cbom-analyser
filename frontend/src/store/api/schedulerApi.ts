@@ -39,6 +39,8 @@ export const schedulerApi = createApi({
   reducerPath: 'schedulerApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
   tagTypes: ['Scheduler'],
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
     getSchedulerStatus: builder.query<SchedulerStatus, void>({
       query: () => '/scheduler/status',

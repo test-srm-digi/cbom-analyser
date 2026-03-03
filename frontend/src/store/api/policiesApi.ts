@@ -29,6 +29,8 @@ export const policiesApi = createApi({
   reducerPath: 'policiesApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
   tagTypes: ['Policy'],
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
 
     getPolicies: builder.query<CryptoPolicy[], void>({

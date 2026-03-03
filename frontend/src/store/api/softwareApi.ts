@@ -30,6 +30,8 @@ export const softwareApi = createApi({
   reducerPath: 'softwareApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
   tagTypes: ['Software'],
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
 
     getSoftwareList: builder.query<DiscoverySoftware[], void>({

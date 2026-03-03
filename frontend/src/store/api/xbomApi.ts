@@ -80,6 +80,8 @@ export const xbomApi = createApi({
   reducerPath: 'xbomApi',
   baseQuery: fetchBaseQuery({ baseUrl: API_BASE }),
   tagTypes: ['XBOM'],
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
 
     /** GET /api/xbom/status — Check Trivy + xBOM service health */

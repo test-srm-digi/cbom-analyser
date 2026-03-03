@@ -367,12 +367,21 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
       },
       {
         key: "apiPath",
-        label: "API Path",
+        label: "Certificate API Path",
         type: "text",
         placeholder: "Auto-detect (default)",
         required: false,
         helpText:
           "Override the certificate API path (e.g. mpki/api/v1/certificate). Leave blank to auto-detect.",
+      },
+      {
+        key: "endpointApiPath",
+        label: "Endpoint API Path",
+        type: "text",
+        placeholder: "Auto-detect (default)",
+        required: false,
+        helpText:
+          "Override the endpoint inventory API path (e.g. mpki/api/v1/inventory/endpoint/automatable). Leave blank to auto-detect.",
       },
       {
         key: "allowInsecureTls",
@@ -473,6 +482,14 @@ export const INTEGRATION_CATALOG: IntegrationTemplate[] = [
         placeholder: "Enter your API key",
         required: true,
         helpText: "Generate from DigiCert ONE → Admin → API Keys",
+      },
+      {
+        key: "accountId",
+        label: "Account ID",
+        type: "text",
+        placeholder: "e.g. 6773ae36-69f7-44f1-b3b2-921f318cfe7b",
+        required: true,
+        helpText: "Your DigiCert ONE account UUID — visible in the DTM URL or via Admin → Account",
       },
       {
         key: "deviceGroup",

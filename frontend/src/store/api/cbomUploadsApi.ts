@@ -43,6 +43,8 @@ export const cbomUploadsApi = createApi({
   reducerPath: 'cbomUploadsApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
   tagTypes: ['CbomUpload'],
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
 
     getCbomUploads: builder.query<CbomUploadItem[], void>({

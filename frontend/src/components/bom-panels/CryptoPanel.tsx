@@ -4,6 +4,9 @@
 import { useState, useMemo } from 'react';
 import type { CryptoAsset } from '../../types';
 import Pagination from '../Pagination';
+import { useColumnResize } from '../../hooks/useColumnResize';
+
+const COL_MIN: Record<number, number> = { 0: 120, 1: 80, 2: 80, 3: 90, 4: 100, 5: 100 };
 
 const QS_BADGE: Record<string, { bg: string; color: string }> = {
   'quantum-safe': { bg: '#dcfce7', color: '#16a34a' },
@@ -19,6 +22,7 @@ interface Props {
 export default function CryptoPanel({ assets }: Props) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const { colWidths, onResizeStart } = useColumnResize(COL_MIN);
 
   const paged = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -33,14 +37,17 @@ export default function CryptoPanel({ assets }: Props) {
     <div className="dc1-card">
       <div className="dc1-table-wrapper">
         <table className="dc1-table" style={{ width: '100%' }}>
+          <colgroup>
+            {[0,1,2,3,4,5].map(i => <col key={i} style={{ width: colWidths[i] || COL_MIN[i], minWidth: COL_MIN[i] }} />)}
+          </colgroup>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Primitive</th>
-              <th>Parameter Set</th>
-              <th>Quantum Safety</th>
-              <th>Source</th>
+              <th>Name<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 0)} /></th>
+              <th>Type<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 1)} /></th>
+              <th>Primitive<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 2)} /></th>
+              <th>Parameter Set<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 3)} /></th>
+              <th>Quantum Safety<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 4)} /></th>
+              <th>Source<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 5)} /></th>
             </tr>
           </thead>
           <tbody>

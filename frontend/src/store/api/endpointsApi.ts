@@ -30,6 +30,8 @@ export const endpointsApi = createApi({
   reducerPath: 'endpointsApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
   tagTypes: ['Endpoint'],
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
 
     getEndpoints: builder.query<DiscoveryEndpoint[], void>({

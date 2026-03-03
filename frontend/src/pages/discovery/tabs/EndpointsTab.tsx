@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { Sparkles, Loader2, ShieldCheck, ShieldX, Ticket, X } from 'lucide-react';
+import { useColumnResize } from '../../../hooks/useColumnResize';
 import { CreateTicketModal } from '../../tracking';
 import type { TicketContext } from '../../tracking';
 import { useCreateTicketMutation } from '../../../store/api/trackingApi';
@@ -13,6 +14,63 @@ import type { CbomPolicyResult } from '../../policies';
 import Pagination from '../../../components/Pagination';
 import { exportTableToCSV } from '../utils/exportCsv';
 import s from '../components/shared.module.scss';
+
+/* ── Helper components for endpoint columns ─────────────────── */
+
+function SecurityRatingBadge({ rating }: { rating?: string | null }) {
+  if (!rating) return <span style={{ color: '#999' }}>—</span>;
+  const upper = rating.toUpperCase().replace(/_/g, ' ');
+  const colorMap: Record<string, { bg: string; fg: string }> = {
+    'SECURE':    { bg: '#dcfce7', fg: '#166534' },
+    'AT RISK':   { bg: '#fef2f2', fg: '#991b1b' },
+    'NOT RATED': { bg: '#f3f4f6', fg: '#6b7280' },
+  };
+  const c = colorMap[upper] || { bg: '#fef9c3', fg: '#854d0e' };
+  return (
+    <span style={{
+      display: 'inline-block', padding: '2px 8px', borderRadius: 4,
+      fontSize: 11, fontWeight: 600, background: c.bg, color: c.fg,
+      whiteSpace: 'nowrap',
+    }}>
+      {upper}
+    </span>
+  );
+}
+
+function AutomationStatusBadge({ status }: { status?: string | null }) {
+  if (!status) return <span style={{ color: '#999' }}>—</span>;
+  const display = status.replace(/_/g, ' ');
+  const isError = /FAIL|ERROR/i.test(status);
+  const isOk = /CONFIGURED|COMPLETE|SUCCESS/i.test(status);
+  const bg = isError ? '#fef2f2' : isOk ? '#dcfce7' : '#f3f4f6';
+  const fg = isError ? '#991b1b' : isOk ? '#166534' : '#374151';
+  return (
+    <span style={{
+      display: 'inline-block', padding: '2px 8px', borderRadius: 4,
+      fontSize: 11, fontWeight: 500, background: bg, color: fg,
+      whiteSpace: 'nowrap', textTransform: 'capitalize',
+    }}>
+      {display.toLowerCase()}
+    </span>
+  );
+}
+
+function formatExpiryDate(dateStr?: string | null): JSX.Element {
+  if (!dateStr) return <span style={{ color: '#999' }}>—</span>;
+  try {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const isExpired = d < now;
+    const formatted = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return (
+      <span style={{ color: isExpired ? '#dc2626' : '#374151', fontWeight: isExpired ? 600 : 400 }}>
+        {formatted}{isExpired && ' ⚠'}
+      </span>
+    );
+  } catch {
+    return <span>{dateStr}</span>;
+  }
+}
 
 interface Props {
   search: string;
@@ -40,6 +98,10 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
 
   // Data from a real integration has integrationId set — hide reset for integration-sourced data
   const isSampleData = loaded && data.every((e) => !e.integrationId);
+
+  // Column resize
+  const COL_MIN: Record<number, number> = { 0: 120, 1: 100, 2: 50, 3: 100, 4: 90, 5: 90, 6: 100, 7: 60, 8: 80, 9: 90, 10: 110, 11: 70, 12: 200 };
+  const { colWidths, onResizeStart } = useColumnResize(COL_MIN);
 
   /* ── Create-ticket modal state ───────────────────────── */
   const [ticketCtx, setTicketCtx] = useState<TicketContext | null>(null);
@@ -89,6 +151,11 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
   const qsSafe     = data.filter((e) => e.quantumSafe).length;
   const qsPct      = total > 0 ? Math.round((qsSafe / total) * 100) : 0;
   const deprecated = data.filter((e) => e.tlsVersion === 'TLS 1.1' || e.tlsVersion === 'TLS 1.0').length;
+  const atRisk     = data.filter((e) => e.securityRating === 'AT_RISK').length;
+  const expired    = data.filter((e) => {
+    if (!e.expiryDate) return false;
+    try { return new Date(e.expiryDate) < new Date(); } catch { return false; }
+  }).length;
 
   /* ── Policy evaluation per endpoint ────────────────── */
   const { data: dbPolicies = [] } = useGetPoliciesQuery();
@@ -120,8 +187,10 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
       (e) =>
         e.hostname.toLowerCase().includes(q) ||
         e.ipAddress.includes(q) ||
-        e.keyAgreement.toLowerCase().includes(q) ||
-        e.cipherSuite.toLowerCase().includes(q),
+        (e.caVendor || '').toLowerCase().includes(q) ||
+        (e.osName || '').toLowerCase().includes(q) ||
+        (e.sensorName || '').toLowerCase().includes(q) ||
+        (e.securityRating || '').toLowerCase().includes(q),
     );
   }, [search, data]);
 
@@ -136,20 +205,23 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
   }, [filtered, page, pageSize]);
 
   const stats: StatCardConfig[] = [
-    { title: 'Total Endpoints',   value: total,       sub: 'Discovered via Network TLS Scanner',                                         variant: 'default' },
-    { title: 'Quantum-safe',      value: `${qsPct}%`, sub: `${qsSafe} of ${total} endpoints using PQC key agreement`,                    variant: 'success' },
-    { title: 'Deprecated TLS',    value: deprecated,   sub: 'Endpoints on TLS 1.0 / 1.1 — immediate upgrade required',                   variant: 'danger' },
+    { title: 'Total Endpoints',   value: total,       sub: 'Discovered via DigiCert TLM',                                                variant: 'default' },
+    { title: 'At Risk',           value: atRisk,      sub: `${atRisk} of ${total} endpoints flagged AT_RISK`,                             variant: atRisk > 0 ? 'danger' : 'success' },
+    { title: 'Expired Certs',     value: expired,     sub: `${expired} of ${total} endpoints have expired certificates`,                  variant: expired > 0 ? 'danger' : 'success' },
     { title: 'Policy Violations', value: totalPolicyViolations, sub: `${endpointsWithViolations} of ${total} endpoints have policy violations`, variant: totalPolicyViolations > 0 ? 'danger' : 'success' },
   ];
 
   const columns = [
-    { key: 'hostname',     label: 'Hostname',       render: (e: DiscoveryEndpoint) => <span style={{ fontWeight: 500 }}>{e.hostname}</span> },
-    { key: 'ipAddress',    label: 'IP Address',     render: (e: DiscoveryEndpoint) => <span className={s.mono}>{e.ipAddress}</span> },
-    { key: 'port',         label: 'Port',           render: (e: DiscoveryEndpoint) => e.port },
-    { key: 'tlsVersion',   label: 'TLS Version',   render: (e: DiscoveryEndpoint) => <TlsPill version={e.tlsVersion} /> },
-    { key: 'cipherSuite',  label: 'Cipher Suite',  render: (e: DiscoveryEndpoint) => <span className={s.mono} style={{ fontSize: 11 }}>{e.cipherSuite}</span> },
-    { key: 'keyAgreement', label: 'Key Agreement', render: (e: DiscoveryEndpoint) => <span className={s.mono}>{e.keyAgreement}</span> },
-    { key: 'quantumSafe',  label: 'Quantum-safe',  render: (e: DiscoveryEndpoint) => <QsBadge safe={e.quantumSafe} />, sortable: false },
+    { key: 'hostname',     label: 'Hostname',         render: (e: DiscoveryEndpoint) => <span style={{ fontWeight: 500 }}>{e.hostname}</span> },
+    { key: 'ipAddress',    label: 'IP Address',       render: (e: DiscoveryEndpoint) => <span className={s.mono}>{e.ipAddress}</span> },
+    { key: 'port',         label: 'Port',             render: (e: DiscoveryEndpoint) => e.port },
+    { key: 'securityRating', label: 'Security Rating', render: (e: DiscoveryEndpoint) => <SecurityRatingBadge rating={e.securityRating} /> },
+    { key: 'caVendor',    label: 'CA Vendor',          render: (e: DiscoveryEndpoint) => e.caVendor || '—' },
+    { key: 'expiryDate',  label: 'Cert Expiry',        render: (e: DiscoveryEndpoint) => formatExpiryDate(e.expiryDate) },
+    { key: 'automationStatus', label: 'Automation',    render: (e: DiscoveryEndpoint) => <AutomationStatusBadge status={e.automationStatus} /> },
+    { key: 'osName',      label: 'OS',                 render: (e: DiscoveryEndpoint) => <span style={{ fontSize: 12, textTransform: 'capitalize' }}>{e.osName || '—'}</span> },
+    { key: 'sensorName',  label: 'Sensor',             render: (e: DiscoveryEndpoint) => e.sensorName || '—' },
+    { key: 'quantumSafe',  label: 'Quantum-safe',      render: (e: DiscoveryEndpoint) => <QsBadge safe={e.quantumSafe} />, sortable: false },
     { key: 'policiesViolated', label: 'Policies Violated', sortable: false, render: (e: DiscoveryEndpoint) => {
       const result = policyResultsMap.get(e.id);
       return (
@@ -164,6 +236,12 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
             cipherSuite: e.cipherSuite,
             keyAgreement: e.keyAgreement,
             quantumSafe: e.quantumSafe,
+            securityRating: e.securityRating ?? undefined,
+            caVendor: e.caVendor ?? undefined,
+            expiryDate: e.expiryDate ?? undefined,
+            automationStatus: e.automationStatus ?? undefined,
+            osName: e.osName ?? undefined,
+            sensorName: e.sensorName ?? undefined,
             violatedPolicies: result?.violatedPolicies?.map((p) => p.policyName) ?? [],
           }}
         />
@@ -237,23 +315,28 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
     <>
       <StatCards cards={stats} />
 
-      {deprecated > 0 && (
+      {atRisk > 0 && (
         <AiBanner>
-          <strong>{deprecated} endpoints</strong> are running deprecated TLS versions (1.0/1.1). Upgrade to TLS 1.3 with <strong>ML-KEM key exchange</strong> for quantum-safe protection.
+          <strong>{atRisk} endpoints</strong> are flagged as AT_RISK by DigiCert.{' '}
+          {expired > 0 && <><strong>{expired} endpoints</strong> have expired certificates. </>}
+          Review and remediate vulnerable endpoints for quantum-safe compliance.
         </AiBanner>
       )}
 
       <Toolbar
         search={search}
         setSearch={setSearch}
-        placeholder="Search by hostname, IP address, cipher, or key agreement..."
+        placeholder="Search by hostname, IP, CA vendor, OS, sensor, or risk..."
         onExport={() => exportTableToCSV(filtered as unknown as Record<string, unknown>[], [
           { key: 'hostname', label: 'Hostname' },
           { key: 'ipAddress', label: 'IP Address' },
           { key: 'port', label: 'Port' },
-          { key: 'tlsVersion', label: 'TLS Version' },
-          { key: 'cipherSuite', label: 'Cipher Suite' },
-          { key: 'keyAgreement', label: 'Key Agreement' },
+          { key: 'securityRating', label: 'Security Rating' },
+          { key: 'caVendor', label: 'CA Vendor' },
+          { key: 'expiryDate', label: 'Cert Expiry' },
+          { key: 'automationStatus', label: 'Automation Status' },
+          { key: 'osName', label: 'OS' },
+          { key: 'sensorName', label: 'Sensor' },
           { key: 'quantumSafe', label: 'Quantum-safe' },
           { key: 'source', label: 'Source' },
         ], 'endpoints')}
@@ -264,10 +347,18 @@ export default function EndpointsTab({ search, setSearch, onGoToIntegrations }: 
       <div className={s.tableCard}>
         <h3 className={s.tableTitle}>Endpoints ({filtered.length})</h3>
         <table className={s.table}>
+          <colgroup>
+            {columns.map((_, i) => (
+              <col key={i} style={{ width: colWidths[i] || COL_MIN[i], minWidth: COL_MIN[i] }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
-              {columns.map((col) => (
-                <th key={col.key} style={col.headerStyle}>{col.label}</th>
+              {columns.map((col, colIdx) => (
+                <th key={col.key} style={col.headerStyle}>
+                  {col.label}
+                  <span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, colIdx)} />
+                </th>
               ))}
             </tr>
           </thead>

@@ -86,6 +86,20 @@ export default function App() {
     }
   }, [location.pathname, nav]);
 
+  // Reset detail-page selections when navigating away from detail routes
+  // so stale data from a previous selection is never shown
+  useEffect(() => {
+    if (!location.pathname.startsWith("/discovery/cbom-imports/detail")) {
+      setSelectedCbomId(null);
+    }
+    if (!location.pathname.startsWith("/discovery/cbom-imports/repo")) {
+      setSelectedRepoName(null);
+    }
+    if (!location.pathname.startsWith("/xbom/detail")) {
+      setSelectedXbomId(null);
+    }
+  }, [location.pathname]);
+
   const setActivePage = useCallback(
     (page: NavPage) => nav(PAGE_TO_PATH[page]),
     [nav],
@@ -279,7 +293,7 @@ export default function App() {
       case "private-ca":
         return (
           <PlaceholderPage
-            section="Quantum Readiness Advisor"
+            section="QuantumGuard"
             title="Private CA"
             icon={ShieldHalf}
             description="Assess private CA certificates for quantum vulnerability, migrate issuing CAs to PQC-ready algorithms, and enforce post-quantum policies across internal PKI."
@@ -294,7 +308,7 @@ export default function App() {
       case "device-trust":
         return (
           <PlaceholderPage
-            section="Quantum Readiness Advisor"
+            section="QuantumGuard"
             title="Device Trust"
             icon={Tablet}
             description="Inventory cryptographic algorithms embedded in IoT firmware, identify harvest-now-decrypt-later risks, and plan quantum-safe certificate rollouts for device fleets."
@@ -309,7 +323,7 @@ export default function App() {
       case "document-trust":
         return (
           <PlaceholderPage
-            section="Quantum Readiness Advisor"
+            section="QuantumGuard"
             title="Document Trust"
             icon={FileSignature}
             description="Evaluate document-signing certificates for quantum vulnerability, migrate to ML-DSA / SLH-DSA signatures, and verify long-term document integrity against future quantum threats."

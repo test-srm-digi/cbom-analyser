@@ -11,8 +11,8 @@ export default function HowItWorks() {
           <h4>DigiCert Managers</h4>
           <p>
             Connect to DigiCert ONE Trust Lifecycle, Software Trust, or Device Trust Manager using your
-            <strong> API key</strong>. The integration pulls certificate inventories, signing keys, and device
-            identities via the DigiCert REST API on your configured schedule.
+            <strong> API key</strong>. The integration pulls certificate inventories, endpoint &amp; host TLS
+            configurations, signing keys, and device identities via the DigiCert REST API on your configured schedule.
           </p>
           <div className={s.howRequires}>
             <strong>Requires:</strong> DigiCert ONE account, API key with read access, Account/Division ID

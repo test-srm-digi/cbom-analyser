@@ -244,6 +244,21 @@ router.post('/integrations/:id/test', async (req: Request, res: Response) => {
       return;
     }
 
+    // ── Real connection test for DigiCert DTM ──
+    if (templateType === 'digicert-dtm' && config.apiBaseUrl && config.apiKey) {
+      const { testDtmConnection } = await import('../services/digicert/dtmConnector');
+      const result = await testDtmConnection(config as import('../services/connectors').ConnectorConfig);
+
+      if (result.success) {
+        await integration.update({ status: 'connected', errorMessage: null });
+        res.json({ success: true, data: { status: 'success', message: result.message } });
+      } else {
+        await integration.update({ status: 'error', errorMessage: result.message });
+        res.json({ success: false, data: { status: 'error', message: result.message } });
+      }
+      return;
+    }
+
     // ── Fallback: basic config-presence check for other integrations ──
     const configKeys = Object.keys(config);
     const hasValues = configKeys.length > 0 && configKeys.every((k) => config[k]?.trim());

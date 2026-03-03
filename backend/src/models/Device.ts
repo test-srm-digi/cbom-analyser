@@ -21,12 +21,14 @@ export interface DeviceAttributes {
   lastCheckin: string;
   source: string;
   deviceGroup: string | null;
+  operationalStatus: string;
+  connected: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface DeviceCreationAttributes
-  extends Optional<DeviceAttributes, 'id' | 'integrationId' | 'deviceGroup' | 'createdAt' | 'updatedAt'> {}
+  extends Optional<DeviceAttributes, 'id' | 'integrationId' | 'deviceGroup' | 'operationalStatus' | 'connected' | 'createdAt' | 'updatedAt'> {}
 
 /* ── Model class ───────────────────────────────────────────── */
 
@@ -47,6 +49,8 @@ class Device
   declare lastCheckin: string;
   declare source: string;
   declare deviceGroup: string | null;
+  declare operationalStatus: string;
+  declare connected: boolean;
   declare createdAt: Date;
   declare updatedAt: Date;
 }
@@ -117,6 +121,17 @@ Device.init(
       type: DataTypes.STRING(100),
       allowNull: true,
       field: 'device_group',
+    },
+    operationalStatus: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      defaultValue: 'Unknown',
+      field: 'operational_status',
+    },
+    connected: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     createdAt: {
       type: DataTypes.DATE,

@@ -213,7 +213,7 @@ export default function CbomDetailPage({ cbomImportId, onBack }: Props) {
       <div className={s.header}>
         <div className={s.headerTop}>
           <div>
-            <p className={s.breadcrumb}>Discovery / BOM Imports</p>
+            <p className={s.breadcrumb}>Inventory / BOM Imports</p>
             <h1 className={s.title}>{cbomImport.applicationName ?? cbomImport.fileName}</h1>
             <p className={s.subtitle}>{cbomImport.fileName}</p>
           </div>

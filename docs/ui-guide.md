@@ -22,13 +22,13 @@
 
 ## UI Navigation & Application Layout
 
-The frontend is organized as a single-page application with a persistent sidebar and a main content area. All pages are accessible from the **Quantum Readiness Advisor** section in the sidebar.
+The frontend is organized as a single-page application with a persistent sidebar and a main content area. All pages are accessible from the **QuantumGuard** section in the sidebar.
 
 ### Sidebar Structure
 
 ```
 digicert ONE
-└─ Quantum Readiness Advisor
+└─ QuantumGuard
    ├─ Dashboard              — PQC readiness overview & risk score
    ├─ Inventory              — Full crypto-asset table with filters
    ├─ Visualize              — Dependency & algorithm graphs

@@ -42,6 +42,8 @@ export const syncLogsApi = createApi({
   reducerPath: 'syncLogsApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
   tagTypes: ['SyncLog'],
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
     /* ── Queries ───────────────────────────────────────────── */
 

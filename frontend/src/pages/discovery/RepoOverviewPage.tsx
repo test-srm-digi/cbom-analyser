@@ -13,6 +13,7 @@ import { CbomStatusBadge } from './components';
 import type { DiscoveryCbomImport } from './types';
 import s from './RepoOverviewPage.module.scss';
 import shared from './components/shared.module.scss';
+import { useColumnResize } from '../../hooks/useColumnResize';
 
 /* ── Types ───────────────────────────────────────────────────── */
 
@@ -85,6 +86,10 @@ const CHART_COLORS = {
 export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props) {
   const { data: allImports = [] } = useGetCbomImportsQuery();
   const [insight, setInsight] = useState<InsightState>({ loading: false });
+
+  // Column resize
+  const REPO_COL_MIN: Record<number, number> = { 0: 120, 1: 60, 2: 50, 3: 80, 4: 60, 5: 60, 6: 60, 7: 60, 8: 70, 9: 80, 10: 70 };
+  const { colWidths: repoColWidths, onResizeStart: onRepoResizeStart } = useColumnResize(REPO_COL_MIN);
 
   /* ── Filter imports for this repo ──────────────────────── */
   const repoImports = useMemo(() => {
@@ -251,7 +256,7 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
       <div className={s.header}>
         <div className={s.headerTop}>
           <div>
-            <p className={s.breadcrumb}>Discovery / CBOM Imports / Repositories</p>
+            <p className={s.breadcrumb}>Inventory / CBOM Imports / Repositories</p>
             <h1 className={s.title}>
               <GitBranch size={24} className={s.titleIcon} />
               {repoName}
@@ -313,7 +318,7 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
                   <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
                   <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} domain={[0, 100]} />
                   <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }} />
-                  <Line type="monotone" dataKey="pqcPct" name="PQC %" stroke={CHART_COLORS.pqc} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.pqc, formatter: (v: number) => `${v}%` }} />
+                  <Line type="monotone" dataKey="pqcPct" name="PQC %" stroke={CHART_COLORS.pqc} strokeWidth={2} dot={{ r: 3, strokeWidth: 1 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -335,9 +340,9 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
                   <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
                   <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} domain={[(min: number) => Math.floor(min * 0.9), (max: number) => Math.ceil(max * 1.05)]} />
                   <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }} />
-                  <Line type="monotone" dataKey="safe" name="Safe" stroke={CHART_COLORS.safe} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.safe }} />
-                  <Line type="monotone" dataKey="notSafe" name="Not Safe" stroke={CHART_COLORS.notSafe} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.notSafe }} />
-                  <Line type="monotone" dataKey="conditional" name="Conditional" stroke={CHART_COLORS.conditional} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'bottom', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.conditional }} />
+                  <Line type="monotone" dataKey="safe" name="Safe" stroke={CHART_COLORS.safe} strokeWidth={2} dot={{ r: 3, strokeWidth: 1 }} />
+                  <Line type="monotone" dataKey="notSafe" name="Not Safe" stroke={CHART_COLORS.notSafe} strokeWidth={2} dot={{ r: 3, strokeWidth: 1 }} />
+                  <Line type="monotone" dataKey="conditional" name="Conditional" stroke={CHART_COLORS.conditional} strokeWidth={2} dot={{ r: 3, strokeWidth: 1 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -361,8 +366,8 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
                   <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
                   <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} domain={[(min: number) => Math.floor(min * 0.9), (max: number) => Math.ceil(max * 1.05)]} />
                   <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }} />
-                  <Line type="monotone" dataKey="crypto" name="Crypto" stroke={CHART_COLORS.crypto} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'bottom', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.crypto }} />
-                  <Line type="monotone" dataKey="total" name="Total" stroke={CHART_COLORS.total} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.total }} />
+                  <Line type="monotone" dataKey="crypto" name="Crypto" stroke={CHART_COLORS.crypto} strokeWidth={2} dot={{ r: 3, strokeWidth: 1 }} />
+                  <Line type="monotone" dataKey="total" name="Total" stroke={CHART_COLORS.total} strokeWidth={2} dot={{ r: 3, strokeWidth: 1 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -385,9 +390,9 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
                   <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11 }} />
                   <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} domain={[0, 100]} />
                   <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }} />
-                  <Line type="monotone" dataKey="safePct" name="Safe %" stroke={CHART_COLORS.safePct} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'bottom', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.safePct, formatter: (v: number) => `${v}%` }} />
-                  <Line type="monotone" dataKey="notSafePct" name="Not Safe %" stroke={CHART_COLORS.notSafePct} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'top', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.notSafePct, formatter: (v: number) => `${v}%` }} />
-                  <Line type="monotone" dataKey="condPct" name="Conditional %" stroke={CHART_COLORS.condPct} strokeWidth={2} dot={{ r: 5, strokeWidth: 2 }} label={{ position: 'bottom', fontSize: 11, fontWeight: 600, fill: CHART_COLORS.condPct, formatter: (v: number) => `${v}%` }} />
+                  <Line type="monotone" dataKey="safePct" name="Safe %" stroke={CHART_COLORS.safePct} strokeWidth={2} dot={{ r: 3, strokeWidth: 1 }} />
+                  <Line type="monotone" dataKey="notSafePct" name="Not Safe %" stroke={CHART_COLORS.notSafePct} strokeWidth={2} dot={{ r: 3, strokeWidth: 1 }} />
+                  <Line type="monotone" dataKey="condPct" name="Conditional %" stroke={CHART_COLORS.condPct} strokeWidth={2} dot={{ r: 3, strokeWidth: 1 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -517,19 +522,24 @@ export default function RepoOverviewPage({ repoName, onBack, onViewCbom }: Props
         <div className={shared.tableCard} style={{ marginTop: 16 }}>
           <h3 className={shared.tableTitle}>All CBOM Scans ({repoImports.length})</h3>
           <table className={shared.table}>
+            <colgroup>
+              {[0,1,2,3,4,5,6,7,8,9,10].map((i) => (
+                <col key={i} style={{ width: repoColWidths[i] || REPO_COL_MIN[i], minWidth: REPO_COL_MIN[i] }} />
+              ))}
+            </colgroup>
             <thead>
               <tr>
-                <th>File Name</th>
-                <th>Format</th>
-                <th>Spec</th>
-                <th>Components</th>
-                <th>Crypto</th>
-                <th style={{ textAlign: 'center' }}>PQC %</th>
-                <th style={{ textAlign: 'center' }}>Safe</th>
-                <th style={{ textAlign: 'center' }}>Not Safe</th>
-                <th style={{ textAlign: 'center' }}>Conditional</th>
-                <th>Imported</th>
-                <th>Status</th>
+                <th>File Name<span className={shared.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 0)} /></th>
+                <th>Format<span className={shared.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 1)} /></th>
+                <th>Spec<span className={shared.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 2)} /></th>
+                <th>Components<span className={shared.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 3)} /></th>
+                <th>Crypto<span className={shared.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 4)} /></th>
+                <th style={{ textAlign: 'center' }}>PQC %<span className={shared.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 5)} /></th>
+                <th style={{ textAlign: 'center' }}>Safe<span className={shared.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 6)} /></th>
+                <th style={{ textAlign: 'center' }}>Not Safe<span className={shared.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 7)} /></th>
+                <th style={{ textAlign: 'center' }}>Conditional<span className={shared.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 8)} /></th>
+                <th>Imported<span className={shared.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 9)} /></th>
+                <th>Status<span className={shared.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 10)} /></th>
               </tr>
             </thead>
             <tbody>

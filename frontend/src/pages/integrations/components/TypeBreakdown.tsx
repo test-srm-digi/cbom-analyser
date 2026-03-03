@@ -51,7 +51,7 @@ export default function TypeBreakdown({ integrations, selectedType, onSelectType
                 </div>
                 <div className={s.typeMetric}>
                   <span className={s.typeMetricValue}>{items}</span>
-                  <span className={s.typeMetricLabel}>Items</span>
+                  <span className={s.typeMetricLabel}>Assets</span>
                 </div>
               </div>
             </div>

@@ -122,6 +122,8 @@ export const trackingApi = createApi({
   reducerPath: 'trackingApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
   tagTypes: ['Ticket', 'Connector'],
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
 
     /* ── Tickets ──────────────────────────────────────────── */

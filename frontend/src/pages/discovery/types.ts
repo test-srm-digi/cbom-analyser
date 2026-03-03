@@ -53,6 +53,14 @@ export interface DiscoveryEndpoint {
   source: string;
   lastScanned?: string;
   certCommonName?: string;
+  /* ── New fields from DigiCert inventory ─────────────────── */
+  securityRating?: string | null;
+  automationStatus?: string | null;
+  caVendor?: string | null;
+  expiryDate?: string | null;
+  osName?: string | null;
+  sensorName?: string | null;
+  domainName?: string | null;
 }
 
 // ── Software (from DigiCert Software Trust Manager) ──────────
@@ -97,6 +105,8 @@ export interface DiscoveryDevice {
   lastCheckin: string;
   source: string;
   deviceGroup?: string;
+  operationalStatus?: string;
+  connected?: boolean;
 }
 
 

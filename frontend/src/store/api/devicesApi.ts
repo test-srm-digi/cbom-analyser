@@ -30,6 +30,8 @@ export const devicesApi = createApi({
   reducerPath: 'devicesApi',
   baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
   tagTypes: ['Device'],
+  refetchOnFocus: true,
+  refetchOnMountOrArgChange: true,
   endpoints: (builder) => ({
 
     getDevices: builder.query<DiscoveryDevice[], void>({

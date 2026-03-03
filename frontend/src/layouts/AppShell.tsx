@@ -81,7 +81,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   {
     id: "tools",
-    label: "Tools",
+    label: "Analysis",
     icon: faFlask,
     children: [
       { id: "dashboard", label: "CBOM Analyzer", icon: faGrid2 },
@@ -92,7 +92,7 @@ const mainNavItems: NavItem[] = [
   // { id: 'violations', label: 'Violations', icon: faTriangleExclamation },
   {
     id: "discovery",
-    label: "Discovery",
+    label: "Inventory",
     icon: faMagnifyingGlass,
     children: [
       {
@@ -109,7 +109,7 @@ const mainNavItems: NavItem[] = [
   { id: "integrations", label: "Integrations", icon: faPlug },
   {
     id: "tracking",
-    label: "Tracking",
+    label: "Task Management",
     icon: faListCheck,
     children: [
       { id: "tracking-tickets", label: "Tickets", icon: faListCheck },
@@ -128,55 +128,54 @@ interface SidebarSection {
   comingSoon?: boolean;
 }
 
-const sidebarSections: SidebarSection[] = [
-  {
-    label: "Private CA",
-    icon: faShieldCheck,
-    navPage: "private-ca",
-    description:
-      "Assess private CA certificates for quantum vulnerability, migrate issuing CAs to PQC-ready algorithms, and enforce post-quantum policies across internal PKI.",
-  },
-  {
-    label: "Trust Lifecycle",
-    icon: faArrowsRotate,
-    comingSoon: true,
-    description:
-      "Track every cryptographic asset from discovery through remediation — automate PQC migration workflows, schedule algorithm upgrades, and maintain a continuous crypto inventory across your organisation.",
-  },
-  {
-    label: "Software Trust",
-    icon: faLock,
-    comingSoon: true,
-    description:
-      "Scan software dependencies for weak or non-quantum-safe cryptographic primitives, generate CBOM reports for each release, and enforce PQC-readiness gates in your CI/CD pipeline.",
-  },
-  {
-    label: "Device Trust",
-    icon: faTabletScreenButton,
-    navPage: "device-trust",
-    description:
-      "Inventory cryptographic algorithms embedded in IoT firmware, identify harvest-now-decrypt-later risks, and plan quantum-safe certificate rollouts for device fleets.",
-  },
-  {
-    label: "Document Trust",
-    icon: faFileSignature,
-    navPage: "document-trust",
-    description:
-      "Evaluate document-signing certificates for quantum vulnerability, migrate to ML-DSA / SLH-DSA signatures, and verify long-term document integrity against future quantum threats.",
-  },
-];
+// const sidebarSections: SidebarSection[] = [
+//   {
+//     label: "Private CA",
+//     icon: faShieldCheck,
+//     navPage: "private-ca",
+//     description:
+//       "Assess private CA certificates for quantum vulnerability, migrate issuing CAs to PQC-ready algorithms, and enforce post-quantum policies across internal PKI.",
+//   },
+//   {
+//     label: "Trust Lifecycle",
+//     icon: faArrowsRotate,
+//     comingSoon: true,
+//     description:
+//       "Track every cryptographic asset from discovery through remediation — automate PQC migration workflows, schedule algorithm upgrades, and maintain a continuous crypto inventory across your organisation.",
+//   },
+//   {
+//     label: "Software Trust",
+//     icon: faLock,
+//     comingSoon: true,
+//     description:
+//       "Scan software dependencies for weak or non-quantum-safe cryptographic primitives, generate CBOM reports for each release, and enforce PQC-readiness gates in your CI/CD pipeline.",
+//   },
+//   {
+//     label: "Device Trust",
+//     icon: faTabletScreenButton,
+//     navPage: "device-trust",
+//     description:
+//       "Inventory cryptographic algorithms embedded in IoT firmware, identify harvest-now-decrypt-later risks, and plan quantum-safe certificate rollouts for device fleets.",
+//   },
+//   {
+//     label: "Document Trust",
+//     icon: faFileSignature,
+//     navPage: "document-trust",
+//     description:
+//       "Evaluate document-signing certificates for quantum vulnerability, migrate to ML-DSA / SLH-DSA signatures, and verify long-term document integrity against future quantum threats.",
+//   },
+// ];
 
 /* ─── Component ─────────────────────────────────────────────── */
 
 export default function AppShell({ activePage, onNavigate, children }: Props) {
-  const [qraExpanded, setQraExpanded] = useState(true);
   const [comingSoonModal, setComingSoonModal] = useState<SidebarSection | null>(
     null,
   );
   const [expandedParents, setExpandedParents] = useState<Set<NavPage>>(() => {
     const set = new Set<NavPage>();
     for (const item of mainNavItems) {
-      if (item.children?.some((c) => c.id === activePage)) {
+      if (item.children?.length) {
         set.add(item.id);
       }
     }
@@ -219,114 +218,79 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
           <div className="dc1-brand-icon-box">
             <img src={digicertIcon} alt="" />
           </div>
-          <span className="dc1-brand-product">QUANTUM READINESS ADVISOR</span>
+          <span className="dc1-brand-product">QUANTUM GUARD</span>
         </div>
 
         {/* Scrollable area */}
         <div className="dc1-sidebar-scroll">
-          {/* Quantum Readiness Advisor section */}
-          <div className="dc1-nav-section">
-            <button
-              className="dc1-nav-section-header"
-              onClick={() => setQraExpanded(!qraExpanded)}
-            >
-              <span className="dc1-nav-section-icon">
-                <svg width="24" height="24" viewBox="0 0 18 18" fill="none">
-                  <circle
-                    cx="9"
-                    cy="9"
-                    r="7"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  />
-                  <path
-                    d="M9 5v4l3 1.5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </span>
-              <span className="dc1-nav-section-label">
-                Quantum Readiness Advisor
-              </span>
-              <FontAwesomeIcon
-                icon={qraExpanded ? faChevronDown : faChevronRight}
-                className="dc1-nav-chevron"
-              />
-            </button>
+          <ul className="dc1-nav-list">
+            {mainNavItems.map((item) => {
+              const hasChildren = !!item.children?.length;
+              const expanded = expandedParents.has(item.id);
+              const parentActive = isParentActive(item);
 
-            {qraExpanded && (
-              <ul className="dc1-nav-list">
-                {mainNavItems.map((item) => {
-                  const hasChildren = !!item.children?.length;
-                  const expanded = expandedParents.has(item.id);
-                  const parentActive = isParentActive(item);
-
-                  return (
-                    <li key={item.id}>
-                      <button
-                        className={`dc1-nav-item ${parentActive ? "dc1-nav-active" : ""}`}
-                        onClick={() => {
-                          if (hasChildren) {
-                            toggleParent(item.id);
-                            // Navigate to first child if not already on a child
-                            if (
-                              !activePage.startsWith(item.id + "-") &&
-                              item.children
-                            ) {
-                              onNavigate(item.children[0].id);
-                            }
-                          } else {
-                            onNavigate(item.id);
-                          }
+              return (
+                <li key={item.id}>
+                  <button
+                    className={`dc1-nav-item ${parentActive ? "dc1-nav-active" : ""}`}
+                    onClick={() => {
+                      if (hasChildren) {
+                        toggleParent(item.id);
+                        // Navigate to first child if not already on a child
+                        if (
+                          !activePage.startsWith(item.id + "-") &&
+                          item.children
+                        ) {
+                          onNavigate(item.children[0].id);
+                        }
+                      } else {
+                        onNavigate(item.id);
+                      }
+                    }}
+                  >
+                    <FontAwesomeIcon
+                      icon={item.icon}
+                      className="dc1-nav-icon"
+                    />
+                    <span>{item.label}</span>
+                    {hasChildren && (
+                      <FontAwesomeIcon
+                        icon={expanded ? faChevronDown : faChevronRight}
+                        style={{
+                          marginLeft: "auto",
+                          fontSize: 10,
+                          opacity: 0.5,
                         }}
-                      >
-                        <FontAwesomeIcon
-                          icon={item.icon}
-                          className="dc1-nav-icon"
-                        />
-                        <span>{item.label}</span>
-                        {hasChildren && (
-                          <FontAwesomeIcon
-                            icon={expanded ? faChevronDown : faChevronRight}
-                            style={{
-                              marginLeft: "auto",
-                              fontSize: 10,
-                              opacity: 0.5,
-                            }}
-                          />
-                        )}
-                      </button>
+                      />
+                    )}
+                  </button>
 
-                      {/* Child nav items */}
-                      {hasChildren && expanded && (
-                        <ul className="dc1-subnav-list">
-                          {item.children!.map((child) => (
-                            <li key={child.id}>
-                              <button
-                                className={`dc1-subnav-item ${activePage === child.id ? "dc1-subnav-active" : ""}`}
-                                onClick={() => onNavigate(child.id)}
-                              >
-                                <FontAwesomeIcon
-                                  icon={child.icon}
-                                  className="dc1-subnav-icon"
-                                />
-                                <span>{child.label}</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
+                  {/* Child nav items */}
+                  {hasChildren && expanded && (
+                    <ul className="dc1-subnav-list">
+                      {item.children!.map((child) => (
+                        <li key={child.id}>
+                          <button
+                            className={`dc1-subnav-item ${activePage === child.id ? "dc1-subnav-active" : ""}`}
+                            onClick={() => onNavigate(child.id)}
+                          >
+                            <FontAwesomeIcon
+                              icon={child.icon}
+                              className="dc1-subnav-icon"
+                            />
+                            <span>{child.label}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
 
           {/* Other sidebar sections */}
-          {sidebarSections.map((section) => {
+          {/* {sidebarSections.map((section) => {
             const isActive = section.navPage
               ? activePage === section.navPage
               : false;
@@ -357,7 +321,7 @@ export default function AppShell({ activePage, onNavigate, children }: Props) {
                 </button>
               </div>
             );
-          })}
+          })} */}
         </div>
 
         {/* Footer */}

@@ -17,10 +17,13 @@ export const REQUEST_TIMEOUT = 30_000; // 30 s
  * mechanism exposed by DigiCert ONE micro-services.
  */
 export const CERTIFICATE_API_PATHS: CertEndpointCandidate[] = [
-  // POST search endpoints (preferred — most DigiCert ONE deployments)
-  { path: 'mpki/api/v1/certificate/search',        method: 'POST' },
-  { path: 'em/api/v1/certificate/search',           method: 'POST' },
-  { path: 'tlm/api/v1/certificate/search',          method: 'POST' },
+  // UI-API endpoints (DigiCert ONE SaaS / demo — account passed as query param)
+  { path: 'mpki/ui-api/v2/certificate',             method: 'GET', accountInQuery: true, extraParams: { status: 'issued', unique_certificate_view: 'true' } },
+  { path: 'mpki/ui-api/v1/certificate',             method: 'GET', accountInQuery: true },
+  // POST search endpoints (on-prem / classic deployments)
+  { path: 'mpki/api/v1/certificate/search',         method: 'POST' },
+  { path: 'em/api/v1/certificate/search',            method: 'POST' },
+  { path: 'tlm/api/v1/certificate/search',           method: 'POST' },
   // GET collection endpoints (classic / CertCentral)
   { path: 'mpki/api/v1/certificate',                method: 'GET'  },
   { path: 'em/api/v1/certificate',                  method: 'GET'  },
@@ -28,6 +31,29 @@ export const CERTIFICATE_API_PATHS: CertEndpointCandidate[] = [
   { path: 'certcentral/api/v1/certificate',          method: 'GET'  },
   // CertCentral v2
   { path: 'services/v2/order/certificate',           method: 'GET'  },
+];
+
+/**
+ * Well-known DigiCert ONE API paths for endpoint inventory,
+ * tried in order during auto-detection.
+ */
+export interface EndpointApiCandidate {
+  path: string;
+  /** When true, account must be passed as a query param (ui-api routes) */
+  accountInQuery?: boolean;
+}
+
+export const ENDPOINT_API_PATHS: EndpointApiCandidate[] = [
+  // UI-API endpoints (DigiCert ONE SaaS / demo)
+  { path: 'mpki/ui-api/v1/inventory/endpoint/automatable', accountInQuery: true },
+  { path: 'mpki/ui-api/v1/inventory/endpoint',             accountInQuery: true },
+  // Standard API endpoints (on-prem / classic)
+  { path: 'mpki/api/v1/inventory/endpoint/automatable' },
+  { path: 'mpki/api/v1/inventory/endpoint' },
+  { path: 'em/api/v1/inventory/endpoint/automatable' },
+  { path: 'em/api/v1/inventory/endpoint' },
+  { path: 'tlm/api/v1/inventory/endpoint/automatable' },
+  { path: 'tlm/api/v1/inventory/endpoint' },
 ];
 
 /** Account API endpoint used for connection / auth testing */

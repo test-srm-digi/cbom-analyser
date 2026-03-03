@@ -219,7 +219,10 @@ export default function CreatePolicyModal({ open, onClose, onCreated, existingPo
    ═══════════════════════════════════════════════════════════════ */
 function SeverityBadge({ severity }: { severity: PolicySeverity }) {
   const cls =
-    severity === 'High' ? s.severityHigh : severity === 'Medium' ? s.severityMedium : s.severityLow;
+    severity === 'Critical' ? s.severityCritical
+    : severity === 'High' ? s.severityHigh
+    : severity === 'Medium' ? s.severityMedium
+    : s.severityLow;
   return <span className={cls}>{severity}</span>;
 }
 
@@ -327,6 +330,7 @@ function CustomPolicyForm({
           value={severity}
           onChange={(e) => setSeverity(e.target.value as PolicySeverity)}
         >
+          <option value="Critical">Critical</option>
           <option value="High">High</option>
           <option value="Medium">Medium</option>
           <option value="Low">Low</option>

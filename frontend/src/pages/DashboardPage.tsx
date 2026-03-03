@@ -28,6 +28,9 @@ import {
 import { useGetCbomImportQuery, useGetCbomUploadsQuery } from '../store/api';
 import type { CbomUploadItem } from '../store/api';
 import { CbomStatusBadge, ProgressBar } from './discovery/components';
+import { useColumnResize } from '../hooks/useColumnResize';
+
+const UPLOAD_COL_MIN: Record<number, number> = { 0: 100, 1: 100, 2: 100, 3: 80, 4: 80, 5: 70, 6: 60 };
 import { parseCbomJson } from '../utils/cbomParser';
 import s from './discovery/ImportHeader.module.scss';
 
@@ -61,6 +64,7 @@ export default function DashboardPage({
   onBack,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const { colWidths, onResizeStart } = useColumnResize(UPLOAD_COL_MIN);
 
   /* ── CBOM uploads list for welcome screen ──────────── */
   const { data: cbomUploads = [], isLoading: uploadsLoading } = useGetCbomUploadsQuery();
@@ -179,7 +183,7 @@ export default function DashboardPage({
         <div className="dc1-welcome-inner">
           <div className="dc1-welcome-header">
             <ShieldCheck size={48} strokeWidth={1.2} className="dc1-welcome-icon" />
-            <h1>Quantum Readiness Advisor</h1>
+            <h1>QuantumGuard</h1>
             <p>Analyse your cryptographic inventory for post-quantum readiness. Upload a CBOM file to get started or explore with sample data.</p>
           </div>
 
@@ -209,16 +213,19 @@ export default function DashboardPage({
                 <h3 className="dc1-card-section-title" style={{ margin: 0 }}>Uploaded CBOMs</h3>
                 <span style={{ fontSize: 12, color: 'var(--dc1-text-muted)' }}>{cbomUploads.length} total</span>
               </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <table className="dc1-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <colgroup>
+                  {[0,1,2,3,4,5,6].map(i => <col key={i} style={{ width: colWidths[i] || UPLOAD_COL_MIN[i], minWidth: UPLOAD_COL_MIN[i] }} />)}
+                </colgroup>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--dc1-border)', textAlign: 'left' }}>
-                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Component</th>
-                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>File Name</th>
-                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Upload Date</th>
-                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Crypto Assets</th>
-                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quantum-safe</th>
-                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Not Safe</th>
-                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>Actions</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Component<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 0)} /></th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>File Name<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 1)} /></th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Upload Date<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 2)} /></th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Crypto Assets<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 3)} /></th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quantum-safe<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 4)} /></th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Not Safe<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 5)} /></th>
+                    <th style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--dc1-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>Actions<span className="dc1-resize-handle" onMouseDown={e => onResizeStart(e, 6)} /></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -303,7 +310,7 @@ export default function DashboardPage({
           <div className={s.header}>
             <div className={s.headerTop}>
               <div>
-                <p className={s.breadcrumb}>Discovery / CBOM Imports</p>
+                <p className={s.breadcrumb}>Inventory / CBOM Imports</p>
                 <h1 className={s.title}>{cbomImport.applicationName ?? cbomImport.fileName}</h1>
                 <p className={s.subtitle}>{cbomImport.fileName}</p>
               </div>

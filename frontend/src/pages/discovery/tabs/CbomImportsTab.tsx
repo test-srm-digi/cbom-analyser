@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { ShieldAlert, ShieldCheck, TrendingUp as TrendUp, TrendingDown, Loader2, X, BarChart3, AlertTriangle, TrendingUp, Clock, GitBranch, FileText, ArrowUpRight, ShieldX, Download, Layers, MoreVertical } from 'lucide-react';
+import { useColumnResize } from '../../../hooks/useColumnResize';
 import { StatCards, Toolbar, AiBanner, DataTable, CbomStatusBadge, ProgressBar, EmptyState, PolicyViolationCell } from '../components';
 import type { IntegrationStep } from '../components';
 import { CBOM_IMPORTS } from '../data';
@@ -67,6 +68,14 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
   }, [openDropdownId]);
   const [repoPage, setRepoPage] = useState(1);
   const [repoPageSize, setRepoPageSize] = useState(25);
+
+  // Column resize for Repositories table
+  const REPO_COL_MIN: Record<number, number> = { 0: 140, 1: 80, 2: 90, 3: 100, 4: 90, 5: 80, 6: 90, 7: 90, 8: 80 };
+  const { colWidths: repoColWidths, onResizeStart: onRepoResizeStart } = useColumnResize(REPO_COL_MIN);
+
+  // Column resize for xBOM table
+  const XBOM_COL_MIN: Record<number, number> = { 0: 140, 1: 100, 2: 80, 3: 90, 4: 100, 5: 80, 6: 50 };
+  const { colWidths: xbomColWidths, onResizeStart: onXbomResizeStart } = useColumnResize(XBOM_COL_MIN);
   const data = apiData;
   const loaded = data.length > 0;
 
@@ -601,17 +610,22 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
         <div className={s.tableCard}>
           <h3 className={s.tableTitle}>Repositories ({filteredRepos.length})</h3>
           <table className={s.table}>
+            <colgroup>
+              {[0,1,2,3,4,5,6,7,8].map((i) => (
+                <col key={i} style={{ width: repoColWidths[i] || REPO_COL_MIN[i], minWidth: REPO_COL_MIN[i] }} />
+              ))}
+            </colgroup>
             <thead>
               <tr>
-                <th>Repository</th>
-                <th>CBOM Scans</th>
-                <th>Crypto Assets</th>
-                <th style={{ textAlign: 'center' }}>PQC Readiness</th>
-                <th style={{ textAlign: 'center' }}>Quantum Safe</th>
-                <th style={{ textAlign: 'center' }}>Not Safe</th>
-                <th style={{ textAlign: 'center' }}>Risk Mitigated</th>
-                <th>Latest Scan</th>
-                <th>Status</th>
+                <th>Repository<span className={s.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 0)} /></th>
+                <th>CBOM Scans<span className={s.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 1)} /></th>
+                <th>Crypto Assets<span className={s.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 2)} /></th>
+                <th style={{ textAlign: 'center' }}>PQC Readiness<span className={s.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 3)} /></th>
+                <th style={{ textAlign: 'center' }}>Quantum Safe<span className={s.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 4)} /></th>
+                <th style={{ textAlign: 'center' }}>Not Safe<span className={s.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 5)} /></th>
+                <th style={{ textAlign: 'center' }}>Risk Mitigated<span className={s.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 6)} /></th>
+                <th>Latest Scan<span className={s.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 7)} /></th>
+                <th>Status<span className={s.resizeHandle} onMouseDown={(e) => onRepoResizeStart(e, 8)} /></th>
               </tr>
             </thead>
             <tbody>
@@ -711,15 +725,20 @@ export default function CbomImportsTab({ search, setSearch, onViewCbom, onViewRe
               ) : (
                 <>
                   <table className={s.table}>
+                    <colgroup>
+                      {[0,1,2,3,4,5,6].map((i) => (
+                        <col key={i} style={{ width: xbomColWidths[i] || XBOM_COL_MIN[i], minWidth: XBOM_COL_MIN[i] }} />
+                      ))}
+                    </colgroup>
                     <thead>
                       <tr>
-                        <th>Component</th>
-                        <th>Timestamp</th>
-                        <th style={{ textAlign: 'center' }}>Software</th>
-                        <th style={{ textAlign: 'center' }}>Crypto Assets</th>
-                        <th style={{ textAlign: 'center' }}>Vulnerabilities</th>
-                        <th style={{ textAlign: 'center' }}>Cross-Refs</th>
-                        <th style={{ width: 72 }} />
+                        <th>Component<span className={s.resizeHandle} onMouseDown={(e) => onXbomResizeStart(e, 0)} /></th>
+                        <th>Timestamp<span className={s.resizeHandle} onMouseDown={(e) => onXbomResizeStart(e, 1)} /></th>
+                        <th style={{ textAlign: 'center' }}>Software<span className={s.resizeHandle} onMouseDown={(e) => onXbomResizeStart(e, 2)} /></th>
+                        <th style={{ textAlign: 'center' }}>Crypto Assets<span className={s.resizeHandle} onMouseDown={(e) => onXbomResizeStart(e, 3)} /></th>
+                        <th style={{ textAlign: 'center' }}>Vulnerabilities<span className={s.resizeHandle} onMouseDown={(e) => onXbomResizeStart(e, 4)} /></th>
+                        <th style={{ textAlign: 'center' }}>Cross-Refs<span className={s.resizeHandle} onMouseDown={(e) => onXbomResizeStart(e, 5)} /></th>
+                        <th style={{ width: 72 }}><span className={s.resizeHandle} onMouseDown={(e) => onXbomResizeStart(e, 6)} /></th>
                       </tr>
                     </thead>
                     <tbody>

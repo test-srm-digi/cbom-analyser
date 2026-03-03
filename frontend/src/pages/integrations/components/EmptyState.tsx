@@ -38,7 +38,7 @@ export default function EmptyState({ onAddClick }: EmptyStateProps) {
           <div className={s.stepNumber}>3</div>
           <div className={s.stepContent}>
             <h4>Import & Analyze</h4>
-            <p>Assets flow into the Discovery page. View certificates, endpoints, and software with quantum-safety verdicts.</p>
+            <p>Assets flow into the Inventory page. View certificates, endpoints, and software with quantum-safety verdicts.</p>
           </div>
         </div>
       </div>

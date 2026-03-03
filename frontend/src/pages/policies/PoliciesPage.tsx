@@ -8,6 +8,7 @@ import {
   Trash2,
   Info,
 } from 'lucide-react';
+import { useColumnResize } from '../../hooks/useColumnResize';
 import type { CryptoPolicy, PolicySeverity, PolicyStatus } from './types';
 import CreatePolicyModal from './CreatePolicyModal';
 import s from './PoliciesPage.module.scss';
@@ -36,6 +37,10 @@ export default function PoliciesPage() {
   const [updatePolicy] = useUpdatePolicyMutation();
   const [deletePolicy] = useDeletePolicyMutation();
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Column resize
+  const COL_MIN: Record<number, number> = { 0: 140, 1: 200, 2: 80, 3: 80, 4: 40 };
+  const { colWidths, onResizeStart } = useColumnResize(COL_MIN);
 
   /* ── Seed defaults on first load if empty ───────────── */
   const seeded = useRef(false);
@@ -107,7 +112,10 @@ export default function PoliciesPage() {
   /* ── Severity badge ─────────────────────────────────── */
   const SeverityBadge = ({ severity }: { severity: PolicySeverity }) => {
     const cls =
-      severity === 'High' ? s.severityHigh : severity === 'Medium' ? s.severityMedium : s.severityLow;
+      severity === 'Critical' ? s.severityCritical
+      : severity === 'High' ? s.severityHigh
+      : severity === 'Medium' ? s.severityMedium
+      : s.severityLow;
     return <span className={cls}>{severity}</span>;
   };
 
@@ -182,21 +190,30 @@ export default function PoliciesPage() {
         <p className={s.definitionsSubtitle}>Manage organizational cryptographic policies.</p>
 
         <table className={s.table}>
+          <colgroup>
+            {[0,1,2,3,4].map((i) => (
+              <col key={i} style={{ width: colWidths[i] || COL_MIN[i], minWidth: COL_MIN[i] }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
               <th onClick={() => toggleSort('name')}>
                 Policy Name <ArrowUpDown size={12} />
+                <span className={s.resizeHandle} onMouseDown={(e) => { e.stopPropagation(); onResizeStart(e, 0); }} />
               </th>
               <th onClick={() => toggleSort('description')}>
                 Description <ArrowUpDown size={12} />
+                <span className={s.resizeHandle} onMouseDown={(e) => { e.stopPropagation(); onResizeStart(e, 1); }} />
               </th>
               <th onClick={() => toggleSort('severity')}>
                 Severity <ArrowUpDown size={12} />
+                <span className={s.resizeHandle} onMouseDown={(e) => { e.stopPropagation(); onResizeStart(e, 2); }} />
               </th>
               <th onClick={() => toggleSort('status')}>
                 Status <ArrowUpDown size={12} />
+                <span className={s.resizeHandle} onMouseDown={(e) => { e.stopPropagation(); onResizeStart(e, 3); }} />
               </th>
-              <th style={{ width: 40 }} />
+              <th style={{ width: 40 }}><span className={s.resizeHandle} onMouseDown={(e) => onResizeStart(e, 4)} /></th>
             </tr>
             <tr className={s.filterRow}>
               <td>

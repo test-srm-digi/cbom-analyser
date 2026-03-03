@@ -2,6 +2,7 @@
  * Redux Store — configured with RTK Query middleware
  */
 import { configureStore } from '@reduxjs/toolkit';
+import { setupListeners } from '@reduxjs/toolkit/query';
 import { integrationsApi } from './api/integrationsApi';
 import { certificatesApi } from './api/certificatesApi';
 import { endpointsApi } from './api/endpointsApi';
@@ -45,6 +46,9 @@ export const store = configureStore({
       .concat(xbomApi.middleware)
       .concat(cbomUploadsApi.middleware),
 });
+
+/* Enable refetchOnFocus & refetchOnReconnect across all API slices */
+setupListeners(store.dispatch);
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
