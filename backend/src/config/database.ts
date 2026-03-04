@@ -33,8 +33,21 @@ export async function initDatabase(): Promise<void> {
     }
 
     // Sync models — alter:true adds/modifies columns to match model definitions
-    await sequelize.sync({ alter: true });
-    console.log('  ✓ Database models synced');
+    // Sequelize 6 + MariaDB 11.x can throw "Cannot delete property 'meta'"
+    // during ALTER TABLE.  Fall back to a plain sync (create-only) if alter fails.
+    try {
+      await sequelize.sync({ alter: true });
+      console.log('  ✓ Database models synced (alter)');
+    } catch (syncErr) {
+      const syncMsg = (syncErr as Error).message || '';
+      if (syncMsg.includes('meta') || syncMsg.includes('Cannot delete property')) {
+        console.warn('  ⚠ sync({ alter }) hit MariaDB 11 compat issue — falling back to sync()');
+        await sequelize.sync();
+        console.log('  ✓ Database models synced (create-only)');
+      } else {
+        throw syncErr;
+      }
+    }
   } catch (error) {
     const msg = (error as Error).message || String(error);
     if (msg.includes('ECONNREFUSED') || msg.includes('ConnectionRefused')) {
